@@ -1,7 +1,7 @@
 /* -*- mode: c++; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- */
 
 /*
- Copyright (C) 2015 Johannes Goettker-Schnetmann
+ Copyright (C) 2015 Johannes Göttker-Schnetmann
  Copyright (C) 2015 Klaus Spanderen
 
  This file is part of QuantLib, a free-software/open-source library
@@ -132,7 +132,7 @@ namespace QuantLib {
 
         for (Size i=0; i < strikes_.size(); ++i)
             for (Size j=1; j<strikes_[i]->size(); j++) {
-                QL_REQUIRE(strikes_[i]->at(j)>=strikes_[i]->at(j-1),
+                QL_REQUIRE((*strikes_[i])[j]>=(*strikes_[i])[j-1],
                            "strikes must be sorted");
             }
     }

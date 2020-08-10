@@ -21,9 +21,7 @@
 #include <ql/pricingengines/basket/mcamericanbasketengine.hpp>
 #include <ql/math/functional.hpp>
 #include <ql/methods/montecarlo/lsmbasissystem.hpp>
-#include <boost/bind.hpp>
-
-using boost::bind;
+#include <ql/functional.hpp>
 
 namespace QuantLib {
 
@@ -44,6 +42,7 @@ namespace QuantLib {
                    || polynomType == LsmBasisSystem::Hyperbolic
                    || polynomType == LsmBasisSystem::Chebyshev2nd,
                    "insufficient polynom type");
+        using namespace ext::placeholders;
         const ext::shared_ptr<BasketPayoff> basketPayoff
             = ext::dynamic_pointer_cast<BasketPayoff>(payoff_);
         QL_REQUIRE(basketPayoff, "payoff not a basket payoff");
@@ -51,11 +50,11 @@ namespace QuantLib {
         const ext::shared_ptr<StrikedTypePayoff> strikePayoff
             = ext::dynamic_pointer_cast<StrikedTypePayoff>(basketPayoff->basePayoff());
 
-        if (strikePayoff) {
+        if (strikePayoff != 0) {
             scalingValue_/=strikePayoff->strike();
         }
 
-        v_.push_back(boost::bind(&AmericanBasketPathPricer::payoff,
+        v_.push_back(ext::bind(&AmericanBasketPathPricer::payoff,
                                  this, _1));
     }
 
@@ -85,7 +84,7 @@ namespace QuantLib {
         return this->payoff(this->state(path, t));
     }
 
-    std::vector<boost::function1<Real, Array> >
+    std::vector<ext::function<Real(Array)> >
     AmericanBasketPathPricer::basisSystem() const {
         return v_;
     }

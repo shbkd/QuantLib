@@ -29,7 +29,7 @@
 #include <boost/test/unit_test.hpp>
 #endif
 
-#include <boost/timer.hpp>
+#include <boost/timer/timer.hpp>
 
 /* Use BOOST_MSVC instead of _MSC_VER since some other vendors (Metrowerks,
    for example) also #define _MSC_VER
@@ -39,6 +39,15 @@
 
 #ifndef QL_ENABLE_PARALLEL_UNIT_TEST_RUNNER
 #  define BOOST_LIB_NAME boost_unit_test_framework
+#  include <boost/config/auto_link.hpp>
+#  undef BOOST_LIB_NAME
+#  define BOOST_LIB_NAME boost_timer
+#  include <boost/config/auto_link.hpp>
+#  undef BOOST_LIB_NAME
+#  define BOOST_LIB_NAME boost_chrono
+#  include <boost/config/auto_link.hpp>
+#  undef BOOST_LIB_NAME
+#  define BOOST_LIB_NAME boost_system
 #  include <boost/config/auto_link.hpp>
 #  undef BOOST_LIB_NAME
 #endif
@@ -61,6 +70,7 @@
 #include "assetswap.hpp"
 #include "autocovariances.hpp"
 #include "barrieroption.hpp"
+#include "basismodels.hpp"
 #include "basketoption.hpp"
 #include "batesmodel.hpp"
 #include "bermudanswaption.hpp"
@@ -82,6 +92,7 @@
 #include "cms.hpp"
 #include "cmsspread.hpp"
 #include "commodityunitofmeasure.hpp"
+#include "compiledboostversion.hpp"
 #include "compoundoption.hpp"
 #include "convertiblebonds.hpp"
 #include "covariance.hpp"
@@ -104,7 +115,11 @@
 #include "extensibleoptions.hpp"
 #include "fastfouriertransform.hpp"
 #include "fdheston.hpp"
+#include "fdcir.hpp"
 #include "fdmlinearop.hpp"
+#include "fdcev.hpp"
+#include "fdsabr.hpp"
+#include "fittedbonddiscountcurve.hpp"
 #include "forwardoption.hpp"
 #include "forwardrateagreement.hpp"
 #include "functions.hpp"
@@ -116,6 +131,7 @@
 #include "hestonslvmodel.hpp"
 #include "himalayaoption.hpp"
 #include "hybridhestonhullwhiteprocess.hpp"
+#include "indexes.hpp"
 #include "inflation.hpp"
 #include "inflationcapfloor.hpp"
 #include "inflationcapflooredcoupon.hpp"
@@ -148,6 +164,7 @@
 #include "money.hpp"
 #include "noarbsabr.hpp"
 #include "normalclvmodel.hpp"
+#include "nthorderderivativeop.hpp"
 #include "nthtodefault.hpp"
 #include "numericaldifferentiation.hpp"
 #include "observable.hpp"
@@ -172,6 +189,7 @@
 #include "sampledcurve.hpp"
 #include "schedule.hpp"
 #include "shortratemodels.hpp"
+#include "sofrfutures.hpp"
 #include "solvers.hpp"
 #include "spreadoption.hpp"
 #include "squarerootclvmodel.hpp"
@@ -183,6 +201,7 @@
 #include "swaptionvolatilitycube.hpp"
 #include "swaptionvolatilitymatrix.hpp"
 #include "termstructures.hpp"
+#include "timegrid.hpp"
 #include "timeseries.hpp"
 #include "tqreigendecomposition.hpp"
 #include "tracing.hpp"
@@ -203,16 +222,17 @@ using namespace boost::unit_test_framework;
 
 namespace {
 
-    boost::timer t;
+    boost::timer::cpu_timer t;
 
-    void startTimer() { t.restart(); }
+    void startTimer() { t.start(); }
     void stopTimer() {
-        double seconds = t.elapsed();
+        t.stop();
+        std::cout << "\nTests completed in ";
+        double seconds = t.elapsed().wall * 1e-9;
         int hours = int(seconds/3600);
         seconds -= hours * 3600;
         int minutes = int(seconds/60);
         seconds -= minutes * 60;
-        std::cout << " \nTests completed in ";
         if (hours > 0)
             std::cout << hours << " h ";
         if (hours > 0 || minutes > 0)
@@ -240,7 +260,7 @@ namespace {
 #if defined(QL_ENABLE_SESSIONS)
 namespace QuantLib {
 
-    Integer sessionId() { return 0; }
+    ThreadKey sessionId() { return 0; }
 
 }
 #endif
@@ -309,12 +329,6 @@ test_suite* init_unit_test_suite(int, char* []) {
         #else
         "QuantLib " QL_VERSION
         #endif
-        "\n  QL_NEGATIVE_RATES "
-        #ifdef QL_NEGATIVE_RATES
-        "       defined"
-        #else
-        "     undefined"
-        #endif
         "\n  QL_EXTRA_SAFETY_CHECKS "
         #ifdef QL_EXTRA_SAFETY_CHECKS
         "  defined"
@@ -353,7 +367,6 @@ test_suite* init_unit_test_suite(int, char* []) {
 
     test->add(QUANTLIB_TEST_CASE(startTimer));
 
-
     test->add(AmericanOptionTest::suite());
     test->add(AndreasenHugeVolatilityInterplTest::suite(speed));
     test->add(ArrayTest::suite());
@@ -391,6 +404,10 @@ test_suite* init_unit_test_suite(int, char* []) {
     test->add(FastFourierTransformTest::suite());
     test->add(FdHestonTest::suite(speed));
     test->add(FdmLinearOpTest::suite());
+    test->add(FdCevTest::suite(speed));
+    test->add(FdCIRTest::suite(speed));
+    test->add(FdSabrTest::suite(speed));
+    test->add(FittedBondDiscountCurveTest::suite());
     test->add(ForwardOptionTest::suite());
     test->add(ForwardRateAgreementTest::suite());
     test->add(FunctionsTest::suite());
@@ -400,6 +417,7 @@ test_suite* init_unit_test_suite(int, char* []) {
     test->add(GsrTest::suite());
     test->add(HestonModelTest::suite(speed));
     test->add(HybridHestonHullWhiteProcessTest::suite(speed));
+    test->add(IndexTest::suite());
     test->add(InflationTest::suite());
     test->add(InflationCapFloorTest::suite());
     test->add(InflationCapFlooredCouponTest::suite());
@@ -424,6 +442,8 @@ test_suite* init_unit_test_suite(int, char* []) {
     test->add(MCLongstaffSchwartzEngineTest::suite());
     test->add(MersenneTwisterTest::suite());
     test->add(MoneyTest::suite());
+    test->add(NumericalDifferentiationTest::suite());
+    test->add(NthOrderDerivativeOpTest::suite());
     test->add(ObservableTest::suite());
     test->add(OdeTest::suite());
     test->add(OperatorTest::suite());
@@ -451,6 +471,7 @@ test_suite* init_unit_test_suite(int, char* []) {
     test->add(SwaptionVolatilityCubeTest::suite());
     test->add(SwaptionVolatilityMatrixTest::suite());
     test->add(TermStructureTest::suite());
+    test->add(TimeGridTest::suite());
     test->add(TimeSeriesTest::suite());
     test->add(TqrEigenDecompositionTest::suite());
     test->add(TracingTest::suite());
@@ -461,6 +482,7 @@ test_suite* init_unit_test_suite(int, char* []) {
     // tests for experimental classes
     test->add(AmortizingBondTest::suite());
     test->add(AsianOptionTest::experimental());
+    test->add(BasismodelsTest::suite());
     test->add(BarrierOptionTest::experimental());
     test->add(DoubleBarrierOptionTest::experimental());
     test->add(BlackDeltaCalculatorTest::suite());
@@ -470,6 +492,7 @@ test_suite* init_unit_test_suite(int, char* []) {
     test->add(ChooserOptionTest::suite());
     test->add(CmsSpreadTest::suite());
     test->add(CommodityUnitOfMeasureTest::suite());
+    test->add(CompiledBoostVersionTest::suite());
     test->add(CompoundOptionTest::suite());
     test->add(ConvertibleBondTest::suite());
     test->add(CreditRiskPlusTest::suite());
@@ -489,11 +512,11 @@ test_suite* init_unit_test_suite(int, char* []) {
     test->add(NoArbSabrTest::suite());
     test->add(NormalCLVModelTest::experimental(speed));
     test->add(NthToDefaultTest::suite(speed));
-    test->add(NumericalDifferentiationTest::suite());
     test->add(PagodaOptionTest::suite());
     test->add(PartialTimeBarrierOptionTest::suite());
     test->add(QuantoOptionTest::experimental());
     test->add(RiskNeutralDensityCalculatorTest::experimental(speed));
+    test->add(SofrFuturesTest::suite());
     test->add(SpreadOptionTest::suite());
     test->add(SquareRootCLVModelTest::experimental());
     test->add(SwingOptionTest::suite(speed));

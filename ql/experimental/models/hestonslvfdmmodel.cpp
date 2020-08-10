@@ -1,7 +1,7 @@
 /* -*- mode: c++; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- */
 
 /*
- Copyright (C) 2015 Johannes Goettker-Schnetmann
+ Copyright (C) 2015 Johannes Göttker-Schnetmann
  Copyright (C) 2015 Klaus Spanderen
 
  This file is part of QuantLib, a free-software/open-source library
@@ -41,8 +41,8 @@
 #include <ql/methods/finitedifferences/utilities/fdmmesherintegral.hpp>
 #include <ql/experimental/models/hestonslvfdmmodel.hpp>
 #include <ql/experimental/finitedifferences/fdmhestonfwdop.hpp>
-#include <ql/experimental/finitedifferences/localvolrndcalculator.hpp>
-#include <ql/experimental/finitedifferences/squarerootprocessrndcalculator.hpp>
+#include <ql/methods/finitedifferences/utilities/localvolrndcalculator.hpp>
+#include <ql/methods/finitedifferences/utilities/squarerootprocessrndcalculator.hpp>
 
 #include <boost/scoped_ptr.hpp>
 #include <boost/assign/std/vector.hpp>
@@ -273,12 +273,14 @@ namespace QuantLib {
         const Date& endDate,
         const HestonSLVFokkerPlanckFdmParams& params,
         const bool logging,
-        const std::vector<Date>& mandatoryDates)
+        const std::vector<Date>& mandatoryDates,
+        const Real mixingFactor)
     : localVol_(localVol),
       hestonModel_(hestonModel),
       endDate_(endDate),
       params_(params),
       mandatoryDates_(mandatoryDates),
+      mixingFactor_(mixingFactor),
       logging_(logging) {
 
         registerWith(localVol_);
@@ -316,7 +318,8 @@ namespace QuantLib {
         const Real kappa = hestonProcess->kappa();
         const Real theta = hestonProcess->theta();
         const Real sigma = hestonProcess->sigma();
-        const Real alpha = 2*kappa*theta/(sigma*sigma);
+        const Real mixedSigma = mixingFactor_ * sigma;
+        const Real alpha = 2*kappa*theta/(mixedSigma*mixedSigma);
 
         const Size xGrid = params_.xGrid;
         const Size vGrid = params_.vGrid;
@@ -366,7 +369,7 @@ namespace QuantLib {
             = localVolRND.rescaleTimeSteps();
 
         const SquareRootProcessRNDCalculator squareRootRnd(
-            v0, kappa, theta, sigma);
+            v0, kappa, theta, mixedSigma);
 
         const FdmSquareRootFwdOp::TransformationType trafoType
           = params_.trafoType;
@@ -383,7 +386,8 @@ namespace QuantLib {
         for (Size i=1; i < timeGrid->size(); ++i) {
             xMesher.push_back(localVolRND.mesher(timeGrid->at(i)));
 
-            if (i == rescaleSteps[rescaleIdx]) {
+            if ((rescaleIdx < rescaleSteps.size())
+                && (i == rescaleSteps[rescaleIdx])) {
                 ++rescaleIdx;
                 vMesher.push_back(varianceMesher(squareRootRnd,
                     timeGrid->at(rescaleSteps[rescaleIdx-1]),
@@ -416,17 +420,24 @@ namespace QuantLib {
 
         for (Size i=0; i < timeGrid->size(); ++i) {
             vStrikes[i] = ext::make_shared<std::vector<Real> >(xGrid);
-            std::transform(xMesher[i]->locations().begin(),
-                           xMesher[i]->locations().end(),
-                           vStrikes[i]->begin(),
-                           static_cast<Real(*)(Real)>(std::exp));
+            if (xMesher[i]->locations().front()
+                  == xMesher[i]->locations().back()) {
+                std::fill(vStrikes[i]->begin(), vStrikes[i]->end(),
+                    std::exp(xMesher[i]->locations().front()));
+            }
+            else {
+                std::transform(xMesher[i]->locations().begin(),
+                               xMesher[i]->locations().end(),
+                               vStrikes[i]->begin(),
+                               static_cast<Real(*)(Real)>(std::exp));
+            }
         }
 
         const ext::shared_ptr<FixedLocalVolSurface> leverageFct(
             new FixedLocalVolSurface(referenceDate, times, vStrikes, L, dc));
 
         ext::shared_ptr<FdmLinearOpComposite> hestonFwdOp(
-            new FdmHestonFwdOp(mesher, hestonProcess, trafoType, leverageFct));
+            new FdmHestonFwdOp(mesher, hestonProcess, trafoType, leverageFct, mixingFactor_));
 
         Array p = FdmHestonGreensFct(mesher, hestonProcess, trafoType, lv0)
             .get(timeGrid->at(1), params_.greensAlgorithm);

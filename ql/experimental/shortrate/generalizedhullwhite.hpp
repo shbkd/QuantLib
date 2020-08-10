@@ -47,7 +47,8 @@ namespace QuantLib {
             Interpolation interpolator_;
         };
     public:
-        InterpolationParameter(Size count,
+        explicit InterpolationParameter(
+            Size count,
             const Constraint& constraint = NoConstraint())
         : Parameter(count,
             ext::shared_ptr<Parameter::Impl>(
@@ -57,7 +58,8 @@ namespace QuantLib {
         void reset(const Interpolation &interp) {
             ext::shared_ptr<InterpolationParameter::Impl> impl =
                 ext::dynamic_pointer_cast<InterpolationParameter::Impl>(impl_);
-            if (impl) impl->reset(interp);
+            if (impl != 0)
+                impl->reset(interp);
         }
     };
 
@@ -80,10 +82,10 @@ namespace QuantLib {
             const std::vector<Date>& volstructure,
             const std::vector<Real>& speed,
             const std::vector<Real>& vol,
-            const boost::function<Real(Real)>& f =
-                                            boost::function<Real(Real)>(),
-            const boost::function<Real(Real)>& fInverse =
-                                            boost::function<Real(Real)>());
+            const ext::function<Real(Real)>& f =
+                                            ext::function<Real(Real)>(),
+            const ext::function<Real(Real)>& fInverse =
+                                            ext::function<Real(Real)>());
 
         template <class SpeedInterpolationTraits,class VolInterpolationTraits>
         GeneralizedHullWhite(
@@ -94,10 +96,10 @@ namespace QuantLib {
             const std::vector<Real>& vol,
             const SpeedInterpolationTraits &speedtraits,
             const VolInterpolationTraits &voltraits,
-            const boost::function<Real(Real)>& f =
-                                            boost::function<Real(Real)>(),
-            const boost::function<Real(Real)>& fInverse =
-                                            boost::function<Real(Real)>()) :
+            const ext::function<Real(Real)>& f =
+                                            ext::function<Real(Real)>(),
+            const ext::function<Real(Real)>& fInverse =
+                                            ext::function<Real(Real)>()) :
             OneFactorAffineModel(2), TermStructureConsistentModel(yieldtermStructure),
             speedstructure_(speedstructure), volstructure_(volstructure),
             a_(arguments_[0]), sigma_(arguments_[1]),
@@ -154,15 +156,15 @@ namespace QuantLib {
         Interpolation speed_;
         Interpolation vol_;
 
-        boost::function<Real (Time)> speed() const;
-        boost::function<Real (Time)> vol() const;
+        ext::function<Real (Time)> speed() const;
+        ext::function<Real (Time)> vol() const;
 
         Parameter& a_;
         Parameter& sigma_;
         Parameter phi_;
 
-        boost::function<Real(Real)> f_;
-        boost::function<Real(Real)> fInverse_;
+        ext::function<Real(Real)> f_;
+        ext::function<Real(Real)> fInverse_;
 
         static Real identity(Real x) {
             return x;
@@ -176,16 +178,16 @@ namespace QuantLib {
             const std::vector<Real>& vol,
             const SpeedInterpolationTraits &speedtraits,
             const VolInterpolationTraits &voltraits,
-            const boost::function<Real(Real)>& f,
-            const boost::function<Real(Real)>& fInverse)
+            const ext::function<Real(Real)>& f,
+            const ext::function<Real(Real)>& fInverse)
         {
             QL_REQUIRE(speedstructure.size()==speed.size(),
                 "mean reversion inputs inconsistent");
             QL_REQUIRE(volstructure.size()==vol.size(),
                 "volatility inputs inconsistent");
-            if (f_.empty())
+            if (!f_)
                 f_ = identity;
-            if (fInverse_.empty())
+            if (!fInverse_)
                 fInverse_ = identity;
 
             DayCounter dc = yieldtermStructure->dayCounter();
@@ -238,10 +240,10 @@ namespace QuantLib {
         : public GeneralizedHullWhite::ShortRateDynamics {
       public:
         Dynamics(const Parameter& fitting,
-                 const boost::function<Real (Time)>& alpha,
-                 const boost::function<Real (Time)>& sigma,
-                 const boost::function<Real(Real)>& f,
-                 const boost::function<Real(Real)>& fInverse)
+                 const ext::function<Real (Time)>& alpha,
+                 const ext::function<Real (Time)>& sigma,
+                 const ext::function<Real(Real)>& f,
+                 const ext::function<Real(Real)>& fInverse)
         : ShortRateDynamics(ext::shared_ptr<StochasticProcess1D>(
                       new GeneralizedOrnsteinUhlenbeckProcess(alpha, sigma))),
           fitting_(fitting),
@@ -254,11 +256,7 @@ namespace QuantLib {
         : GeneralizedHullWhite::ShortRateDynamics(
               ext::shared_ptr<StochasticProcess1D>(
                       new OrnsteinUhlenbeckProcess(a, sigma))),
-          fitting_(fitting) {
-
-            _f_=identity();
-            _fInverse_=identity();
-        }
+          fitting_(fitting), _f_(identity()), _fInverse_(identity()) {}
 
         Real variable(Time t, Rate r) const {
             return _f_(r) - fitting_(t);
@@ -270,8 +268,8 @@ namespace QuantLib {
 
       private:
         Parameter fitting_;
-        boost::function<Real(Real)> _f_;
-        boost::function<Real(Real)> _fInverse_;
+        ext::function<Real(Real)> _f_;
+        ext::function<Real(Real)> _fInverse_;
         struct identity {
             Real operator()(Real x) const {return x;};
         };

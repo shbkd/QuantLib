@@ -149,7 +149,7 @@ namespace QuantLib {
 
             class ObjectiveFunction;
             friend class ObjectiveFunction;
-            class ObjectiveFunction : public std::unary_function<Real, Real> {
+            class ObjectiveFunction {
                 const GFunctionWithShifts& o_;
                 Real Rs_;
                 mutable Real derivative_;
@@ -257,12 +257,14 @@ namespace QuantLib {
             Real precision = 1.0e-6,
             Real hardUpperLimit = QL_MAX_REAL);
 
-       Real upperLimit() { return upperLimit_; }
-       Real stdDeviations() { return stdDeviationsForUpperLimit_; }
+        Real upperLimit() const { return upperLimit_; }
+        Real stdDeviations() const { return stdDeviationsForUpperLimit_; }
 
-      //private:
-        class Function : public std::unary_function<Real, Real> {
+        // private:
+        class Function {
           public:
+            typedef Real argument_type;
+            typedef Real result_type;
             virtual ~Function() {}
             virtual Real operator()(Real x) const = 0;
         };
@@ -282,9 +284,9 @@ namespace QuantLib {
                        Option::Type optionType);
             Real operator()(Real x) const;
           protected:
-            Real functionF(const Real x) const;
-            Real firstDerivativeOfF(const Real x) const;
-            Real secondDerivativeOfF(const Real x) const;
+            Real functionF(Real x) const;
+            Real firstDerivativeOfF(Real x) const;
+            Real secondDerivativeOfF(Real x) const;
 
             Real strike() const;
             Real annuity() const;

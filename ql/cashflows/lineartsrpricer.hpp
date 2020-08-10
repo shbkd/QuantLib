@@ -1,4 +1,5 @@
 /* -*- mode: c++; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- */
+
 /*
   Copyright (C) 2014, 2016 Peter Caspers
 
@@ -93,20 +94,6 @@ namespace QuantLib {
                 return *this;
             }
 
-            /*! \deprecated Use the overload taking 3 parameters.
-                            Deprecated in version 1.10.
-            */
-            QL_DEPRECATED
-            Settings &withVegaRatio(const Real vegaRatio,
-                                    const Real lowerRateBound) {
-                strategy_ = VegaRatio;
-                vegaRatio_ = vegaRatio;
-                lowerRateBound_ = lowerRateBound;
-                upperRateBound_ = defaultUpperBound;
-                defaultBounds_ = false;
-                return *this;
-            }
-
             Settings &withVegaRatio(const Real vegaRatio,
                                     const Real lowerRateBound,
                                     const Real upperRateBound) {
@@ -127,20 +114,6 @@ namespace QuantLib {
                 return *this;
             }
 
-            /*! \deprecated Use the overload taking 3 parameters.
-                            Deprecated in version 1.10.
-            */
-            QL_DEPRECATED
-            Settings &withPriceThreshold(const Real priceThreshold,
-                                         const Real lowerRateBound) {
-                strategy_ = PriceThreshold;
-                priceThreshold_ = priceThreshold;
-                lowerRateBound_ = lowerRateBound;
-                upperRateBound_ = defaultUpperBound;
-                defaultBounds_ = false;
-                return *this;
-            }
-
             Settings &withPriceThreshold(const Real priceThreshold,
                                          const Real lowerRateBound,
                                          const Real upperRateBound) {
@@ -158,20 +131,6 @@ namespace QuantLib {
                 lowerRateBound_ = defaultLowerBound;
                 upperRateBound_ = defaultUpperBound;
                 defaultBounds_ = true;
-                return *this;
-            }
-
-            /*! \deprecated Use the overload taking 3 parameters.
-                            Deprecated in version 1.10.
-            */
-            QL_DEPRECATED
-            Settings &withBSStdDevs(const Real stdDevs,
-                                    const Real lowerRateBound) {
-                strategy_ = BSStdDevs;
-                stdDevs_ = stdDevs;
-                lowerRateBound_ = lowerRateBound;
-                upperRateBound_ = defaultUpperBound;
-                defaultBounds_ = false;
                 return *this;
             }
 
@@ -230,8 +189,8 @@ namespace QuantLib {
       private:
 
         Real GsrG(const Date &d) const;
-        Real singularTerms(const Option::Type type, const Real strike) const;
-        Real integrand(const Real strike) const;
+        Real singularTerms(Option::Type type, Real strike) const;
+        Real integrand(Real strike) const;
         Real a_, b_;
 
         class integrand_f;

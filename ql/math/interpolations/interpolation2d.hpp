@@ -40,6 +40,9 @@ namespace QuantLib {
         representing the discretized values of the \f$ x \f$ and \f$ y
         \f$ variables, and a \f$ N \times M \f$ matrix representing
         the tabulated function values.
+
+        \warning See the Interpolation class for information about the
+                 required lifetime of the underlying data.
     */
     class Interpolation2D : public Extrapolator {
       protected:
@@ -149,7 +152,7 @@ namespace QuantLib {
             I2 yBegin_, yEnd_;
             const M& zData_;
         };
-      public:
+
         Interpolation2D() {}
         Real operator()(Real x, Real y,
                         bool allowExtrapolation = false) const {

@@ -94,13 +94,13 @@ namespace QuantLib {
         /* To interface with loss models. It is possible to change the basket 
         since there are no cached magnitudes.
         */
-        void resetBasket(const ext::shared_ptr<Basket> basket) const {
+        void resetBasket(const ext::shared_ptr<Basket>& basket) const {
             basket_ = basket;
             // in the future change 'size' to 'liveSize'
             QL_REQUIRE(basket_->size() == factorWeights_.size(), 
                 "Incompatible new basket and model sizes.");
         }
-    public:
+
         /*! Returns the probability of default of a given name conditional on
         the realization of a given set of values of the model independent
         factors. The date at which the probability is given is implicit in the
@@ -129,7 +129,8 @@ namespace QuantLib {
         }
     protected:
         void update() {
-            if(basket_) basket_->notifyObservers();
+            if (basket_ != 0)
+                basket_->notifyObservers();
             LatentModel<copulaPolicy>::update();
         }
     public:// open since users access it for performance on joint integrations.
@@ -216,14 +217,14 @@ namespace QuantLib {
             if (pUncond < 1.e-10) return 0.;
 
             return integratedExpectedValue(
-              boost::function<Real (const std::vector<Real>& v1)>(
-                boost::bind(
+              ext::function<Real (const std::vector<Real>& v1)>(
+                ext::bind(
                 &DefaultLatentModel<copulaPolicy>
                     ::conditionalDefaultProbabilityInvP,
                 this,
                 inverseCumulativeY(pUncond, iName),
                 iName, 
-                _1)
+                ext::placeholders::_1)
               ));
         }
         /*! Pearsons' default probability correlation. 
@@ -239,13 +240,13 @@ namespace QuantLib {
         */
         Probability probAtLeastNEvents(Size n, const Date& date) const {
             return integratedExpectedValue(
-             boost::function<Real (const std::vector<Real>& v1)>(
-              boost::bind(
+             ext::function<Real (const std::vector<Real>& v1)>(
+              ext::bind(
               &DefaultLatentModel<copulaPolicy>::conditionalProbAtLeastNEvents,
               this,
               n,
-              boost::cref(date),
-              _1)
+              ext::cref(date),
+              ext::placeholders::_1)
              ));
         }
     };
@@ -274,10 +275,11 @@ namespace QuantLib {
         Real E1i1j; // joint default covariance term
         if(iNamei !=iNamej) {
             E1i1j = integratedExpectedValue(
-              boost::function<Real (const std::vector<Real>& v1)>(
-                boost::bind(
+              ext::function<Real (const std::vector<Real>& v1)>(
+                ext::bind(
                 &DefaultLatentModel<CP>::condProbProduct,
-                this, invPi, invPj, iNamei, iNamej, _1) ));
+                this, invPi, invPj, iNamei, iNamej,
+                ext::placeholders::_1) ));
         }else{
             E1i1j = pi;
         }

@@ -245,33 +245,36 @@ namespace QuantLib {
         swap.setPricingEngine(ext::shared_ptr<PricingEngine>(
                            new DiscountingSwapEngine(discountCurve_, false)));
         Real annuity;
-        switch(arguments_.settlementType) {
-          case Settlement::Physical: {
-              annuity = std::fabs(swap.fixedLegBPS())/basisPoint;
-              break;
-          }
-          case Settlement::Cash: {
-              DayCounter dayCount = firstCoupon->dayCounter();
-              // we assume that the cash settlement date is equal
-              // to the swap start date
-              Date discountDate = model_ == DiscountCurve ? firstCoupon->accrualStartDate()
-                                                          : discountCurve_->referenceDate();
-              Real fixedLegCashBPS =
-                  CashFlows::bps(fixedLeg,
-                                 InterestRate(atmForward, dayCount, Compounded, Annual),
-                                 false, discountDate) ;
-              annuity =
-                  std::fabs(fixedLegCashBPS / basisPoint) * discountCurve_->discount(discountDate);
-
-              break;
-          }
-          default:
-            QL_FAIL("unknown settlement type");
+        if (arguments_.settlementType == Settlement::Physical ||
+            (arguments_.settlementType == Settlement::Cash &&
+             arguments_.settlementMethod ==
+                 Settlement::CollateralizedCashPrice)) {
+            annuity = std::fabs(swap.fixedLegBPS()) / basisPoint;
+        } else if (arguments_.settlementType == Settlement::Cash &&
+                   arguments_.settlementMethod == Settlement::ParYieldCurve) {
+            DayCounter dayCount = firstCoupon->dayCounter();
+            // we assume that the cash settlement date is equal
+            // to the swap start date
+            Date discountDate = model_ == DiscountCurve
+                                    ? firstCoupon->accrualStartDate()
+                                    : discountCurve_->referenceDate();
+            Real fixedLegCashBPS = CashFlows::bps(
+                fixedLeg,
+                InterestRate(atmForward, dayCount, Compounded, Annual), false,
+                discountDate);
+            annuity = std::fabs(fixedLegCashBPS / basisPoint) *
+                      discountCurve_->discount(discountDate);
+        } else {
+            QL_FAIL("invalid (settlementType, settlementMethod) pair");
         }
         results_.additionalResults["annuity"] = annuity;
 
         Time swapLength =  vol_->swapLength(swap.floatingSchedule().dates().front(),
                                             swap.floatingSchedule().dates().back());
+
+        // swapLength is rounded to whole months. To ensure we can read a variance
+        // and a shift from vol_ we floor swapLength at 1/12 here therefore.
+        swapLength = std::max(swapLength, 1.0 / 12.0);
         results_.additionalResults["swapLength"] = swapLength;
 
         Real variance = vol_->blackVariance(exerciseDate,

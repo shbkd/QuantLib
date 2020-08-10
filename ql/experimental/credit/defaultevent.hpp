@@ -109,7 +109,7 @@ namespace QuantLib {
                      // Settlement information:
                      const Date& settleDate = Null<Date>(),
                      Real recoveryRate = 0.4);
-      public:
+
         Date date() const;
         bool isRestructuring() const { return eventType_.isRestructuring(); }
         bool isDefault() const { return !isRestructuring();}
@@ -185,8 +185,7 @@ namespace QuantLib {
     }
 
     template<>
-    struct earlier_than<DefaultEvent>
-        : public std::binary_function<DefaultEvent, DefaultEvent, bool> {
+    struct earlier_than<DefaultEvent> {
         bool operator()(const DefaultEvent& e1,
                         const DefaultEvent& e2) const {
             return e1.date() < e2.date();

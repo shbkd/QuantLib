@@ -174,7 +174,6 @@ namespace QuantLib {
                 }
             }
 
-          private:
 
             Size xSize_,ySize_,xySize_;
             Real invPrec_;
@@ -192,6 +191,10 @@ namespace QuantLib {
 
         The kernel in the implementation is kept general, although a
         Gaussian is considered in the cited text.
+
+        \ingroup interpolations
+        \warning See the Interpolation class for information about the
+                 required lifetime of the underlying data.
     */
     class KernelInterpolation2D : public Interpolation2D{
       public:

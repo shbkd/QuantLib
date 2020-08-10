@@ -68,9 +68,9 @@ namespace QuantLib {
             Real modelA,
             LatentModelIntegrationType::LatentModelIntegrationType integralType,
             const initTraits& ini = initTraits()
-            ); 
+            );
 
-        void resetBasket(const ext::shared_ptr<Basket> basket) const;
+        void resetBasket(const ext::shared_ptr<Basket>& basket) const;
         Probability conditionalDefaultProbability(const Date& date, Size iName,
             const std::vector<Real>& mktFactors) const;
         Probability conditionalDefaultProbability(Probability prob, Size iName,
@@ -133,10 +133,9 @@ namespace QuantLib {
 
     // ------------------------------------------------------------------------
 
-    template<class CP>
-    inline void SpotRecoveryLatentModel<CP>::resetBasket(
-        const ext::shared_ptr<Basket> basket) const 
-    {
+    template <class CP>
+    inline void
+    SpotRecoveryLatentModel<CP>::resetBasket(const ext::shared_ptr<Basket>& basket) const {
         basket_ = basket;
         // in the future change 'size' to 'liveSize'
         QL_REQUIRE(basket_->size() == numNames_, 
@@ -320,6 +319,7 @@ namespace QuantLib {
     inline Real SpotRecoveryLatentModel<CP>::expectedLoss(const Date& d, 
         Size iName) const 
     {
+        using namespace ext::placeholders;
         const ext::shared_ptr<Pool>& pool = basket_->pool();
         Probability pDefUncond =
             pool->get(pool->names()[iName]).
@@ -330,8 +330,8 @@ namespace QuantLib {
         Real invRR = inverseCumulativeY(recoveries_[iName], iName + numNames_);
 
         return integratedExpectedValue(
-            boost::function<Real (const std::vector<Real>& v1)>(
-               boost::bind(
+            ext::function<Real (const std::vector<Real>& v1)>(
+               ext::bind(
                &SpotRecoveryLatentModel<CP>::conditionalExpLossRRInv,
                this,
                invP,

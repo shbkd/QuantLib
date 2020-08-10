@@ -43,7 +43,7 @@ namespace QuantLib {
         CashFlows();
         CashFlows(const CashFlows&);
 
-        class IrrFinder : public std::unary_function<Rate, Real> {
+        class IrrFinder {
           public:
             IrrFinder(const Leg& leg,
                       Real npv,
@@ -257,7 +257,7 @@ namespace QuantLib {
                         Date npvDate = Date());
         //! Implied internal rate of return.
         /*! The function verifies
-            the theoretical existance of an IRR and numerically
+            the theoretical existence of an IRR and numerically
             establishes the IRR to the desired precision.
         */
         static Rate yield(const Leg& leg,
@@ -273,7 +273,7 @@ namespace QuantLib {
                           Rate guess = 0.05);
 
         template <typename Solver>
-        static Rate yield(Solver solver,
+        static Rate yield(const Solver& solver,
                           const Leg& leg,
                           Real npv,
                           const DayCounter& dayCounter,

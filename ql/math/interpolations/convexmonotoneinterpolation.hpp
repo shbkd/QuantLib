@@ -47,6 +47,8 @@ namespace QuantLib {
         values (if required) is in place.
 
         \ingroup interpolations
+        \warning See the Interpolation class for information about the
+                 required lifetime of the underlying data.
     */
     template <class I1, class I2>
     class ConvexMonotoneInterpolation : public Interpolation {
@@ -526,13 +528,12 @@ namespace QuantLib {
                                Real prevPrimitive)
             : splitRegion_(false), x1_(xPrev), x4_(xNext),
               primitive1_(prevPrimitive), fAverage_(fAverage),
-              fPrev_(fPrev), fNext_(fNext) {
+              fPrev_(fPrev), fNext_(fNext), xRatio_(1.0) {
                 a_ = 3*fPrev_ + 3*fNext_ - 6*fAverage_;
                 b_ = -(4*fPrev_ + 2*fNext_ - 6*fAverage_);
                 c_ = fPrev_;
                 Real d = b_*b_-4*a_*c_;
                 xScaling_ = x4_-x1_;
-                xRatio_ = 1.0;
                 if (d > 0) {
                     Real aAv = 36;
                     Real bAv = -24*(fPrev_+fNext_);
@@ -619,8 +620,8 @@ namespace QuantLib {
             for (Size i=startPoint; i<length_-1; ++i) {
                 Real dxPrev = this->xBegin_[i] - this->xBegin_[i-1];
                 Real dx = this->xBegin_[i+1] - this->xBegin_[i];
-                f[i] = dxPrev/(dx+dxPrev) * this->yBegin_[i]
-                     + dx/(dx+dxPrev) * this->yBegin_[i+1];
+                f[i] = dx/(dx+dxPrev) * this->yBegin_[i]
+                     + dxPrev/(dx+dxPrev) * this->yBegin_[i+1];
             }
 
             if (startPoint > 1)

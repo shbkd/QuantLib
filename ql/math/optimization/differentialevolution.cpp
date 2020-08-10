@@ -19,10 +19,10 @@
 */
 
 #include <ql/math/optimization/differentialevolution.hpp>
+
+#include <boost/math/special_functions/fpclassify.hpp>
+
 #include <algorithm>
-#if defined(__cplusplus) && __cplusplus >= 201402L
-#include <random>
-#endif
 
 namespace QuantLib {
 
@@ -36,30 +36,53 @@ namespace QuantLib {
         };
 
         template <class I>
-        void randomize(I begin, I end) {
-            #if defined(__cplusplus) && __cplusplus >= 201402L
-            static std::mt19937 _mt = std::mt19937(std::random_device()());
-            std::shuffle(begin, end, _mt);
-            #else
-            std::random_shuffle(begin, end);
-            #endif
+        void randomize(I begin, I end,
+                       const MersenneTwisterUniformRng& rng) {
+            Size n = static_cast<Size>(end-begin);
+            for (Size i=n-1; i>0; --i) {
+                std::swap(begin[i], begin[rng.nextInt32() % (i+1)]);
+            }
         }
 
     }
 
     EndCriteria::Type DifferentialEvolution::minimize(Problem& p, const EndCriteria& endCriteria) {
         EndCriteria::Type ecType;
+        p.reset();
 
-        upperBound_ = p.constraint().upperBound(p.currentValue());
-        lowerBound_ = p.constraint().lowerBound(p.currentValue());
-        currGenSizeWeights_ = Array(configuration().populationMembers,
-                                    configuration().stepsizeWeight);
+        if (configuration().upperBound.empty()) {
+            upperBound_ = p.constraint().upperBound(p.currentValue());
+        } else {
+            QL_REQUIRE(configuration().upperBound.size() == p.currentValue().size(),
+                       "wrong upper bound size in differential evolution configuration");
+            upperBound_ = configuration().upperBound;
+        }
+        if (configuration().lowerBound.empty()) {
+            lowerBound_ = p.constraint().lowerBound(p.currentValue());
+        } else {
+            QL_REQUIRE(configuration().lowerBound.size() == p.currentValue().size(),
+                       "wrong lower bound size in differential evolution configuration");
+            lowerBound_ = configuration().lowerBound;
+        }
+        currGenSizeWeights_ =
+            Array(configuration().populationMembers, configuration().stepsizeWeight);
         currGenCrossover_ = Array(configuration().populationMembers,
                                   configuration().crossoverProbability);
 
-        std::vector<Candidate> population(configuration().populationMembers,
-                                          Candidate(p.currentValue().size()));
-        fillInitialPopulation(population, p);
+        std::vector<Candidate> population;
+        if (!configuration().initialPopulation.empty()) {
+            population.resize(configuration().initialPopulation.size());
+            for (Size i = 0; i < population.size(); ++i) {
+                population[i].values = configuration().initialPopulation[i];
+                QL_REQUIRE(population[i].values.size() == p.currentValue().size(),
+                           "wrong values size in initial population");
+                population[i].cost = p.costFunction().value(population[i].values);
+            }
+        } else {
+            population = std::vector<Candidate>(configuration().populationMembers,
+                                                Candidate(p.currentValue().size()));
+            fillInitialPopulation(population, p);
+        }
 
         std::partial_sort(population.begin(), population.begin() + 1, population.end(),
                           sort_by_cost());
@@ -69,7 +92,7 @@ namespace QuantLib {
 
         // main loop - calculate consecutive emerging populations
         while (!endCriteria.checkMaxIterations(iteration++, ecType)) {
-            calculateNextGeneration(population, p.costFunction());
+            calculateNextGeneration(population, p);
             std::partial_sort(population.begin(), population.begin() + 1, population.end(),
                               sort_by_cost());
             if (population.front().cost < bestMemberEver_.cost)
@@ -87,7 +110,7 @@ namespace QuantLib {
 
     void DifferentialEvolution::calculateNextGeneration(
                                      std::vector<Candidate>& population,
-                                     const CostFunction& costFunction) const {
+                                     Problem& p) const {
 
         std::vector<Candidate> mirrorPopulation;
         std::vector<Candidate> oldPopulation = population;
@@ -95,11 +118,11 @@ namespace QuantLib {
         switch (configuration().strategy) {
 
           case Rand1Standard: {
-              randomize(population.begin(), population.end());
+              randomize(population.begin(), population.end(), rng_);
               std::vector<Candidate> shuffledPop1 = population;
-              randomize(population.begin(), population.end());
+              randomize(population.begin(), population.end(), rng_);
               std::vector<Candidate> shuffledPop2 = population;
-              randomize(population.begin(), population.end());
+              randomize(population.begin(), population.end(), rng_);
               mirrorPopulation = shuffledPop1;
 
               for (Size popIter = 0; popIter < population.size(); popIter++) {
@@ -111,9 +134,9 @@ namespace QuantLib {
             break;
 
           case BestMemberWithJitter: {
-              randomize(population.begin(), population.end());
+              randomize(population.begin(), population.end(), rng_);
               std::vector<Candidate> shuffledPop1 = population;
-              randomize(population.begin(), population.end());
+              randomize(population.begin(), population.end(), rng_);
               Array jitter(population[0].values.size(), 0.0);
 
               for (Size popIter = 0; popIter < population.size(); popIter++) {
@@ -130,9 +153,9 @@ namespace QuantLib {
             break;
 
           case CurrentToBest2Diffs: {
-              randomize(population.begin(), population.end());
+              randomize(population.begin(), population.end(), rng_);
               std::vector<Candidate> shuffledPop1 = population;
-              randomize(population.begin(), population.end());
+              randomize(population.begin(), population.end(), rng_);
 
               for (Size popIter = 0; popIter < population.size(); popIter++) {
                   population[popIter].values = oldPopulation[popIter].values
@@ -146,11 +169,11 @@ namespace QuantLib {
             break;
 
           case Rand1DiffWithPerVectorDither: {
-              randomize(population.begin(), population.end());
+              randomize(population.begin(), population.end(), rng_);
               std::vector<Candidate> shuffledPop1 = population;
-              randomize(population.begin(), population.end());
+              randomize(population.begin(), population.end(), rng_);
               std::vector<Candidate> shuffledPop2 = population;
-              randomize(population.begin(), population.end());
+              randomize(population.begin(), population.end(), rng_);
               mirrorPopulation = shuffledPop1;
               Array FWeight = Array(population.front().values.size(), 0.0);
               for (Size fwIter = 0; fwIter < FWeight.size(); fwIter++)
@@ -164,11 +187,11 @@ namespace QuantLib {
             break;
 
           case Rand1DiffWithDither: {
-              randomize(population.begin(), population.end());
+              randomize(population.begin(), population.end(), rng_);
               std::vector<Candidate> shuffledPop1 = population;
-              randomize(population.begin(), population.end());
+              randomize(population.begin(), population.end(), rng_);
               std::vector<Candidate> shuffledPop2 = population;
-              randomize(population.begin(), population.end());
+              randomize(population.begin(), population.end(), rng_);
               mirrorPopulation = shuffledPop1;
               Real FWeight = (1.0 - configuration().stepsizeWeight) * rng_.nextReal()
                   + configuration().stepsizeWeight;
@@ -180,11 +203,11 @@ namespace QuantLib {
             break;
 
           case EitherOrWithOptimalRecombination: {
-              randomize(population.begin(), population.end());
+              randomize(population.begin(), population.end(), rng_);
               std::vector<Candidate> shuffledPop1 = population;
-              randomize(population.begin(), population.end());
+              randomize(population.begin(), population.end(), rng_);
               std::vector<Candidate> shuffledPop2 = population;
-              randomize(population.begin(), population.end());
+              randomize(population.begin(), population.end(), rng_);
               mirrorPopulation = shuffledPop1;
               Real probFWeight = 0.5;
               if (rng_.nextReal() < probFWeight) {
@@ -206,11 +229,11 @@ namespace QuantLib {
             break;
 
           case Rand1SelfadaptiveWithRotation: {
-              randomize(population.begin(), population.end());
+              randomize(population.begin(), population.end(), rng_);
               std::vector<Candidate> shuffledPop1 = population;
-              randomize(population.begin(), population.end());
+              randomize(population.begin(), population.end(), rng_);
               std::vector<Candidate> shuffledPop2 = population;
-              randomize(population.begin(), population.end());
+              randomize(population.begin(), population.end(), rng_);
               mirrorPopulation = shuffledPop1;
 
               adaptSizeWeights();
@@ -232,8 +255,7 @@ namespace QuantLib {
                     << Integer(configuration().strategy) << ")");
         }
         // in order to avoid unnecessary copying we use the same population object for mutants
-        crossover(oldPopulation, population, population, mirrorPopulation,
-                  costFunction);
+        crossover(oldPopulation, population, population, mirrorPopulation, p);
     }
 
     void DifferentialEvolution::crossover(
@@ -241,7 +263,7 @@ namespace QuantLib {
                                std::vector<Candidate>& population,
                                const std::vector<Candidate>& mutantPopulation,
                                const std::vector<Candidate>& mirrorPopulation,
-                               const CostFunction& costFunction) const {
+                               Problem& p) const {
 
         if (configuration().crossoverIsAdaptive) {
             adaptCrossover();
@@ -275,10 +297,13 @@ namespace QuantLib {
             }
             // evaluate objective function as soon as possible to avoid unnecessary loops
             try {
-                population[popIter].cost = costFunction.value(population[popIter].values);
+                population[popIter].cost = p.value(population[popIter].values);
             } catch (Error&) {
                 population[popIter].cost = QL_MAX_REAL;
             }
+            if(!boost::math::isfinite(population[popIter].cost))
+                population[popIter].cost = QL_MAX_REAL;
+
         }
     }
 
@@ -326,7 +351,7 @@ namespace QuantLib {
     }
 
     Array DifferentialEvolution::rotateArray(Array a) const {
-        randomize(a.begin(), a.end());
+        randomize(a.begin(), a.end(), rng_);
         return a;
     }
 
@@ -366,8 +391,9 @@ namespace QuantLib {
                 population[j].values[i] = l + (u-l)*rng_.nextReal();
             }
             population[j].cost = p.costFunction().value(population[j].values);
+            if(!boost::math::isfinite(population[j].cost))
+                population[j].cost = QL_MAX_REAL;
         }
     }
 
 }
-
