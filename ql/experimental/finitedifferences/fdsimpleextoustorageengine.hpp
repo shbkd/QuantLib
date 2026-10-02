@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -41,14 +41,15 @@ namespace QuantLib {
         typedef std::vector<std::pair<Time, Real> > Shape;
 
 
-        FdSimpleExtOUStorageEngine(
-          const ext::shared_ptr<ExtendedOrnsteinUhlenbeckProcess>& p,
-          const ext::shared_ptr<YieldTermStructure>& rTS,
-          Size tGrid = 50, Size xGrid = 100, Size yGrid = Null<Size>(),
-          const ext::shared_ptr<Shape>& shape = ext::shared_ptr<Shape>(),
-          const FdmSchemeDesc& schemeDesc = FdmSchemeDesc::Douglas());
+        FdSimpleExtOUStorageEngine(ext::shared_ptr<ExtendedOrnsteinUhlenbeckProcess> p,
+                                   ext::shared_ptr<YieldTermStructure> rTS,
+                                   Size tGrid = 50,
+                                   Size xGrid = 100,
+                                   Size yGrid = Null<Size>(),
+                                   ext::shared_ptr<Shape> shape = ext::shared_ptr<Shape>(),
+                                   const FdmSchemeDesc& schemeDesc = FdmSchemeDesc::Douglas());
 
-        void calculate() const;
+        void calculate() const override;
 
       private:
         const ext::shared_ptr<ExtendedOrnsteinUhlenbeckProcess> process_;

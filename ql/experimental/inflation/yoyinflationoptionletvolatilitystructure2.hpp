@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -62,15 +62,15 @@ namespace QuantLib {
                                                             Interpolator1D());
         //@}
 
-        virtual ~InterpolatedYoYOptionletVolatilityCurve() {}
+        ~InterpolatedYoYOptionletVolatilityCurve() override = default;
 
         //! \name Limits
         //@{
         //! the minimum strike for which the term structure can return vols
-        virtual Real minStrike() const {return minStrike_;}
+        Real minStrike() const override { return minStrike_; }
         //! the maximum strike for which the term structure can return vols
-        virtual Real maxStrike() const {return maxStrike_;}
-        virtual Date maxDate() const {
+        Real maxStrike() const override { return maxStrike_; }
+        Date maxDate() const override {
             //FIXME approx
             return optionDateFromTenor(Period((int)ceil(this->interpolation_.xMax()),Years));
         }
@@ -108,7 +108,7 @@ namespace QuantLib {
         //@}
 
         //! implements the actual volatility calculation in derived classes
-        virtual Volatility volatilityImpl(Time length, Rate strike) const;
+        Volatility volatilityImpl(Time length, Rate strike) const override;
 
         Rate minStrike_, maxStrike_;
     };
@@ -139,10 +139,10 @@ namespace QuantLib {
         QL_REQUIRE(d.size() > 1,
                    "must have at least two dates: " << d.size());
 
-        for (Size i = 0; i < d.size(); i++ ){
-            this->times_.push_back( this->timeFromReference(dates_[i]) );
-            this->data_.push_back(v[i]),
-            nodes_.push_back( std::make_pair( dates_[i], this->data_[i]) );
+        for (Size j = 0; j < d.size(); j++ ){
+            this->times_.push_back( this->timeFromReference(dates_[j]) );
+            this->data_.push_back(v[j]),
+            nodes_.push_back( std::make_pair( dates_[j], this->data_[j]) );
         }
 
         this->setupInterpolation();

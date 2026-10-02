@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -44,8 +44,7 @@ namespace QuantLib {
         : engine_(engine), vol_(vol), targetValue_(targetValue) {
             results_ =
                 dynamic_cast<const Instrument::results*>(engine_.getResults());
-            QL_REQUIRE(results_ != 0,
-                       "pricing engine does not supply needed results");
+            QL_REQUIRE(results_ != nullptr, "pricing engine does not supply needed results");
         }
 
         Real PriceError::operator()(Volatility x) const {

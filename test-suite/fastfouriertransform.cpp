@@ -11,14 +11,14 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "fastfouriertransform.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
 #include <ql/math/fastfouriertransform.hpp>
 #include <ql/math/array.hpp>
@@ -28,9 +28,12 @@
 
 using namespace QuantLib;
 using namespace boost::unit_test_framework;
-using namespace std;
 
-void FastFourierTransformTest::testSimple() {
+BOOST_FIXTURE_TEST_SUITE(QuantLibTests, TopLevelFixture)
+
+BOOST_AUTO_TEST_SUITE(FastFourierTransformTests)
+
+BOOST_AUTO_TEST_CASE(testSimple) {
     BOOST_TEST_MESSAGE("Testing complex direct FFT...");
     typedef std::complex<Real> cx;
     cx a[] = { cx(0,0), cx(1,1), cx(3,3), cx(4,4),
@@ -52,7 +55,7 @@ void FastFourierTransformTest::testSimple() {
     }
 }
 
-void FastFourierTransformTest::testInverse() {
+BOOST_AUTO_TEST_CASE(testInverse) {
     BOOST_TEST_MESSAGE("Testing convolution via inverse FFT...");
     Array x(3);
     x[0] = 1;
@@ -68,7 +71,7 @@ void FastFourierTransformTest::testInverse() {
 
     fft.inverse_transform(x.begin(), x.end(), ft.begin());
     for (Size i=0; i<nFrq; ++i) {
-        tmp[i] = std::norm<Real>(ft[i]);
+        tmp[i] = std::norm(ft[i]);
         ft[i] = z;
     }
     fft.inverse_transform(tmp.begin(), tmp.end(), ft.begin());
@@ -102,12 +105,28 @@ void FastFourierTransformTest::testInverse() {
 
 }
 
+BOOST_AUTO_TEST_CASE(testTrivialOrder) {
+    BOOST_TEST_MESSAGE("Testing FFT of size 1 (order 0)...");
+    // min_order(1) is 0; constructing an FFT of order 0 used to write
+    // out of bounds in the constructor.  A size-1 transform reduces to
+    // a copy of the single input element.
+    BOOST_CHECK_EQUAL(FastFourierTransform::min_order(1), 0U);
 
+    typedef std::complex<Real> cx;
+    FastFourierTransform fft(0);
+    BOOST_CHECK_EQUAL(fft.output_size(), 1U);
 
-test_suite* FastFourierTransformTest::suite() {
-    test_suite* suite = BOOST_TEST_SUITE("fast fourier transform tests");
-    suite->add(QUANTLIB_TEST_CASE(&FastFourierTransformTest::testSimple));
-    suite->add(QUANTLIB_TEST_CASE(&FastFourierTransformTest::testInverse));
-    return suite;
+    cx a[] = { cx(2.5, -1.5) };
+    cx b[1];
+    fft.transform(a, a+1, b);
+    if (std::fabs(b[0].real() - a[0].real()) > 1.0e-12 ||
+        std::fabs(b[0].imag() - a[0].imag()) > 1.0e-12)
+        BOOST_ERROR("Size-1 FFT\n"
+                    << std::setprecision(16) << std::scientific
+                    << "    calculated: " << b[0] << "\n"
+                    << "    expected:   " << a[0]);
 }
 
+BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_AUTO_TEST_SUITE_END()

@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -38,20 +38,19 @@ namespace QuantLib {
 
         \warning This class has yet to be tested
 
-        \ingroup callablebondengines
+        \ingroup bondengines
     */
     class BlackCallableFixedRateBondEngine
         : public CallableFixedRateBond::engine {
       public:
         //! volatility is the quoted fwd yield volatility, not price vol
-        BlackCallableFixedRateBondEngine(
-                             const Handle<Quote>& fwdYieldVol,
-                             const Handle<YieldTermStructure>& discountCurve);
+        BlackCallableFixedRateBondEngine(const Handle<Quote>& fwdYieldVol,
+                                         Handle<YieldTermStructure> discountCurve);
         //! volatility is the quoted fwd yield volatility, not price vol
-        BlackCallableFixedRateBondEngine(
-             const Handle<CallableBondVolatilityStructure>& yieldVolStructure,
-             const Handle<YieldTermStructure>& discountCurve);
-        void calculate() const;
+        BlackCallableFixedRateBondEngine(Handle<CallableBondVolatilityStructure> yieldVolStructure,
+                                         Handle<YieldTermStructure> discountCurve);
+        void calculate() const override;
+
       private:
         Handle<CallableBondVolatilityStructure> volatility_;
         Handle<YieldTermStructure> discountCurve_;
@@ -70,7 +69,7 @@ namespace QuantLib {
 
         \warning This class has yet to be tested.
 
-        \ingroup callablebondengines
+        \ingroup bondengines
     */
     class BlackCallableZeroCouponBondEngine :
         public BlackCallableFixedRateBondEngine {

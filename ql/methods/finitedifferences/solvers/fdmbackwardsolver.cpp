@@ -12,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -23,15 +23,19 @@
 */
 
 #include <ql/methods/finitedifferences/finitedifferencemodel.hpp>
-#include <ql/methods/finitedifferences/solvers/fdmbackwardsolver.hpp>
-#include <ql/methods/finitedifferences/schemes/douglasscheme.hpp>
 #include <ql/methods/finitedifferences/schemes/craigsneydscheme.hpp>
+#include <ql/methods/finitedifferences/schemes/cranknicolsonscheme.hpp>
+#include <ql/methods/finitedifferences/schemes/douglasscheme.hpp>
+#include <ql/methods/finitedifferences/schemes/expliciteulerscheme.hpp>
 #include <ql/methods/finitedifferences/schemes/hundsdorferscheme.hpp>
 #include <ql/methods/finitedifferences/schemes/impliciteulerscheme.hpp>
-#include <ql/methods/finitedifferences/schemes/expliciteulerscheme.hpp>
-#include <ql/methods/finitedifferences/schemes/modifiedcraigsneydscheme.hpp>
 #include <ql/methods/finitedifferences/schemes/methodoflinesscheme.hpp>
+#include <ql/methods/finitedifferences/schemes/modifiedcraigsneydscheme.hpp>
+#include <ql/methods/finitedifferences/schemes/trbdf2scheme.hpp>
+#include <ql/methods/finitedifferences/solvers/fdmbackwardsolver.hpp>
 #include <ql/methods/finitedifferences/stepconditions/fdmstepconditioncomposite.hpp>
+#include <ql/mathconstants.hpp>
+#include <utility>
 
 
 namespace QuantLib {
@@ -39,55 +43,52 @@ namespace QuantLib {
     FdmSchemeDesc::FdmSchemeDesc(FdmSchemeType aType, Real aTheta, Real aMu)
     : type(aType), theta(aTheta), mu(aMu) { }
 
-    FdmSchemeDesc FdmSchemeDesc::Douglas() { 
-        return FdmSchemeDesc(FdmSchemeDesc::DouglasType, 0.5, 0.0);
+    FdmSchemeDesc FdmSchemeDesc::Douglas() { return {FdmSchemeDesc::DouglasType, 0.5, 0.0}; }
+
+    FdmSchemeDesc FdmSchemeDesc::CrankNicolson() {
+        return {FdmSchemeDesc::CrankNicolsonType, 0.5, 0.0};
     }
-    
-    FdmSchemeDesc FdmSchemeDesc::CraigSneyd() {
-        return FdmSchemeDesc(FdmSchemeDesc::CraigSneydType,0.5, 0.5);
-    }
-    
-    FdmSchemeDesc FdmSchemeDesc::ModifiedCraigSneyd() { 
-        return FdmSchemeDesc(FdmSchemeDesc::ModifiedCraigSneydType, 
-                             1.0/3.0, 1.0/3.0);
+
+    FdmSchemeDesc FdmSchemeDesc::CraigSneyd() { return {FdmSchemeDesc::CraigSneydType, 0.5, 0.5}; }
+
+    FdmSchemeDesc FdmSchemeDesc::ModifiedCraigSneyd() {
+        return {FdmSchemeDesc::ModifiedCraigSneydType, 1.0 / 3.0, 1.0 / 3.0};
     }
     
     FdmSchemeDesc FdmSchemeDesc::Hundsdorfer() {
-        return FdmSchemeDesc(FdmSchemeDesc::HundsdorferType, 
-                             0.5+std::sqrt(3.0)/6, 0.5);
+        return {FdmSchemeDesc::HundsdorferType, 0.5 + std::sqrt(3.0) / 6, 0.5};
     }
     
     FdmSchemeDesc FdmSchemeDesc::ModifiedHundsdorfer() {
-        return FdmSchemeDesc(FdmSchemeDesc::HundsdorferType, 
-                             1.0-std::sqrt(2.0)/2, 0.5);
+        return {FdmSchemeDesc::HundsdorferType, 1.0 - std::sqrt(2.0) / 2, 0.5};
     }
     
     FdmSchemeDesc FdmSchemeDesc::ExplicitEuler() {
-        return FdmSchemeDesc(FdmSchemeDesc::ExplicitEulerType, 0.0, 0.0);
+        return {FdmSchemeDesc::ExplicitEulerType, 0.0, 0.0};
     }
 
     FdmSchemeDesc FdmSchemeDesc::ImplicitEuler() {
-        return FdmSchemeDesc(FdmSchemeDesc::ImplicitEulerType, 0.0, 0.0);
+        return {FdmSchemeDesc::ImplicitEulerType, 0.0, 0.0};
     }
 
     FdmSchemeDesc FdmSchemeDesc::MethodOfLines(Real eps, Real relInitStepSize) {
-        return FdmSchemeDesc(
-            FdmSchemeDesc::MethodOfLinesType, eps, relInitStepSize);
+        return {FdmSchemeDesc::MethodOfLinesType, eps, relInitStepSize};
     }
 
+    FdmSchemeDesc FdmSchemeDesc::TrBDF2() { return {FdmSchemeDesc::TrBDF2Type, 2 - M_SQRT2, 1e-8}; }
+
     FdmBackwardSolver::FdmBackwardSolver(
-        const ext::shared_ptr<FdmLinearOpComposite>& map,
-        const FdmBoundaryConditionSet& bcSet,
-        const ext::shared_ptr<FdmStepConditionComposite> condition,
+        ext::shared_ptr<FdmLinearOpComposite> map,
+        FdmBoundaryConditionSet bcSet,
+        const ext::shared_ptr<FdmStepConditionComposite>& condition,
         const FdmSchemeDesc& schemeDesc)
-    : map_(map), bcSet_(bcSet),
-      condition_((condition) ? condition 
-                             : ext::make_shared<FdmStepConditionComposite>(
-                                     std::list<std::vector<Time> >(),
-                                     FdmStepConditionComposite::Conditions())),
-      schemeDesc_(schemeDesc) {
-     }
-        
+    : map_(std::move(map)), bcSet_(std::move(bcSet)),
+      condition_((condition) != nullptr ?
+                     condition :
+                     ext::make_shared<FdmStepConditionComposite>(
+                         std::list<std::vector<Time> >(), FdmStepConditionComposite::Conditions())),
+      schemeDesc_(schemeDesc) {}
+
     void FdmBackwardSolver::rollback(FdmBackwardSolver::array_type& rhs, 
                                      Time from, Time to,
                                      Size steps, Size dampingSteps) {
@@ -95,16 +96,15 @@ namespace QuantLib {
         const Time deltaT = from - to;
         const Size allSteps = steps + dampingSteps;
         const Time dampingTo = from - (deltaT*dampingSteps)/allSteps;
-                    
-        if (   dampingSteps 
-            && schemeDesc_.type != FdmSchemeDesc::ImplicitEulerType) {
+
+        if ((dampingSteps != 0U) && schemeDesc_.type != FdmSchemeDesc::ImplicitEulerType) {
             ImplicitEulerScheme implicitEvolver(map_, bcSet_);    
             FiniteDifferenceModel<ImplicitEulerScheme> 
                     dampingModel(implicitEvolver, condition_->stoppingTimes());
             dampingModel.rollback(rhs, from, dampingTo, 
                                   dampingSteps, *condition_);
         }
-        
+
         switch (schemeDesc_.type) {
           case FdmSchemeDesc::HundsdorferType:
             {
@@ -121,6 +121,15 @@ namespace QuantLib {
                 FiniteDifferenceModel<DouglasScheme> 
                                dsModel(dsEvolver, condition_->stoppingTimes());
                 dsModel.rollback(rhs, dampingTo, to, steps, *condition_);
+            }
+            break;
+          case FdmSchemeDesc::CrankNicolsonType:
+            {
+              CrankNicolsonScheme cnEvolver(schemeDesc_.theta, map_, bcSet_);
+              FiniteDifferenceModel<CrankNicolsonScheme>
+                             cnModel(cnEvolver, condition_->stoppingTimes());
+              cnModel.rollback(rhs, dampingTo, to, steps, *condition_);
+
             }
             break;
           case FdmSchemeDesc::CraigSneydType:
@@ -165,6 +174,23 @@ namespace QuantLib {
                 FiniteDifferenceModel<MethodOfLinesScheme>
                    molModel(methodOfLines, condition_->stoppingTimes());
                 molModel.rollback(rhs, dampingTo, to, steps, *condition_);
+            }
+            break;
+          case FdmSchemeDesc::TrBDF2Type:
+            {
+                const FdmSchemeDesc trDesc
+                    = FdmSchemeDesc::CraigSneyd();
+
+                const ext::shared_ptr<CraigSneydScheme> hsEvolver(
+                    ext::make_shared<CraigSneydScheme>(
+                        trDesc.theta, trDesc.mu, map_, bcSet_));
+
+                TrBDF2Scheme<CraigSneydScheme> trBDF2(
+                    schemeDesc_.theta, map_, hsEvolver, bcSet_,schemeDesc_.mu);
+
+                FiniteDifferenceModel<TrBDF2Scheme<CraigSneydScheme> >
+                   trBDF2Model(trBDF2, condition_->stoppingTimes());
+                trBDF2Model.rollback(rhs, dampingTo, to, steps, *condition_);
             }
             break;
           default:

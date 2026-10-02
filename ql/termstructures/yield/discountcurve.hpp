@@ -13,7 +13,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -30,7 +30,6 @@
 #include <ql/termstructures/yieldtermstructure.hpp>
 #include <ql/termstructures/interpolatedcurve.hpp>
 #include <ql/math/interpolations/loginterpolation.hpp>
-#include <ql/math/comparison.hpp>
 #include <utility>
 
 namespace QuantLib {
@@ -47,9 +46,9 @@ namespace QuantLib {
             const std::vector<DiscountFactor>& dfs,
             const DayCounter& dayCounter,
             const Calendar& cal = Calendar(),
-            const std::vector<Handle<Quote> >& jumps = std::vector<Handle<Quote> >(),
-            const std::vector<Date>& jumpDates = std::vector<Date>(),
-            const Interpolator& interpolator = Interpolator());
+            const std::vector<Handle<Quote> >& jumps = {},
+            const std::vector<Date>& jumpDates = {},
+            const Interpolator& interpolator = {});
         InterpolatedDiscountCurve(
             const std::vector<Date>& dates,
             const std::vector<DiscountFactor>& dfs,
@@ -63,7 +62,7 @@ namespace QuantLib {
             const Interpolator& interpolator);
         //! \name TermStructure interface
         //@{
-        Date maxDate() const;
+        Date maxDate() const override;
         //@}
         //! \name other inspectors
         //@{
@@ -73,28 +72,28 @@ namespace QuantLib {
         const std::vector<DiscountFactor>& discounts() const;
         std::vector<std::pair<Date, Real> > nodes() const;
         //@}
+
       protected:
-        InterpolatedDiscountCurve(
+        explicit InterpolatedDiscountCurve(
             const DayCounter&,
-            const std::vector<Handle<Quote> >& jumps = std::vector<Handle<Quote> >(),
-            const std::vector<Date>& jumpDates = std::vector<Date>(),
-            const Interpolator& interpolator = Interpolator());
+            const Interpolator& interpolator = {});
         InterpolatedDiscountCurve(
             const Date& referenceDate,
             const DayCounter&,
-            const std::vector<Handle<Quote> >& jumps = std::vector<Handle<Quote> >(),
-            const std::vector<Date>& jumpDates = std::vector<Date>(),
-            const Interpolator& interpolator = Interpolator());
+            const std::vector<Handle<Quote> >& jumps = {},
+            const std::vector<Date>& jumpDates = {},
+            const Interpolator& interpolator = {});
         InterpolatedDiscountCurve(
             Natural settlementDays,
             const Calendar&,
             const DayCounter&,
-            const std::vector<Handle<Quote> >& jumps = std::vector<Handle<Quote> >(),
-            const std::vector<Date>& jumpDates = std::vector<Date>(),
-            const Interpolator& interpolator = Interpolator());
+            const std::vector<Handle<Quote> >& jumps = {},
+            const std::vector<Date>& jumpDates = {},
+            const Interpolator& interpolator = {});
+
         //! \name YieldTermStructure implementation
         //@{
-        DiscountFactor discountImpl(Time) const;
+        DiscountFactor discountImpl(Time) const override;
         //@}
         mutable std::vector<Date> dates_;
       private:
@@ -171,10 +170,8 @@ namespace QuantLib {
     template <class T>
     InterpolatedDiscountCurve<T>::InterpolatedDiscountCurve(
                                     const DayCounter& dayCounter,
-                                    const std::vector<Handle<Quote> >& jumps,
-                                    const std::vector<Date>& jumpDates,
                                     const T& interpolator)
-    : YieldTermStructure(dayCounter, jumps, jumpDates),
+    : YieldTermStructure(dayCounter),
       InterpolatedCurve<T>(interpolator) {}
 
     template <class T>
@@ -253,33 +250,12 @@ namespace QuantLib {
         QL_REQUIRE(this->data_[0] == 1.0,
                    "the first discount must be == 1.0 "
                    "to flag the corresponding date as reference date");
-
-        this->times_.resize(dates_.size());
-        this->times_[0] = 0.0;
         for (Size i=1; i<dates_.size(); ++i) {
-            QL_REQUIRE(dates_[i] > dates_[i-1],
-                       "invalid date (" << dates_[i] << ", vs "
-                       << dates_[i-1] << ")");
-            this->times_[i] = dayCounter().yearFraction(dates_[0], dates_[i]);
-            QL_REQUIRE(!close(this->times_[i],this->times_[i-1]),
-                       "two dates correspond to the same time "
-                       "under this curve's day count convention");
             QL_REQUIRE(this->data_[i] > 0.0, "negative discount");
-            #if !defined(QL_NEGATIVE_RATES)
-            QL_REQUIRE(this->data_[i] <= this->data_[i-1],
-                       "negative forward rate implied by the discount " <<
-                       this->data_[i] << " at " << dates_[i] <<
-                       " (t=" << this->times_[i] << ") after the discount " <<
-                       this->data_[i-1] << " at " << dates_[i-1] <<
-                       " (t=" << this->times_[i-1] << ")");
-            #endif
         }
 
-        this->interpolation_ =
-            this->interpolator_.interpolate(this->times_.begin(),
-                                            this->times_.end(),
-                                            this->data_.begin());
-        this->interpolation_.update();
+        this->setupTimes(dates_, dates_[0], dayCounter());
+        this->setupInterpolation();
     }
 
 }

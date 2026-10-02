@@ -10,15 +10,15 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-/*! \file commoditypricinghelpers.hpp
-    \brief Commodity pricing helpers
+/*! \file paymentterm.hpp
+    \brief Payment term
 */
 
 #ifndef quantlib_payment_term_hpp
@@ -26,6 +26,7 @@
 
 #include <ql/time/calendar.hpp>
 #include <map>
+#include <utility>
 
 namespace QuantLib {
 
@@ -33,7 +34,7 @@ namespace QuantLib {
       public:
         enum EventType { TradeDate, PricingDate };
 
-        PaymentTerm();
+        PaymentTerm() = default;
         PaymentTerm(const std::string& name,
                     EventType eventType,
                     Integer offsetDays,
@@ -59,8 +60,7 @@ namespace QuantLib {
             Integer offsetDays;
             Calendar calendar;
 
-            Data(const std::string& name, EventType eventType, Integer offsetDays,
-                 const Calendar& calendar);
+            Data(std::string name, EventType eventType, Integer offsetDays, Calendar calendar);
         };
 
         static std::map<std::string, ext::shared_ptr<Data> > paymentTerms_;
@@ -79,14 +79,12 @@ namespace QuantLib {
                              const PaymentTerm&);
 
 
-    inline PaymentTerm::Data::Data(const std::string& name,
+    inline PaymentTerm::Data::Data(std::string name,
                                    PaymentTerm::EventType eventType,
                                    Integer offsetDays,
-                                   const Calendar& calendar)
-    : name(name), eventType(eventType),
-      offsetDays(offsetDays), calendar(calendar) {}
-
-    inline PaymentTerm::PaymentTerm() {}
+                                   Calendar calendar)
+    : name(std::move(name)), eventType(eventType), offsetDays(offsetDays),
+      calendar(std::move(calendar)) {}
 
     inline const std::string& PaymentTerm::name() const {
         return data_->name;
@@ -98,6 +96,10 @@ namespace QuantLib {
 
     inline Integer PaymentTerm::offsetDays() const {
         return data_->offsetDays;
+    }
+ 
+    inline const Calendar& PaymentTerm::calendar() const {
+        return data_->calendar;
     }
 
     inline Date PaymentTerm::getPaymentDate(const Date& date) const {

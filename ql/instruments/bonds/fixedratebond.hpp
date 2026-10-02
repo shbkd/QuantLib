@@ -14,7 +14,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -48,7 +48,7 @@ namespace QuantLib {
         //! simple annual compounding coupon rates
         FixedRateBond(Natural settlementDays,
                       Real faceAmount,
-                      const Schedule& schedule,
+                      Schedule schedule,
                       const std::vector<Rate>& coupons,
                       const DayCounter& accrualDayCounter,
                       BusinessDayConvention paymentConvention = Following,
@@ -57,48 +57,17 @@ namespace QuantLib {
                       const Calendar& paymentCalendar = Calendar(),
                       const Period& exCouponPeriod = Period(),
                       const Calendar& exCouponCalendar = Calendar(),
-                      const BusinessDayConvention exCouponConvention = Unadjusted,
-                      bool exCouponEndOfMonth = false);
-        /*! simple annual compounding coupon rates
-            with internal schedule calculation */
-        FixedRateBond(Natural settlementDays,
-                      const Calendar& couponCalendar,
-                      Real faceAmount,
-                      const Date& startDate,
-                      const Date& maturityDate,
-                      const Period& tenor,
-                      const std::vector<Rate>& coupons,
-                      const DayCounter& accrualDayCounter,
-                      BusinessDayConvention accrualConvention = Following,
-                      BusinessDayConvention paymentConvention = Following,
-                      Real redemption = 100.0,
-                      const Date& issueDate = Date(),
-                      const Date& stubDate = Date(),
-                      DateGeneration::Rule rule = DateGeneration::Backward,
-                      bool endOfMonth = false,
-                      const Calendar& paymentCalendar = Calendar(),
-                      const Period& exCouponPeriod = Period(),
-                      const Calendar& exCouponCalendar = Calendar(),
-                      const BusinessDayConvention exCouponConvention = Unadjusted,
-                      bool exCouponEndOfMonth = false);
-        //! generic compounding and frequency InterestRate coupons 
-        FixedRateBond(Natural settlementDays,
-                      Real faceAmount,
-                      const Schedule& schedule,
-                      const std::vector<InterestRate>& coupons,
-                      BusinessDayConvention paymentConvention = Following,
-                      Real redemption = 100.0,
-                      const Date& issueDate = Date(),
-                      const Calendar& paymentCalendar = Calendar(),
-                      const Period& exCouponPeriod = Period(),
-                      const Calendar& exCouponCalendar = Calendar(),
-                      const BusinessDayConvention exCouponConvention = Unadjusted,
-                      bool exCouponEndOfMonth = false);
+                      BusinessDayConvention exCouponConvention = Unadjusted,
+                      bool exCouponEndOfMonth = false,
+                      const DayCounter& firstPeriodDayCounter = DayCounter());
+
         Frequency frequency() const { return frequency_; }
         const DayCounter& dayCounter() const { return dayCounter_; }
+        const DayCounter& firstPeriodDayCounter() const { return firstPeriodDayCounter_; }
       protected:
         Frequency frequency_;
         DayCounter dayCounter_;
+        DayCounter firstPeriodDayCounter_;
     };
 
 }

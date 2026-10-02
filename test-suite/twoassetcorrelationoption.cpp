@@ -10,17 +10,17 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "twoassetcorrelationoption.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
-#include <ql/experimental/exoticoptions/twoassetcorrelationoption.hpp>
-#include <ql/experimental/exoticoptions/analytictwoassetcorrelationengine.hpp>
+#include <ql/instruments/twoassetcorrelationoption.hpp>
+#include <ql/pricingengines/exotic/analytictwoassetcorrelationengine.hpp>
 #include <ql/quotes/simplequote.hpp>
 #include <ql/utilities/dataformatters.hpp>
 #include <ql/time/daycounters/actual360.hpp>
@@ -28,7 +28,11 @@
 using namespace QuantLib;
 using namespace boost::unit_test_framework;
 
-void TwoAssetCorrelationOptionTest::testAnalyticEngine() {
+BOOST_FIXTURE_TEST_SUITE(QuantLibTests, TopLevelFixture)
+
+BOOST_AUTO_TEST_SUITE(TwoAssetCorrelationOptionTests)
+
+BOOST_AUTO_TEST_CASE(testAnalyticEngine) {
     BOOST_TEST_MESSAGE(
         "Testing analytic engine for two-asset correlation option...");
 
@@ -82,11 +86,6 @@ void TwoAssetCorrelationOptionTest::testAnalyticEngine() {
                     << "\n    error:      " << error);
 }
 
-test_suite* TwoAssetCorrelationOptionTest::suite() {
-    test_suite* suite = BOOST_TEST_SUITE("Two-asset correlation option tests");
+BOOST_AUTO_TEST_SUITE_END()
 
-    suite->add(QUANTLIB_TEST_CASE(
-       &TwoAssetCorrelationOptionTest::testAnalyticEngine));
-
-    return suite;
-}
+BOOST_AUTO_TEST_SUITE_END()

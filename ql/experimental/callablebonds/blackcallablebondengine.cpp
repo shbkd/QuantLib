@@ -10,41 +10,39 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include <ql/experimental/callablebonds/blackcallablebondengine.hpp>
-#include <ql/experimental/callablebonds/callablebondvolstructure.hpp>
-#include <ql/experimental/callablebonds/callablebondconstantvol.hpp>
 #include <ql/cashflows/cashflows.hpp>
+#include <ql/experimental/callablebonds/blackcallablebondengine.hpp>
+#include <ql/experimental/callablebonds/callablebondconstantvol.hpp>
+#include <ql/experimental/callablebonds/callablebondvolstructure.hpp>
 #include <ql/pricingengines/blackformula.hpp>
 #include <ql/time/calendars/nullcalendar.hpp>
+#include <utility>
 
 using namespace std;
 
 namespace QuantLib {
 
     BlackCallableFixedRateBondEngine::BlackCallableFixedRateBondEngine(
-                              const Handle<Quote>& fwdYieldVol,
-                              const Handle<YieldTermStructure>& discountCurve)
+        const Handle<Quote>& fwdYieldVol, Handle<YieldTermStructure> discountCurve)
     : volatility_(ext::shared_ptr<CallableBondVolatilityStructure>(
-                      new CallableBondConstantVolatility(0, NullCalendar(),
-                                                         fwdYieldVol,
-                                                         Actual365Fixed()))),
-      discountCurve_(discountCurve) {
+          new CallableBondConstantVolatility(0, NullCalendar(), fwdYieldVol, Actual365Fixed()))),
+      discountCurve_(std::move(discountCurve)) {
         registerWith(volatility_);
         registerWith(discountCurve_);
     }
 
     //! no vol structures implemented yet besides constant volatility
     BlackCallableFixedRateBondEngine::BlackCallableFixedRateBondEngine(
-             const Handle<CallableBondVolatilityStructure>& yieldVolStructure,
-             const Handle<YieldTermStructure>& discountCurve)
-    : volatility_(yieldVolStructure), discountCurve_(discountCurve) {
+        Handle<CallableBondVolatilityStructure> yieldVolStructure,
+        Handle<YieldTermStructure> discountCurve)
+    : volatility_(std::move(yieldVolStructure)), discountCurve_(std::move(discountCurve)) {
         registerWith(volatility_);
         registerWith(discountCurve_);
     }
@@ -109,7 +107,7 @@ namespace QuantLib {
                                           Duration::Modified,
                                           false, exerciseDate);
 
-        Real cashStrike = arguments_.callabilityPrices[0];
+        Real cashStrike = arguments_.callabilityPrices[0] * arguments_.faceAmount / 100.0;
         dayCounter = volatility_->dayCounter();
         Date referenceDate = volatility_->referenceDate();
         Time exerciseTime = dayCounter.yearFraction(referenceDate,
@@ -147,7 +145,7 @@ namespace QuantLib {
         Real fwdCashPrice = (value - spotIncome())/
                             discountCurve_->discount(exerciseDate);
 
-        Real cashStrike = arguments_.callabilityPrices[0];
+        Real cashStrike = arguments_.callabilityPrices[0] * arguments_.faceAmount / 100.0;
 
         Option::Type type = (arguments_.putCallSchedule[0]->type() ==
                              Callability::Call ? Option::Call : Option::Put);
@@ -157,6 +155,10 @@ namespace QuantLib {
         Time exerciseTime = volatility_->dayCounter().yearFraction(
                                                  volatility_->referenceDate(),
                                                  exerciseDate);
+
+        Real discount = discountCurve_->discount(exerciseDate);
+        Real discountToSettlement = discount / discountCurve_->discount(settle);
+
         Real embeddedOptionValue =
             blackFormula(type,
                          cashStrike,
@@ -164,11 +166,11 @@ namespace QuantLib {
                          priceVol*std::sqrt(exerciseTime));
 
         if (type == Option::Call) {
-            results_.value = npv - embeddedOptionValue;
-            results_.settlementValue = value - embeddedOptionValue;
+            results_.value = npv - embeddedOptionValue * discount;
+            results_.settlementValue = value - embeddedOptionValue * discountToSettlement;
         } else {
-            results_.value = npv + embeddedOptionValue;
-            results_.settlementValue = value + embeddedOptionValue;
+            results_.value = npv + embeddedOptionValue * discount;
+            results_.settlementValue = value + embeddedOptionValue * discountToSettlement;
         }
     }
 

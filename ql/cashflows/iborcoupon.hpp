@@ -7,6 +7,7 @@
  Copyright (C) 2007 StatPro Italia srl
  Copyright (C) 2017 Joseph Jeisman
  Copyright (C) 2017 Fabrice Lecuyer
+ Copyright (C) 2026 Kyrylo Protsenko
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -15,7 +16,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -31,7 +32,9 @@
 
 #include <ql/cashflows/floatingratecoupon.hpp>
 #include <ql/indexes/iborindex.hpp>
+#include <ql/patterns/singleton.hpp>
 #include <ql/time/schedule.hpp>
+#include <ql/optional.hpp>
 
 namespace QuantLib {
 
@@ -49,41 +52,98 @@ namespace QuantLib {
                    const Date& refPeriodStart = Date(),
                    const Date& refPeriodEnd = Date(),
                    const DayCounter& dayCounter = DayCounter(),
-                   bool isInArrears = false);
+                   bool isInArrears = false,
+                   const Date& exCouponDate = Date(),
+                   BusinessDayConvention fixingConvention = Preceding);
         //! \name Inspectors
         //@{
-        const ext::shared_ptr<IborIndex>& iborIndex() const {
-            return iborIndex_;
-        }
-        //! this is dependent on QL_USE_INDEXED_COUPON
-        const Date& fixingEndDate() const { return fixingEndDate_; }
+        const ext::shared_ptr<IborIndex>& iborIndex() const { return iborIndex_; }
+        virtual bool hasFixed() const;
         //@}
         //! \name FloatingRateCoupon interface
         //@{
-        //! Implemented in order to manage the case of par coupon
-        Rate indexFixing() const;
+        Date fixingDate() const override;
+        // implemented in order to manage the case of par coupon
+        Rate indexFixing() const override;
+        void setPricer(const ext::shared_ptr<FloatingRateCouponPricer>&) override;
         //@}
         //! \name Visitability
         //@{
-        virtual void accept(AcyclicVisitor&);
+        void accept(AcyclicVisitor&) override;
         //@}
+        /*! \name Internal calculations
+
+            You won't probably need these methods unless you're implementing
+            a coupon pricer.
+        */
+        //@{
+        //! Start of the deposit period underlying the index fixing
+        const Date& fixingValueDate() const;
+        //! End of the deposit period underlying the index fixing
+        const Date& fixingMaturityDate() const;
+        //! End of the deposit period underlying the coupon fixing
+        /*! This might be not the same as fixingMaturityDate if par coupons are used. */
+        const Date& fixingEndDate() const;
+        //! Period underlying the index fixing, as a year fraction
+        Time spanningTimeIndexMaturity() const;
+        //! Period underlying the coupon fixing, as a year fraction
+        /*! This might be not the same as spanningTimeIndexMaturity if par coupons are used. */
+        Time spanningTime() const;
+        //@}
+
       private:
+        friend class IborCouponPricer;
         ext::shared_ptr<IborIndex> iborIndex_;
-        Date fixingDate_, fixingValueDate_, fixingEndDate_;
-        Time spanningTime_;
+        Date fixingDate_;
+        // computed by coupon pricer (depending on par coupon flag) and stored here
+        void initializeCachedData() const;
+        mutable bool cachedDataIsInitialized_ = false;
+        mutable Date fixingValueDate_, fixingEndDate_, fixingMaturityDate_;
+        mutable Time spanningTime_, spanningTimeIndexMaturity_;
+
+      public:
+        // IborCoupon::Settings forward declaration
+        class Settings;
     };
 
+
+    //! Per-session settings for IborCoupon class
+    class IborCoupon::Settings : public Singleton<IborCoupon::Settings> {
+        friend class Singleton<IborCoupon::Settings>;
+      private:
+        Settings() = default;
+
+      public:
+        //! When called, IborCoupons are created as indexed coupons instead of par coupons.
+        void createAtParCoupons();
+
+        //! When called, IborCoupons are created as par coupons instead of indexed coupons.
+        void createIndexedCoupons();
+
+        /*! If true the IborCoupons are created as par coupons and vice versa.
+            The default depends on the compiler flag QL_USE_INDEXED_COUPON and can be overwritten by
+            createAtParCoupons() and createIndexedCoupons() */
+        bool usingAtParCoupons() const;
+
+      private:
+        #ifndef QL_USE_INDEXED_COUPON
+        bool usingAtParCoupons_ = true;
+        #else
+        bool usingAtParCoupons_ = false;
+        #endif
+    };
+
+    class StubIndexSelection;
 
     //! helper class building a sequence of capped/floored ibor-rate coupons
     class IborLeg {
       public:
-        IborLeg(const Schedule& schedule,
-                const ext::shared_ptr<IborIndex>& index);
+        IborLeg(Schedule schedule, ext::shared_ptr<IborIndex> index);
         IborLeg& withNotionals(Real notional);
         IborLeg& withNotionals(const std::vector<Real>& notionals);
         IborLeg& withPaymentDayCounter(const DayCounter&);
         IborLeg& withPaymentAdjustment(BusinessDayConvention);
-        IborLeg& withPaymentLag(Natural lag);
+        IborLeg& withPaymentLag(Integer lag);
         IborLeg& withPaymentCalendar(const Calendar&);
         IborLeg& withFixingDays(Natural fixingDays);
         IborLeg& withFixingDays(const std::vector<Natural>& fixingDays);
@@ -97,20 +157,38 @@ namespace QuantLib {
         IborLeg& withFloors(const std::vector<Rate>& floors);
         IborLeg& inArrears(bool flag = true);
         IborLeg& withZeroPayments(bool flag = true);
+        IborLeg& withExCouponPeriod(const Period&,
+                                    const Calendar&,
+                                    BusinessDayConvention,
+                                    bool endOfMonth = false);
+        IborLeg& withFixingConvention(BusinessDayConvention);
+        IborLeg& withIndexedCoupons(std::optional<bool> b = true);
+        IborLeg& withAtParCoupons(bool b = true);
+        //! sets index selection for uncapped schedule periods marked as irregular
+        /*! Requires indexed coupons; see StubIndexSelection. */
+        IborLeg& withStubIndexSelection(const StubIndexSelection&);
         operator Leg() const;
+
       private:
         Schedule schedule_;
         ext::shared_ptr<IborIndex> index_;
         std::vector<Real> notionals_;
         DayCounter paymentDayCounter_;
-        BusinessDayConvention paymentAdjustment_;
-        Natural paymentLag_;
+        BusinessDayConvention paymentAdjustment_ = Following;
+        Integer paymentLag_ = 0;
         Calendar paymentCalendar_;
         std::vector<Natural> fixingDays_;
         std::vector<Real> gearings_;
         std::vector<Spread> spreads_;
         std::vector<Rate> caps_, floors_;
-        bool inArrears_, zeroPayments_;
+        bool inArrears_ = false, zeroPayments_ = false;
+        BusinessDayConvention fixingConvention_ = Preceding;
+        Period exCouponPeriod_;
+        Calendar exCouponCalendar_;
+        BusinessDayConvention exCouponAdjustment_ = Unadjusted;
+        bool exCouponEndOfMonth_ = false;
+        std::optional<bool> useIndexedCoupons_;
+        ext::shared_ptr<StubIndexSelection> stubIndexSelection_;
     };
 
 }

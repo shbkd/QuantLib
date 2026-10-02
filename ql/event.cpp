@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -20,17 +20,18 @@
 
 #include <ql/event.hpp>
 #include <ql/patterns/visitor.hpp>
+#include <ql/optional.hpp>
 #include <ql/settings.hpp>
 
 namespace QuantLib {
 
     bool Event::hasOccurred(const Date& d, // refDate
-                            boost::optional<bool> includeRefDate) const {
+                            std::optional<bool> includeRefDate) const {
         Date refDate =
             d != Date() ? d : Settings::instance().evaluationDate();
-        bool includeRefDateEvent =
-            includeRefDate ? *includeRefDate :
-                           Settings::instance().includeReferenceDateEvents();
+        bool includeRefDateEvent = includeRefDate ? // NOLINT(readability-implicit-bool-conversion)
+                                       *includeRefDate :
+                                       Settings::instance().includeReferenceDateEvents();
         if (includeRefDateEvent)
             return date() < refDate;
         else
@@ -38,8 +39,8 @@ namespace QuantLib {
     }
 
     void Event::accept(AcyclicVisitor& v) {
-        Visitor<Event>* v1 = dynamic_cast<Visitor<Event>*>(&v);
-        if (v1 != 0)
+        auto* v1 = dynamic_cast<Visitor<Event>*>(&v);
+        if (v1 != nullptr)
             v1->visit(*this);
         else
             QL_FAIL("not an event visitor");

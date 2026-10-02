@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -30,14 +30,9 @@
 namespace QuantLib {
 
     //! Black 1976 calculator class
-    /*! \bug When the variance is null, division by zero occur during
-             the calculation of delta, delta forward, gamma, gamma
-             forward, rho, dividend rho, vega, and strike sensitivity.
-    */
     class BlackCalculator {
       private:
         class Calculator;
-        friend class Calculator;
       public:
         BlackCalculator(const ext::shared_ptr<StrikedTypePayoff>& payoff,
                         Real forward,
@@ -48,7 +43,7 @@ namespace QuantLib {
                         Real forward,
                         Real stdDev,
                         Real discount = 1.0);
-        virtual ~BlackCalculator() {}
+        virtual ~BlackCalculator() = default;
 
         Real value() const;
 
@@ -103,10 +98,21 @@ namespace QuantLib {
         /*! Sensitivity to strike. */
         Real strikeSensitivity() const;
 
+        /*! gamma w.r.t. strike. */
+        Real strikeGamma() const;
+
+        /*! Sensitivity of vega to spot (Vanna) */
+        Real vanna(Real spot, Time maturity) const;
+
+        /*! Sensitivity of vega to volatility (Volga) */
+        Real volga(Time maturity) const;
+
         Real alpha() const;
         Real beta() const;
+        
       protected:
         void initialize(const ext::shared_ptr<StrikedTypePayoff>& p);
+        
         Real strike_, forward_, stdDev_, discount_, variance_;
         Real d1_, d2_;
         Real alpha_, beta_, DalphaDd1_, DbetaDd2_;

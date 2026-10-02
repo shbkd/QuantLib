@@ -10,22 +10,35 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "commodityunitofmeasure.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
+#include <ql/experimental/commodities/commoditytype.hpp>
 #include <ql/experimental/commodities/unitofmeasureconversionmanager.hpp>
 #include <ql/experimental/commodities/petroleumunitsofmeasure.hpp>
 
 using namespace QuantLib;
 using namespace boost::unit_test_framework;
 
-void CommodityUnitOfMeasureTest::testDirect() {
+BOOST_FIXTURE_TEST_SUITE(QuantLibTests, TopLevelFixture)
+
+BOOST_AUTO_TEST_SUITE(CommodityUnitOfMeasureTests)
+
+BOOST_AUTO_TEST_CASE(testCommodityType) {
+
+    CommodityType commodityType("Heating Oil", "HO");
+
+    BOOST_CHECK_EQUAL(commodityType.name(), "Heating Oil");
+    BOOST_CHECK_EQUAL(commodityType.code(), "HO");
+}
+
+BOOST_AUTO_TEST_CASE(testDirect) {
 
     BOOST_TEST_MESSAGE("Testing direct commodity unit of measure conversions...");
 
@@ -133,9 +146,6 @@ void CommodityUnitOfMeasureTest::testDirect() {
      }
 }
 
-test_suite* CommodityUnitOfMeasureTest::suite() {
-    test_suite* suite = BOOST_TEST_SUITE("Commodity Unit Of Measure tests");
-    suite->add(QUANTLIB_TEST_CASE(&CommodityUnitOfMeasureTest::testDirect));
-    return suite;
-}
+BOOST_AUTO_TEST_SUITE_END()
 
+BOOST_AUTO_TEST_SUITE_END()

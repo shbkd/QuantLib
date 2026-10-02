@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -25,11 +25,16 @@ namespace QuantLib {
 
     BatesEngine::BatesEngine(const ext::shared_ptr<BatesModel> & model,
                              Size integrationOrder)
-    : AnalyticHestonEngine(model, integrationOrder) { }
+    : AnalyticHestonEngine(
+        model, AnalyticHestonEngine::Gatheral,
+        AnalyticHestonEngine::Integration::gaussLaguerre(integrationOrder)) { }
 
     BatesEngine::BatesEngine(const ext::shared_ptr<BatesModel>& model,
                              Real relTolerance, Size maxEvaluations)
-    : AnalyticHestonEngine(model, relTolerance, maxEvaluations) { }
+    : AnalyticHestonEngine(
+        model, AnalyticHestonEngine::Gatheral,
+        AnalyticHestonEngine::Integration::gaussLobatto(
+            relTolerance, Null<Real>(), maxEvaluations)) { }
 
     std::complex<Real> BatesEngine::addOnTerm(
                                             Real phi, Time t, Size j) const {
@@ -81,12 +86,17 @@ namespace QuantLib {
     BatesDoubleExpEngine::BatesDoubleExpEngine(
         const ext::shared_ptr<BatesDoubleExpModel> & model,
         Size integrationOrder)
-    : AnalyticHestonEngine(model, integrationOrder) { }
+    : AnalyticHestonEngine(
+        model, AnalyticHestonEngine::Gatheral,
+        AnalyticHestonEngine::Integration::gaussLaguerre(integrationOrder)) { }
 
     BatesDoubleExpEngine::BatesDoubleExpEngine(
         const ext::shared_ptr<BatesDoubleExpModel>& model,
         Real relTolerance, Size maxEvaluations)
-    : AnalyticHestonEngine(model, relTolerance, maxEvaluations) { }
+    : AnalyticHestonEngine(
+        model, AnalyticHestonEngine::Gatheral,
+        AnalyticHestonEngine::Integration::gaussLobatto(
+            relTolerance, Null<Real>(), maxEvaluations)) { }
 
     std::complex<Real> BatesDoubleExpEngine::addOnTerm(
         Real phi, Time t, Size j) const {

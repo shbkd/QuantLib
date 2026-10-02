@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -18,20 +18,7 @@
 */
 
 /*! \file cpicapfloortermpricesurface.hpp
-    \brief cpi inflation cap and floor term price structure.  N.B.
-           cpi cap/floors have a single (one) flow (unlike nominal
-           caps) because they observe cumulative inflation up to
-           their maturity.  Options are on CPI(T)/CPI(0) but strikes
-           are quoted for yearly average inflation, so require transformation
-           via (1+quote)^T to obtain actual strikes.  These are consistent
-           with ZCIIS quoting conventions.
-
-    The single-flow property of CPI cap/floors means that no stripping
-    is required.  Additionally CPI swaps, i.e. ZCIIS zero coupon inflation
-    indexed swaps are usually the most liquid of all the inflation products.
-    These two facts mean that we can use a Zero Inflation term structure to
-    give ATM.
-
+    \brief cpi inflation cap and floor term price structure.
 */
 
 #ifndef quantlib_cpi_capfloor_term_price_surface_hpp
@@ -47,8 +34,7 @@
 namespace QuantLib {
 
     //! Provides cpi cap/floor prices by interpolation and put/call parity (not cap/floor/swap* parity).
-    /*!
-        The inflation index MUST contain a ZeroInflationTermStructure as
+    /*! The inflation index MUST contain a ZeroInflationTermStructure as
         this is used to create ATM.  Unlike YoY price surfaces we
         assume that 1) an ATM ZeroInflationTermStructure is available
         and 2) that it is safe to use it.  This is supported by the
@@ -65,31 +51,31 @@ namespace QuantLib {
         The observationLag is that for the referenced instrument prices.
         Strikes are as-quoted not as-used.
     */
-    class CPICapFloorTermPriceSurface : public InflationTermStructure {
+    class CPICapFloorTermPriceSurface : public TermStructure {
       public:
-        CPICapFloorTermPriceSurface(Real nominal,
-                                    Real baseRate,  // avoids an uncontrolled crash if index has no TS
-                                    const Period &observationLag,
-                                    const Calendar &cal, // calendar in index may not be useful
-                                    const BusinessDayConvention &bdc,
-                                    const DayCounter &dc,
-                                    const Handle<ZeroInflationIndex>& zii,
-                                    const Handle<YieldTermStructure>& yts,
-                                    const std::vector<Rate> &cStrikes,
-                                    const std::vector<Rate> &fStrikes,
-                                    const std::vector<Period> &cfMaturities,
-                                    const Matrix &cPrice,
-                                    const Matrix &fPrice);
+        CPICapFloorTermPriceSurface(
+            Real nominal,
+            Real baseRate, // avoids an uncontrolled crash if index has no TS
+            const Period& observationLag,
+            const Calendar& cal, // calendar in index may not be useful
+            const BusinessDayConvention& bdc,
+            const DayCounter& dc,
+            ext::shared_ptr<ZeroInflationIndex>  zii,
+            CPI::InterpolationType interpolationType,
+            Handle<YieldTermStructure> yts,
+            const std::vector<Rate>& cStrikes,
+            const std::vector<Rate>& fStrikes,
+            const std::vector<Period>& cfMaturities,
+            const Matrix& cPrice,
+            const Matrix& fPrice);
 
         //! \name InflationTermStructure interface
         //@{
-        Period observationLag() const;
-        Date baseDate() const;
+        virtual Period observationLag() const;
+        virtual Frequency frequency() const;
+        virtual Date baseDate() const;
+        virtual Rate baseRate() const;
         //@}
-
-        //! is based on
-        Handle<ZeroInflationIndex> zeroInflationIndex() const { return zii_; }
-
 
         //! inspectors
         /*! \note you don't know if price() is a cap or a floor
@@ -98,7 +84,10 @@ namespace QuantLib {
         //@{
         virtual Real nominal() const;
         virtual BusinessDayConvention businessDayConvention() const;
+        ext::shared_ptr<ZeroInflationIndex> zeroInflationIndex() const { return zii_; }
         //@}
+
+        Rate atmRate(Date maturity) const;
 
         //! \warning you MUST remind the compiler in any descendants with the using:: mechanism
         //!          because you overload the names
@@ -123,9 +112,8 @@ namespace QuantLib {
         virtual Rate minStrike() const {return cfStrikes_.front();};
         virtual Rate maxStrike() const {return cfStrikes_.back();};
         virtual Date minDate() const {return referenceDate()+cfMaturities_.front();}// \TODO deal with index interpolation
-        virtual Date maxDate() const {return referenceDate()+cfMaturities_.back();}
+        Date maxDate() const override { return referenceDate() + cfMaturities_.back(); }
         //@}
-
 
         virtual Date cpiOptionDateFromTenor(const Period& p) const;
 
@@ -137,9 +125,9 @@ namespace QuantLib {
             return ( minDate() <= d && d <= maxDate() );
         }
 
-
-
-        Handle<ZeroInflationIndex> zii_;
+        ext::shared_ptr<ZeroInflationIndex> zii_;
+        CPI::InterpolationType interpolationType_;
+        Handle<YieldTermStructure> nominalTS_;
         // data
         std::vector<Rate> cStrikes_;
         std::vector<Rate> fStrikes_;
@@ -152,6 +140,8 @@ namespace QuantLib {
       private:
         Real nominal_;
         BusinessDayConvention bdc_;
+        Period observationLag_;
+        Rate baseRate_;
     };
 
 
@@ -166,7 +156,8 @@ namespace QuantLib {
                                                 const Calendar &cal,
                                                 const BusinessDayConvention &bdc,
                                                 const DayCounter &dc,
-                                                const Handle<ZeroInflationIndex>& zii,
+                                                const ext::shared_ptr<ZeroInflationIndex>& zii,
+                                                CPI::InterpolationType interpolationType,
                                                 const Handle<YieldTermStructure>& yts,
                                                 const std::vector<Rate> &cStrikes,
                                                 const std::vector<Rate> &fStrikes,
@@ -189,9 +180,9 @@ namespace QuantLib {
 
             //! remember that the strikes use the quoting convention
             //@{
-            virtual Real price(const Date &d, Rate k) const;
-            virtual Real capPrice(const Date &d, Rate k) const;
-            virtual Real floorPrice(const Date &d, Rate k) const;
+            Real price(const Date& d, Rate k) const override;
+            Real capPrice(const Date& d, Rate k) const override;
+            Real floorPrice(const Date& d, Rate k) const override;
             //@}
 
         protected:
@@ -202,7 +193,6 @@ namespace QuantLib {
             mutable Interpolation2D capPrice_, floorPrice_;
             mutable Interpolator2D interpolator2d_;
     };
-
 
 
     // template definitions, for some reason DOXYGEN doesn't like the first one
@@ -217,7 +207,8 @@ namespace QuantLib {
                                             const Calendar &cal,
                                             const BusinessDayConvention &bdc,
                                             const DayCounter &dc,
-                                            const Handle<ZeroInflationIndex>& zii,
+                                            const ext::shared_ptr<ZeroInflationIndex>& zii,
+                                            CPI::InterpolationType interpolationType,
                                             const Handle<YieldTermStructure>& yts,
                                             const std::vector<Rate> &cStrikes,
                                             const std::vector<Rate> &fStrikes,
@@ -226,20 +217,13 @@ namespace QuantLib {
                                             const Matrix &fPrice,
                                             const Interpolator2D &interpolator2d)
     : CPICapFloorTermPriceSurface(nominal, startRate, observationLag, cal, bdc, dc,
-                                  zii, yts, cStrikes, fStrikes, cfMaturities, cPrice, fPrice),
+                                  zii, interpolationType, yts, cStrikes, fStrikes,
+                                  cfMaturities, cPrice, fPrice),
       interpolator2d_(interpolator2d) {
         performCalculations();
     }
 
     #endif
-
-    namespace detail {
-    struct CloseEnoughComparator {
-        explicit CloseEnoughComparator(const Real v) : v_(v) {}
-        bool operator()(const Real w) const { return close_enough(v_, w); }
-        Real v_;
-    };
-    } // namespace detail
 
     //! set up the interpolations for capPrice_ and floorPrice_
     //! since we know ATM, and we have single flows,
@@ -254,26 +238,21 @@ namespace QuantLib {
         fPriceB_ =
             Matrix(cfStrikes_.size(), cfMaturities_.size(), Null<Real>());
 
-        Handle<ZeroInflationTermStructure> zts = zii_->zeroInflationTermStructure();
-        Handle<YieldTermStructure> yts = this->nominalTermStructure();
-        QL_REQUIRE(!zts.empty(), "Zts is empty!!!");
+        Handle<YieldTermStructure> yts = nominalTS_;
         QL_REQUIRE(!yts.empty(), "Yts is empty!!!");
 
         for (Size j = 0; j < cfMaturities_.size(); ++j) {
             Period mat = cfMaturities_[j];
             Real df = yts->discount(cpiOptionDateFromTenor(mat));
-            Real atm_quote = zts->zeroRate(cpiOptionDateFromTenor(mat));
+            Real atm_quote = atmRate(cpiOptionDateFromTenor(mat));
             Real atm = std::pow(1.0 + atm_quote, mat.length());
             Real S = atm * df;
             for (Size i = 0; i < cfStrikes_.size(); ++i) {
                 Real K_quote = cfStrikes_[i];
                 Real K = std::pow(1.0 + K_quote, mat.length());
-                Size indF = std::find_if(fStrikes_.begin(), fStrikes_.end(),
-                                         detail::CloseEnoughComparator(cfStrikes_[i])) -
-                            fStrikes_.begin();
-                Size indC = std::find_if(cStrikes_.begin(), cStrikes_.end(),
-                                         detail::CloseEnoughComparator(cfStrikes_[i])) -
-                            cStrikes_.begin();
+                auto close = [k = cfStrikes_[i]](Real x){ return close_enough(x, k); };
+                Size indF = std::find_if(fStrikes_.begin(), fStrikes_.end(), close) - fStrikes_.begin();
+                Size indC = std::find_if(cStrikes_.begin(), cStrikes_.end(), close) - cStrikes_.begin();
                 bool isFloorStrike = indF < fStrikes_.size();
                 bool isCapStrike = indC < cStrikes_.size();
                 if (isFloorStrike) {
@@ -328,7 +307,7 @@ namespace QuantLib {
     Real InterpolatedCPICapFloorTermPriceSurface<I2D>::
     price(const Date &d, Rate k) const {
 
-        Rate atm = zeroInflationIndex()->zeroInflationTermStructure()->zeroRate(d);
+        Rate atm = atmRate(d);
         return k > atm ? capPrice(d,k): floorPrice(d,k);
     }
 
@@ -348,14 +327,22 @@ namespace QuantLib {
         return floorPrice_(t,k);
     }
 
-    // inline
+    // inline definitions
 
     inline Period CPICapFloorTermPriceSurface::observationLag() const {
-        return zeroInflationIndex()->zeroInflationTermStructure()->observationLag();
+        return observationLag_;
+    }
+
+    inline Frequency CPICapFloorTermPriceSurface::frequency() const {
+        return zeroInflationIndex()->frequency();
     }
 
     inline Date CPICapFloorTermPriceSurface::baseDate() const {
         return zeroInflationIndex()->zeroInflationTermStructure()->baseDate();
+    }
+
+    inline Rate CPICapFloorTermPriceSurface::baseRate() const {
+        return baseRate_;
     }
 
     inline Real CPICapFloorTermPriceSurface::nominal() const {

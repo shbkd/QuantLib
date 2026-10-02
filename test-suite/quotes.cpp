@@ -10,43 +10,50 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "quotes.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
+#include <ql/math/array.hpp>
 #include <ql/quotes/simplequote.hpp>
 #include <ql/quotes/derivedquote.hpp>
 #include <ql/quotes/compositequote.hpp>
 #include <ql/quotes/forwardvaluequote.hpp>
 #include <ql/quotes/impliedstddevquote.hpp>
+#include <ql/quotes/multicompositequote.hpp>
 #include <ql/time/calendars/target.hpp>
 #include <ql/time/daycounters/actualactual.hpp>
 #include <ql/termstructures/yield/flatforward.hpp>
 #include <ql/indexes/ibor/euribor.hpp>
 #include <ql/pricingengines/blackformula.hpp>
+#include <numeric>
 
 using namespace QuantLib;
 using namespace boost::unit_test_framework;
 
-namespace {
+BOOST_FIXTURE_TEST_SUITE(QuantLibTests, TopLevelFixture)
 
-    Real add10(Real x) { return x+10; }
-    Real mul10(Real x) { return x*10; }
-    Real sub10(Real x) { return x-10; }
+BOOST_AUTO_TEST_SUITE(QuoteTests)
 
-    Real add(Real x, Real y) { return x+y; }
-    Real mul(Real x, Real y) { return x*y; }
-    Real sub(Real x, Real y) { return x-y; }
+Real add10(Real x) { return x+10; }
+Real mul10(Real x) { return x*10; }
+Real sub10(Real x) { return x-10; }
 
+Real add(Real x, Real y) { return x+y; }
+Real mul(Real x, Real y) { return x*y; }
+Real sub(Real x, Real y) { return x-y; }
+
+Real addAll(const Array& x) { return std::accumulate(x.begin(), x.end(), Real(0.0)); }
+Real mulAll(const Array& x) {
+    return std::accumulate(x.begin(), x.end(), Real(1.0), [](Real x, Real y) -> Real { return x*y; });
 }
 
-
-void QuoteTest::testObservable() {
+BOOST_AUTO_TEST_CASE(testObservable) {
 
     BOOST_TEST_MESSAGE("Testing observability of quotes...");
 
@@ -60,7 +67,7 @@ void QuoteTest::testObservable() {
 
 }
 
-void QuoteTest::testObservableHandle() {
+BOOST_AUTO_TEST_CASE(testObservableHandle) {
 
     BOOST_TEST_MESSAGE("Testing observability of quote handles...");
 
@@ -81,52 +88,89 @@ void QuoteTest::testObservableHandle() {
 
 }
 
-void QuoteTest::testDerived() {
+BOOST_AUTO_TEST_CASE(testDerived) {
 
     BOOST_TEST_MESSAGE("Testing derived quotes...");
 
     typedef Real (*unary_f)(Real);
-    unary_f funcs[3] = { add10, mul10, sub10 };
+    static const unary_f funcs[] = { add10, mul10, sub10 };
+    static const Real values[] = { 12, 23, 34 };
 
-    ext::shared_ptr<Quote> me(new SimpleQuote(17.0));
+    auto me = ext::make_shared<SimpleQuote>();
     Handle<Quote> h(me);
 
-    for (Integer i=0; i<3; i++) {
-        DerivedQuote<unary_f> derived(h,funcs[i]);
-        Real x = derived.value(),
-             y = funcs[i](me->value());
-        if (std::fabs(x-y) > 1.0e-10)
-            BOOST_FAIL("derived quote yields " << x << "\n"
-                       << "function result is " << y);
+    for (const auto& func : funcs) {
+        DerivedQuote<unary_f> derived(h, func);
+        for (Real value : values) {
+            me->setValue(value);
+            Real x = derived.value(), y = func(value);
+            if (std::fabs(x-y) > 1.0e-10)
+                BOOST_FAIL("derived quote yields " << x << "\n"
+                           << "function result is " << y);
+        }
     }
 }
 
-void QuoteTest::testComposite() {
+BOOST_AUTO_TEST_CASE(testComposite) {
 
     BOOST_TEST_MESSAGE("Testing composite quotes...");
 
     typedef Real (*binary_f)(Real,Real);
-    binary_f funcs[3] = { add, mul, sub };
+    static const binary_f funcs[] = { add, mul, sub };
+    static const Real values[] = { 12, 23, 34 };
 
-    ext::shared_ptr<Quote> me1(new SimpleQuote(12.0)),
-                             me2(new SimpleQuote(13.0));
+    auto me1 = ext::make_shared<SimpleQuote>(),
+         me2 = ext::make_shared<SimpleQuote>();
     Handle<Quote> h1(me1), h2(me2);
 
-    for (Integer i=0; i<3; i++) {
-        CompositeQuote<binary_f> composite(h1,h2,funcs[i]);
-        Real x = composite.value(),
-             y = funcs[i](me1->value(),me2->value());
-        if (std::fabs(x-y) > 1.0e-10)
-            BOOST_FAIL("composite quote yields " << x << "\n"
-                       << "function result is " << y);
+    for (const auto& func : funcs) {
+        CompositeQuote<binary_f> composite(h1, h2, func);
+        for (Real value : values) {
+            me1->setValue(value);
+            me2->setValue(value + 1);
+            Real x = composite.value(), y = func(value, value + 1);
+            if (std::fabs(x-y) > 1.0e-10)
+                BOOST_FAIL("composite quote yields " << x << "\n"
+                           << "function result is " << y);
+        }
     }
 }
 
-void QuoteTest::testForwardValueQuoteAndImpliedStdevQuote(){
+BOOST_AUTO_TEST_CASE(testMultiComposite) {
+
+    BOOST_TEST_MESSAGE("Testing multi composite quotes...");
+
+    typedef Real (*array_f)(const Array&);
+    static const array_f funcs[] = { addAll, mulAll, Norm2 };
+
+    for (const auto& func : funcs) {
+        std::vector<ext::shared_ptr<SimpleQuote>> mes;
+        std::vector<Handle<Quote>> handles;
+        for (int i = 0; i < 3; i++) {
+            mes.push_back(ext::make_shared<SimpleQuote>(i + 1));
+            handles.emplace_back(mes.back());
+            MultiCompositeQuote<array_f> composite(handles, func);
+            for (int j = 0; j <= i; j++) {
+                mes[j]->setValue(j * 10 + 1);
+                Array args(mes.size());
+                for (Size k = 0; k < mes.size(); k++)
+                    args[k] = mes[k]->value();
+                Real x = composite.value(), y = func(args);
+                if (std::fabs(x-y) > 1.0e-10)
+                    BOOST_FAIL("composite quote yields " << x << "\n"
+                               << "function result is " << y);
+                for (Size k = 0; k < mes.size(); k++)
+                    BOOST_CHECK_EQUAL(composite.inputValue(k), mes[k]->value());
+            }
+        }
+    }
+}
+
+BOOST_AUTO_TEST_CASE(testForwardValueQuoteAndImpliedStdevQuote){
     BOOST_TEST_MESSAGE(
             "Testing forward-value and implied-standard-deviation quotes...");
     Real forwardRate = .05;
-    DayCounter dc = ActualActual();
+    DayCounter dc = ActualActual(ActualActual::ISDA);
     Calendar calendar = TARGET();
     ext::shared_ptr<SimpleQuote> forwardQuote(new SimpleQuote(forwardRate));
     Handle<Quote> forwardHandle(forwardQuote);
@@ -194,16 +238,6 @@ void QuoteTest::testForwardValueQuoteAndImpliedStdevQuote(){
         BOOST_FAIL("Observer was not notified of quote change");
 
 }
+BOOST_AUTO_TEST_SUITE_END()
 
-
-test_suite* QuoteTest::suite() {
-    test_suite* suite = BOOST_TEST_SUITE("Quote tests");
-    suite->add(QUANTLIB_TEST_CASE(&QuoteTest::testObservable));
-    suite->add(QUANTLIB_TEST_CASE(&QuoteTest::testObservableHandle));
-    suite->add(QUANTLIB_TEST_CASE(&QuoteTest::testDerived));
-    suite->add(QUANTLIB_TEST_CASE(&QuoteTest::testComposite));
-    suite->add(QUANTLIB_TEST_CASE(
-                      &QuoteTest::testForwardValueQuoteAndImpliedStdevQuote));
-    return suite;
-}
-
+BOOST_AUTO_TEST_SUITE_END()

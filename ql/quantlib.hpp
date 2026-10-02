@@ -3,11 +3,11 @@
 
 #include <ql/qldefines.hpp>
 #include <ql/version.hpp>
-#ifdef BOOST_MSVC
+#if !defined(BOOST_ALL_NO_LIB) && defined(BOOST_MSVC)
 #  include <ql/auto_link.hpp>
 #endif
 
-#include <ql/auto_ptr.hpp>
+#include <ql/any.hpp>
 #include <ql/cashflow.hpp>
 #include <ql/compounding.hpp>
 #include <ql/currency.hpp>
@@ -17,7 +17,6 @@
 #include <ql/exchangerate.hpp>
 #include <ql/exercise.hpp>
 #include <ql/event.hpp>
-#include <ql/grid.hpp>
 #include <ql/handle.hpp>
 #include <ql/index.hpp>
 #include <ql/instrument.hpp>
@@ -25,6 +24,7 @@
 #include <ql/money.hpp>
 #include <ql/numericalmethod.hpp>
 #include <ql/option.hpp>
+#include <ql/optional.hpp>
 #include <ql/payoff.hpp>
 #include <ql/position.hpp>
 #include <ql/prices.hpp>

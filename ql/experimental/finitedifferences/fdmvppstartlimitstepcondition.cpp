@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -20,8 +20,8 @@
 /*! \file fdmvppstartlimitstepcondition.cpp
 */
 
+#include <algorithm>
 #include <ql/math/array.hpp>
-#include <ql/math/functional.hpp>
 #include <ql/methods/finitedifferences/meshers/fdmmesher.hpp>
 #include <ql/methods/finitedifferences/operators/fdmlinearoplayout.hpp>
 #include <ql/experimental/finitedifferences/fdmvppstartlimitstepcondition.hpp>
@@ -45,8 +45,9 @@ namespace QuantLib {
         QL_REQUIRE(tMinDown_ > 0, "minimum down time must be greater than one");
     }
 
-    Disposable<Array> FdmVPPStartLimitStepCondition::changeState(
+    Array FdmVPPStartLimitStepCondition::changeState(
         const Real gasPrice, const Array& state, Time) const {
+
         const Real startUpCost
                 = startUpFixCost_ + (gasPrice + fuelCostAddon_)*startUpFuel_;
 
@@ -60,8 +61,7 @@ namespace QuantLib {
                 retVal[i] = std::max(state[i+1], state[tMinUp_+i+1]);
             }
             else if (j == tMinUp_-1) {
-                retVal[i] = std::max(state[i+tMinUp_+1],
-                                     std::max(state[i], state[i+tMinUp_]));
+                retVal[i] = std::max({state[i+tMinUp_+1], state[i], state[i+tMinUp_]});
             }
             else if (j < 2*tMinUp_) {
                 retVal[i] = retVal[i-tMinUp_];

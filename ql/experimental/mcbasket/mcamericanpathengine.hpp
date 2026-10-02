@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -26,7 +26,7 @@
 #include <ql/processes/blackscholesprocess.hpp>
 #include <ql/processes/stochasticprocessarray.hpp>
 #include <ql/termstructures/yield/impliedtermstructure.hpp>
-#include <boost/function.hpp>
+#include <utility>
 
 namespace QuantLib {
 
@@ -62,8 +62,7 @@ namespace QuantLib {
     template <class RNG = PseudoRandom>
     class MakeMCAmericanPathEngine {
       public:
-        explicit MakeMCAmericanPathEngine(
-                            const ext::shared_ptr<StochasticProcessArray>&);
+        explicit MakeMCAmericanPathEngine(ext::shared_ptr<StochasticProcessArray>);
         // named parameters
         MakeMCAmericanPathEngine& withSteps(Size steps);
         MakeMCAmericanPathEngine& withStepsPerYear(Size steps);
@@ -150,26 +149,24 @@ namespace QuantLib {
         }
 
         const Size polynomialOrder = 2;
-        const LsmBasisSystem::PolynomType polynomType = LsmBasisSystem::Monomial;
+        const LsmBasisSystem::PolynomialType polynomialType = LsmBasisSystem::Monomial;
 
         return ext::make_shared<LongstaffSchwartzMultiPathPricer> (
-            this->arguments_.payoff,
+                                                 this->arguments_.payoff,
                                                  timePositions,
                                                  forwardTermStructures,
                                                  discountFactors,
                                                  polynomialOrder,
-                                                 polynomType);
+                                                 polynomialType);
     }
 
 
     template <class RNG>
     inline MakeMCAmericanPathEngine<RNG>::MakeMCAmericanPathEngine(
-                     const ext::shared_ptr<StochasticProcessArray>& process)
-    : process_(process), brownianBridge_(false), antithetic_(false),
-      controlVariate_(false),
-      steps_(Null<Size>()), stepsPerYear_(Null<Size>()),
-      samples_(Null<Size>()), maxSamples_(Null<Size>()),
-      calibrationSamples_(Null<Size>()),
+        ext::shared_ptr<StochasticProcessArray> process)
+    : process_(std::move(process)), brownianBridge_(false), antithetic_(false),
+      controlVariate_(false), steps_(Null<Size>()), stepsPerYear_(Null<Size>()),
+      samples_(Null<Size>()), maxSamples_(Null<Size>()), calibrationSamples_(Null<Size>()),
       tolerance_(Null<Real>()), seed_(0) {}
 
     template <class RNG>

@@ -12,44 +12,43 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include <ql/termstructures/volatility/swaption/swaptionconstantvol.hpp>
-#include <ql/termstructures/volatility/flatsmilesection.hpp>
 #include <ql/quotes/simplequote.hpp>
+#include <ql/termstructures/volatility/flatsmilesection.hpp>
+#include <ql/termstructures/volatility/swaption/swaptionconstantvol.hpp>
+#include <utility>
 
 namespace QuantLib {
 
     // floating reference date, floating market data
-    ConstantSwaptionVolatility::ConstantSwaptionVolatility(
-                                                    Natural settlementDays,
-                                                    const Calendar& cal,
-                                                    BusinessDayConvention bdc,
-                                                    const Handle<Quote>& vol,
-                                                    const DayCounter& dc,
-                                                    const VolatilityType type,
-                                                    const Real shift)
-    : SwaptionVolatilityStructure(settlementDays, cal, bdc, dc),
-      volatility_(vol), maxSwapTenor_(100*Years), volatilityType_(type), shift_(shift) {
+    ConstantSwaptionVolatility::ConstantSwaptionVolatility(Natural settlementDays,
+                                                           const Calendar& cal,
+                                                           BusinessDayConvention bdc,
+                                                           Handle<Quote> vol,
+                                                           const DayCounter& dc,
+                                                           const VolatilityType type,
+                                                           const Real shift)
+    : SwaptionVolatilityStructure(settlementDays, cal, bdc, dc), volatility_(std::move(vol)),
+      maxSwapTenor_(100 * Years), volatilityType_(type), shift_(shift) {
         registerWith(volatility_);
     }
 
     // fixed reference date, floating market data
-    ConstantSwaptionVolatility::ConstantSwaptionVolatility(
-                                                    const Date& referenceDate,
-                                                    const Calendar& cal,
-                                                    BusinessDayConvention bdc,
-                                                    const Handle<Quote>& vol,
-                                                    const DayCounter& dc,
-                                                    const VolatilityType type,
-                                                    const Real shift)
-    : SwaptionVolatilityStructure(referenceDate, cal, bdc, dc),
-      volatility_(vol), maxSwapTenor_(100*Years), volatilityType_(type), shift_(shift) {
+    ConstantSwaptionVolatility::ConstantSwaptionVolatility(const Date& referenceDate,
+                                                           const Calendar& cal,
+                                                           BusinessDayConvention bdc,
+                                                           Handle<Quote> vol,
+                                                           const DayCounter& dc,
+                                                           const VolatilityType type,
+                                                           const Real shift)
+    : SwaptionVolatilityStructure(referenceDate, cal, bdc, dc), volatility_(std::move(vol)),
+      maxSwapTenor_(100 * Years), volatilityType_(type), shift_(shift) {
         registerWith(volatility_);
     }
 
@@ -63,7 +62,7 @@ namespace QuantLib {
                                                     const VolatilityType type,
                                                     const Real shift)
     : SwaptionVolatilityStructure(settlementDays, cal, bdc, dc),
-      volatility_(ext::shared_ptr<Quote>(new SimpleQuote(vol))),
+      volatility_(ext::make_shared<SimpleQuote>(vol)),
       maxSwapTenor_(100*Years), volatilityType_(type), shift_(shift) {}
 
     // fixed reference date, fixed market data
@@ -76,25 +75,24 @@ namespace QuantLib {
                                                     const VolatilityType type,
                                                     const Real shift)
     : SwaptionVolatilityStructure(referenceDate, cal, bdc, dc),
-      volatility_(ext::shared_ptr<Quote>(new SimpleQuote(vol))),
+      volatility_(ext::make_shared<SimpleQuote>(vol)),
       maxSwapTenor_(100*Years), volatilityType_(type), shift_(shift) {}
 
     ext::shared_ptr<SmileSection>
     ConstantSwaptionVolatility::smileSectionImpl(const Date& d,
                                                  const Period&) const {
         Volatility atmVol = volatility_->value();
-        return ext::shared_ptr<SmileSection>(
-            new FlatSmileSection(d, atmVol, dayCounter(), referenceDate(),
-                                 Null<Rate>(), volatilityType_, shift_));
+        return ext::make_shared<FlatSmileSection>(
+            d, atmVol, dayCounter(), referenceDate(), Null<Rate>(),
+            volatilityType_, shift_);
     }
 
     ext::shared_ptr<SmileSection>
     ConstantSwaptionVolatility::smileSectionImpl(Time optionTime,
                                                  Time) const {
         Volatility atmVol = volatility_->value();
-        return ext::shared_ptr<SmileSection>(
-            new FlatSmileSection(optionTime, atmVol, dayCounter(), Null<Rate>(),
-                                 volatilityType_, shift_));
+        return ext::make_shared<FlatSmileSection>(
+            optionTime, atmVol, dayCounter(), Null<Rate>(), volatilityType_, shift_);
     }
 
     Volatility ConstantSwaptionVolatility::volatilityImpl(const Date&,

@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -55,11 +55,8 @@ namespace QuantLib {
         calculators_.reserve(steps);
         for (Size j=0; j<steps; ++j) {
             const Matrix& A = marketModel_->pseudoRoot(j);
-            calculators_.push_back(
-                LMMNormalDriftCalculator(A,
-                                         marketModel->evolution().rateTaus(),
-                                         numeraires[j],
-                                         alive_[j]));
+            calculators_.emplace_back(A, marketModel->evolution().rateTaus(), numeraires[j],
+                                      alive_[j]);
             /*
             for (Size k=0; k<numberOfRates_; ++k) {
                 Real variance =
@@ -116,7 +113,7 @@ namespace QuantLib {
             forwards_[i] += drifts1_[i] ;
             forwards_[i] +=
                 std::inner_product(A.row_begin(i), A.row_end(i),
-                                   brownians_.begin(), 0.0);
+                                   brownians_.begin(), Real(0.0));
         }
 
         // c) recompute drifts D2 using the predicted forwards;

@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -18,7 +18,6 @@
 */
 
 #include <ql/models/marketmodels/products/multistep/multistepnothing.hpp>
-#include <ql/auto_ptr.hpp>
 
 namespace QuantLib {
 
@@ -32,17 +31,15 @@ namespace QuantLib {
         const CurveState&,
         std::vector<Size>& numberCashFlowsThisStep,
         std::vector<std::vector<MarketModelMultiProduct::CashFlow> >&) {
-        std::fill(numberCashFlowsThisStep.begin(),
-                  numberCashFlowsThisStep.end(),
-                  0);
+        for (auto & i : numberCashFlowsThisStep)
+            i = 0;
         ++currentIndex_;
         return (currentIndex_ >= doneIndex_);
     }
 
-    QL_UNIQUE_OR_AUTO_PTR<MarketModelMultiProduct>
+    std::unique_ptr<MarketModelMultiProduct>
     MultiStepNothing::clone() const {
-        return QL_UNIQUE_OR_AUTO_PTR<MarketModelMultiProduct>(
-                                                 new MultiStepNothing(*this));
+        return std::make_unique<MultiStepNothing>(*this);
     }
 
 }

@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -30,7 +30,7 @@ namespace QuantLib {
 
     //! algorithm used for matricial pseudo square root
     struct SalvagingAlgorithm {
-        enum Type { None, Spectral, Hypersphere, LowerDiagonal, Higham };
+        enum Type { None, Spectral, Hypersphere, LowerDiagonal, Higham, Principal };
     };
 
     //! Returns the pseudo square root of a real symmetric matrix
@@ -61,9 +61,8 @@ namespace QuantLib {
         - the correctness of the results is tested by checking
           returned values against numerical calculations.
     */
-    const Disposable<Matrix> pseudoSqrt(
-                        const Matrix&,
-                        SalvagingAlgorithm::Type = SalvagingAlgorithm::None);
+    Matrix pseudoSqrt(const Matrix&,
+                      SalvagingAlgorithm::Type = SalvagingAlgorithm::None);
 
     //! Returns the rank-reduced pseudo square root of a real symmetric matrix
     /*! The result matrix has rank<=maxRank. If maxRank>=size, then the
@@ -78,11 +77,10 @@ namespace QuantLib {
 
         \relates Matrix
     */
-    const Disposable<Matrix> rankReducedSqrt(const Matrix&,
-                                             Size maxRank,
-                                             Real componentRetainedPercentage,
-                                             SalvagingAlgorithm::Type);
-
+    Matrix rankReducedSqrt(const Matrix&,
+                           Size maxRank,
+                           Real componentRetainedPercentage,
+                           SalvagingAlgorithm::Type);
 }
 
 

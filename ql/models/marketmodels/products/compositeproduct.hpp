@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -35,13 +35,13 @@ namespace QuantLib {
     */
     class MarketModelComposite : public MarketModelMultiProduct {
       public:
-        MarketModelComposite();
+        MarketModelComposite() = default;
         //! \name MarketModelMultiProduct interface
         //@{
-        const EvolutionDescription& evolution() const;
-        std::vector<Size> suggestedNumeraires() const;
-        std::vector<Time> possibleCashFlowTimes() const;
-        void reset();
+        const EvolutionDescription& evolution() const override;
+        std::vector<Size> suggestedNumeraires() const override;
+        std::vector<Time> possibleCashFlowTimes() const override;
+        void reset() override;
         //@}
         //! \name Composite facilities
         //@{
@@ -73,7 +73,7 @@ namespace QuantLib {
         std::vector<Time> evolutionTimes_;
         EvolutionDescription evolution_;
         // working variables
-        bool finalized_;
+        bool finalized_ = false;
         Size currentIndex_;
         std::vector<Time> cashflowTimes_;
         std::vector<std::vector<Time> > allEvolutionTimes_;

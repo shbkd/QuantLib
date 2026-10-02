@@ -10,30 +10,29 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include <ql/models/marketmodels/products/multistep/multistepswap.hpp>
 #include <ql/models/marketmodels/curvestate.hpp>
+#include <ql/models/marketmodels/products/multistep/multistepswap.hpp>
 #include <ql/models/marketmodels/utilities.hpp>
-#include <ql/auto_ptr.hpp>
+#include <utility>
 
 namespace QuantLib {
 
     MultiStepSwap::MultiStepSwap(const std::vector<Time>& rateTimes,
-                                 const std::vector<Real>& fixedAccruals,
-                                 const std::vector<Real>& floatingAccruals,
+                                 std::vector<Real> fixedAccruals,
+                                 std::vector<Real> floatingAccruals,
                                  const std::vector<Time>& paymentTimes,
                                  Real fixedRate,
                                  bool payer)
-    : MultiProductMultiStep(rateTimes),
-      fixedAccruals_(fixedAccruals), floatingAccruals_(floatingAccruals),
-      paymentTimes_(paymentTimes), fixedRate_(fixedRate),
-      multiplier_(payer ? 1.0 : -1.0), lastIndex_(rateTimes.size()-1) {
+    : MultiProductMultiStep(rateTimes), fixedAccruals_(std::move(fixedAccruals)),
+      floatingAccruals_(std::move(floatingAccruals)), paymentTimes_(paymentTimes),
+      fixedRate_(fixedRate), multiplier_(payer ? 1.0 : -1.0), lastIndex_(rateTimes.size() - 1) {
         checkIncreasingTimes(paymentTimes);
     }
 
@@ -60,10 +59,9 @@ namespace QuantLib {
         return (currentIndex_ == lastIndex_);
     }
 
-    QL_UNIQUE_OR_AUTO_PTR<MarketModelMultiProduct>
+    std::unique_ptr<MarketModelMultiProduct>
     MultiStepSwap::clone() const {
-        return QL_UNIQUE_OR_AUTO_PTR<MarketModelMultiProduct>(
-                                                 new MultiStepSwap(*this));
+        return std::make_unique<MultiStepSwap>(*this);
     }
 
 }

@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -41,7 +41,7 @@ namespace QuantLib {
         </ul>
 
         Other holidays for which no rule is given (data available for
-        2004-2017 only):
+        2004-2019 only):
         <ul>
         <li>Chinese New Year</li>
         <li>Ching Ming Festival</li>
@@ -57,21 +57,21 @@ namespace QuantLib {
     */
     class China : public Calendar {
       private:
-        class SseImpl : public Calendar::Impl {
+        class SseImpl final : public Calendar::Impl {
           public:
-            std::string name() const { return "Shanghai stock exchange"; }
-            bool isWeekend(Weekday) const;
-            bool isBusinessDay(const Date&) const;
+            std::string name() const override { return "Shanghai stock exchange"; }
+            bool isWeekend(Weekday) const override;
+            bool isBusinessDay(const Date&) const override;
         };
 
-        class IbImpl : public Calendar::Impl {
+        class IbImpl final : public Calendar::Impl {
           public:
-            IbImpl() {
-                sseImpl = ext::shared_ptr<Calendar::Impl>(new China::SseImpl);
-            }
-            std::string name() const { return "China inter bank market";}
-            bool isWeekend(Weekday) const;
-            bool isBusinessDay(const Date&) const;
+            IbImpl()
+            : sseImpl(ext::make_shared<China::SseImpl>()) {}
+            std::string name() const override { return "China inter bank market"; }
+            bool isWeekend(Weekday) const override;
+            bool isBusinessDay(const Date&) const override;
+
           private:
             ext::shared_ptr<Calendar::Impl> sseImpl;
         };

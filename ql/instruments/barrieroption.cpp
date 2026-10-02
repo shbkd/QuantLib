@@ -12,18 +12,19 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
+#include <ql/exercise.hpp>
 #include <ql/instruments/barrieroption.hpp>
 #include <ql/instruments/impliedvolatility.hpp>
 #include <ql/pricingengines/barrier/analyticbarrierengine.hpp>
-#include <ql/exercise.hpp>
-#include <boost/scoped_ptr.hpp>
+#include <ql/pricingengines/barrier/fdblackscholesbarrierengine.hpp>
+#include <memory>
 
 namespace QuantLib {
 
@@ -40,9 +41,8 @@ namespace QuantLib {
 
         OneAssetOption::setupArguments(args);
 
-        BarrierOption::arguments* moreArgs =
-            dynamic_cast<BarrierOption::arguments*>(args);
-        QL_REQUIRE(moreArgs != 0, "wrong argument type");
+        auto* moreArgs = dynamic_cast<BarrierOption::arguments*>(args);
+        QL_REQUIRE(moreArgs != nullptr, "wrong argument type");
         moreArgs->barrierType = barrierType_;
         moreArgs->barrier = barrier_;
         moreArgs->rebate = rebate_;
@@ -56,7 +56,18 @@ namespace QuantLib {
              Size maxEvaluations,
              Volatility minVol,
              Volatility maxVol) const {
+        return impliedVolatility(targetValue, process, DividendSchedule(),
+                                 accuracy, maxEvaluations, minVol, maxVol);
+    }
 
+    Volatility BarrierOption::impliedVolatility(
+             Real targetValue,
+             const ext::shared_ptr<GeneralizedBlackScholesProcess>& process,
+             const DividendSchedule& dividends,
+             Real accuracy,
+             Size maxEvaluations,
+             Volatility minVol,
+             Volatility maxVol) const {
         QL_REQUIRE(!isExpired(), "option expired");
 
         ext::shared_ptr<SimpleQuote> volQuote(new SimpleQuote);
@@ -65,10 +76,13 @@ namespace QuantLib {
             detail::ImpliedVolatilityHelper::clone(process, volQuote);
 
         // engines are built-in for the time being
-        boost::scoped_ptr<PricingEngine> engine;
+        std::unique_ptr<PricingEngine> engine;
         switch (exercise_->type()) {
           case Exercise::European:
-            engine.reset(new AnalyticBarrierEngine(newProcess));
+            if (dividends.empty())
+                engine = std::make_unique<AnalyticBarrierEngine>(newProcess);
+            else
+                engine = std::make_unique<FdBlackScholesBarrierEngine>(newProcess, dividends);
             break;
           case Exercise::American:
           case Exercise::Bermudan:

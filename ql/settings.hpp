@@ -12,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -29,7 +29,7 @@
 #include <ql/patterns/singleton.hpp>
 #include <ql/time/date.hpp>
 #include <ql/utilities/observablevalue.hpp>
-#include <boost/optional.hpp>
+#include <ql/optional.hpp>
 
 namespace QuantLib {
 
@@ -52,8 +52,10 @@ namespace QuantLib {
             Date d = Settings::instance().evaluationDate();
             \endcode
             where today's date is returned if the evaluation date is
-            set to the null date (its default value;) can set it to a
-            new value, as in:
+            set to the null date (its default value).  If the library
+            was compiled with QL_REQUIRE_EXPLICIT_EVALUATION_DATE,
+            reading a null evaluation date throws instead.  Client
+            code can set it to a new value, as in:
             \code
             Settings::instance().evaluationDate() = d;
             \endcode
@@ -102,43 +104,38 @@ namespace QuantLib {
             behavior chosen for includeReferenceDate. It cannot be overridden
             locally when calling the CashFlow::hasOccurred method.
         */
-        boost::optional<bool>& includeTodaysCashFlows();
-        boost::optional<bool> includeTodaysCashFlows() const;
+        std::optional<bool>& includeTodaysCashFlows();
+        std::optional<bool> includeTodaysCashFlows() const;
 
         bool& enforcesTodaysHistoricFixings();
         bool enforcesTodaysHistoricFixings() const;
+
       private:
         DateProxy evaluationDate_;
-        bool includeReferenceDateEvents_;
-        boost::optional<bool> includeTodaysCashFlows_;
-        bool enforcesTodaysHistoricFixings_;
+        bool includeReferenceDateEvents_ = false;
+        std::optional<bool> includeTodaysCashFlows_;
+        bool enforcesTodaysHistoricFixings_ = false;
     };
 
 
     // helper class to temporarily and safely change the settings
-    class SavedSettings {
+    class SavedSettings { // NOLINT(cppcoreguidelines-special-member-functions)
       public:
         SavedSettings();
         ~SavedSettings();
       private:
         Date evaluationDate_;
         bool includeReferenceDateEvents_;
-        boost::optional<bool> includeTodaysCashFlows_;
+        std::optional<bool> includeTodaysCashFlows_;
         bool enforcesTodaysHistoricFixings_;
     };
 
 
     // inline
 
-    inline Settings::DateProxy::operator Date() const {
-        if (value() == Date())
-            return Date::todaysDate();
-        else
-            return value();
-    }
-
     inline Settings::DateProxy& Settings::DateProxy::operator=(const Date& d) {
-        ObservableValue<Date>::operator=(d);
+        if (value() != d) // avoid notifications if the date doesn't actually change
+            ObservableValue<Date>::operator=(d);
         return *this;
     }
 
@@ -158,11 +155,11 @@ namespace QuantLib {
         return includeReferenceDateEvents_;
     }
 
-    inline boost::optional<bool>& Settings::includeTodaysCashFlows() {
+    inline std::optional<bool>& Settings::includeTodaysCashFlows() {
         return includeTodaysCashFlows_;
     }
 
-    inline boost::optional<bool> Settings::includeTodaysCashFlows() const {
+    inline std::optional<bool> Settings::includeTodaysCashFlows() const {
         return includeTodaysCashFlows_;
     }
 

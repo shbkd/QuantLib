@@ -10,30 +10,28 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include <ql/methods/finitedifferences/solvers/fdm3dimsolver.hpp>
-#include <ql/methods/finitedifferences/utilities/fdmquantohelper.hpp>
 #include <ql/methods/finitedifferences/operators/fdmhestonhullwhiteop.hpp>
+#include <ql/methods/finitedifferences/solvers/fdm3dimsolver.hpp>
 #include <ql/methods/finitedifferences/solvers/fdmhestonhullwhitesolver.hpp>
+#include <ql/methods/finitedifferences/utilities/fdmquantohelper.hpp>
+#include <utility>
 
 namespace QuantLib {
 
-    FdmHestonHullWhiteSolver::FdmHestonHullWhiteSolver(
-        const Handle<HestonProcess>& hestonProcess,
-        const Handle<HullWhiteProcess>& hwProcess,
-        Rate corrEquityShortRate,
-        const FdmSolverDesc& solverDesc,
-        const FdmSchemeDesc& schemeDesc)
-    : hestonProcess_(hestonProcess),
-      hwProcess_(hwProcess),
-      corrEquityShortRate_(corrEquityShortRate),
-      solverDesc_(solverDesc),
+    FdmHestonHullWhiteSolver::FdmHestonHullWhiteSolver(const Handle<HestonProcess>& hestonProcess,
+                                                       const Handle<HullWhiteProcess>& hwProcess,
+                                                       Rate corrEquityShortRate,
+                                                       FdmSolverDesc solverDesc,
+                                                       const FdmSchemeDesc& schemeDesc)
+    : hestonProcess_(hestonProcess), hwProcess_(hwProcess),
+      corrEquityShortRate_(corrEquityShortRate), solverDesc_(std::move(solverDesc)),
       schemeDesc_(schemeDesc) {
 
         registerWith(hestonProcess);

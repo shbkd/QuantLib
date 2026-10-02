@@ -9,7 +9,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -102,6 +102,10 @@
     \example MarketModels.cpp
     This example shows the use of interest-rate market models.
 
+    \example MulticurveBootstrapping.cpp
+    This example prices an interest rate swap over a term structure
+    and calculates its fair fixed rate and floating spread.
+
     \example MultidimIntegral.cpp
     This example shows multi-dimensional numerical integration.
 
@@ -116,10 +120,6 @@
     delivery price is also obtained using this repo rate. All this is
     done by supplying the FixedCouponBondForward constructor with a
     flat repo YieldTermStructure.
-
-    \example swapvaluation.cpp
-    This example prices an interest rate swap over a term structure
-    and calculates its fair fixed rate and floating spread.
 
 */
 

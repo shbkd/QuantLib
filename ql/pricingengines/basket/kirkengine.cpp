@@ -10,74 +10,43 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
+#include <ql/math/functional.hpp>
 #include <ql/pricingengines/basket/kirkengine.hpp>
 #include <ql/pricingengines/blackcalculator.hpp>
-#include <ql/pricingengines/blackformula.hpp>
-#include <ql/math/functional.hpp>
-#include <ql/exercise.hpp>
+#include <utility>
 
 namespace QuantLib {
 
-    KirkEngine::KirkEngine(
-            const ext::shared_ptr<BlackProcess>& process1,
-            const ext::shared_ptr<BlackProcess>& process2,
-            Real correlation)
-    : process1_(process1), process2_(process2), rho_(correlation) {
-        registerWith(process1_);
-        registerWith(process2_);
+    KirkEngine::KirkEngine(ext::shared_ptr<GeneralizedBlackScholesProcess> process1,
+                           ext::shared_ptr<GeneralizedBlackScholesProcess> process2,
+                           Real correlation)
+    : SpreadBlackScholesVanillaEngine(std::move(process1), std::move(process2), correlation) {
     }
 
-    void KirkEngine::calculate() const {
-
-        QL_REQUIRE(arguments_.exercise->type() == Exercise::European,
-                   "not an European Option");
-
-        ext::shared_ptr<EuropeanExercise> exercise =
-            ext::dynamic_pointer_cast<EuropeanExercise>(arguments_.exercise);
-        QL_REQUIRE(exercise, "not an European Option");
-
-        ext::shared_ptr<SpreadBasketPayoff> spreadPayoff =
-            ext::dynamic_pointer_cast<SpreadBasketPayoff>(arguments_.payoff);
-        QL_REQUIRE(spreadPayoff," spread payoff expected");
-
-        ext::shared_ptr<PlainVanillaPayoff> payoff =
-            ext::dynamic_pointer_cast<PlainVanillaPayoff>(
-                                                   spreadPayoff->basePayoff());
-        QL_REQUIRE(payoff, "non-plain payoff given");
-        const Real strike = payoff->strike();
+    Real KirkEngine::calculate(
+        Real f1, Real f2, Real strike, Option::Type optionType,
+        Real variance1, Real variance2, DiscountFactor df) const {
         
-        const Real f1 = process1_->stateVariable()->value();
-        const Real f2 = process2_->stateVariable()->value();
-
-        // use atm vols
-        const Real variance1 = process1_->blackVolatility()->blackVariance(
-                                                exercise->lastDate(), f1);
-        const Real variance2 = process2_->blackVolatility()->blackVariance(
-                                                exercise->lastDate(), f2);
-
-        const DiscountFactor riskFreeDiscount =
-            process1_->riskFreeRate()->discount(exercise->lastDate());
-
         const Real f = f1/(f2 + strike);
         const Real v 
             = std::sqrt(variance1 
-                        + variance2*square<Real>()(f2/(f2+strike))
+                        + variance2*squared(f2/(f2+strike))
                         - 2*rho_*std::sqrt(variance1*variance2)
                             *(f2/(f2+strike)));
         
         BlackCalculator black(
              ext::make_shared<PlainVanillaPayoff>(
-                 payoff->optionType(),1.0),
-             f, v, riskFreeDiscount);
+                 optionType,1.0),
+             f, v, df);
         
-        results_.value = (f2 + strike)*black.value();
+        return (f2 + strike)*black.value();
     }
 }
 

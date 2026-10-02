@@ -13,7 +13,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -69,9 +69,12 @@ namespace QuantLib {
     : ExtendedEqualProbabilitiesBinomialTree<ExtendedAdditiveEQPBinomialTree>(
                                                         process, end, steps) {
 
-          up_ = - 0.5 * this->driftStep(0.0) + 0.5 *
-            std::sqrt(4.0*process->variance(0.0, x0_, dt_)-
-                      3.0*this->driftStep(0.0)*this->driftStep(0.0));
+        Real radicand = 4.0*process->variance(0.0, x0_, dt_)-
+                        3.0*this->driftStep(0.0)*this->driftStep(0.0);
+        QL_REQUIRE(radicand >= 0.0,
+                   "drift per step too large for the additive EQP tree: "
+                   "more steps are needed");
+        up_ = - 0.5 * this->driftStep(0.0) + 0.5 * std::sqrt(radicand);
     }
 
     Real ExtendedAdditiveEQPBinomialTree::upStep(Time stepTime) const {
@@ -90,7 +93,7 @@ namespace QuantLib {
 
         dx_ = std::sqrt(process->variance(0.0, x0_, dt_)+
             this->driftStep(0.0)*this->driftStep(0.0));
-        pu_ = 0.5 + 0.5*this->driftStep(0.0)/this->dxStep(0.0);
+        pu_ = 0.5 + 0.5*this->driftStep(0.0) / ExtendedTrigeorgis::dxStep(0.0);
         pd_ = 1.0 - pu_;
 
         QL_REQUIRE(pu_<=1.0, "negative probability");
@@ -157,15 +160,13 @@ namespace QuantLib {
     }
 
 
-
-
-
-    ExtendedLeisenReimer::ExtendedLeisenReimer(
-                        const ext::shared_ptr<StochasticProcess1D>& process,
-                        Time end, Size steps, Real strike)
-    : ExtendedBinomialTree<ExtendedLeisenReimer>(process, end,
-                                                 (steps%2 ? steps : steps+1)),
-      end_(end), oddSteps_(steps%2 ? steps : steps+1), strike_(strike) {
+    ExtendedLeisenReimer::ExtendedLeisenReimer(const ext::shared_ptr<StochasticProcess1D>& process,
+                                               Time end,
+                                               Size steps,
+                                               Real strike)
+    : ExtendedBinomialTree<ExtendedLeisenReimer>(
+          process, end, ((steps % 2) != 0U ? steps : steps + 1)),
+      end_(end), oddSteps_((steps % 2) != 0U ? steps : steps + 1), strike_(strike) {
 
         QL_REQUIRE(strike>0.0, "strike " << strike << "must be positive");
         Real variance = process->variance(0.0, x0_, end);
@@ -175,12 +176,12 @@ namespace QuantLib {
             std::sqrt(variance);
 
         pu_ = PeizerPrattMethod2Inversion(d2, oddSteps_);
+        QL_REQUIRE(pu_ > 0.0 && pu_ < 1.0, "invalid up probability: " << pu_);
         pd_ = 1.0 - pu_;
         Real pdash = PeizerPrattMethod2Inversion(d2+std::sqrt(variance),
                                                  oddSteps_);
         up_ = ermqdt * pdash / pu_;
         down_ = (ermqdt - pu_ * up_) / (1.0 - pu_);
-
     }
 
     Real ExtendedLeisenReimer::underlying(Size i, Size index) const {
@@ -235,12 +236,12 @@ namespace QuantLib {
         return p;
     }
 
-    ExtendedJoshi4::ExtendedJoshi4(
-                        const ext::shared_ptr<StochasticProcess1D>& process,
-                        Time end, Size steps, Real strike)
-    : ExtendedBinomialTree<ExtendedJoshi4>(process, end,
-                                           (steps%2 ? steps : steps+1)),
-      end_(end), oddSteps_(steps%2 ? steps : steps+1), strike_(strike) {
+    ExtendedJoshi4::ExtendedJoshi4(const ext::shared_ptr<StochasticProcess1D>& process,
+                                   Time end,
+                                   Size steps,
+                                   Real strike)
+    : ExtendedBinomialTree<ExtendedJoshi4>(process, end, ((steps % 2) != 0U ? steps : steps + 1)),
+      end_(end), oddSteps_((steps % 2) != 0U ? steps : steps + 1), strike_(strike) {
 
         QL_REQUIRE(strike>0.0, "strike " << strike << "must be positive");
         Real variance = process->variance(0.0, x0_, end);
@@ -250,6 +251,7 @@ namespace QuantLib {
             std::sqrt(variance);
 
         pu_ = computeUpProb((oddSteps_-1.0)/2.0,d2 );
+        QL_REQUIRE(pu_ > 0.0 && pu_ < 1.0, "invalid up probability: " << pu_);
         pd_ = 1.0 - pu_;
         Real pdash = computeUpProb((oddSteps_-1.0)/2.0,d2+std::sqrt(variance));
         up_ = ermqdt * pdash / pu_;

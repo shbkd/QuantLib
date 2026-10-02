@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -54,9 +54,8 @@ namespace QuantLib {
     */
     class AnalyticDigitalAmericanEngine : public VanillaOption::engine {
       public:
-        AnalyticDigitalAmericanEngine(
-                    const ext::shared_ptr<GeneralizedBlackScholesProcess>&);
-        virtual void calculate() const;
+        explicit AnalyticDigitalAmericanEngine(ext::shared_ptr<GeneralizedBlackScholesProcess>);
+        void calculate() const override;
         virtual bool knock_in() const {
            return true;
         }
@@ -89,13 +88,11 @@ namespace QuantLib {
     class AnalyticDigitalAmericanKOEngine : 
                               public AnalyticDigitalAmericanEngine {
       public:
-        AnalyticDigitalAmericanKOEngine(
+        explicit AnalyticDigitalAmericanKOEngine(
                     const ext::shared_ptr<GeneralizedBlackScholesProcess> 
                                  &engine):
         AnalyticDigitalAmericanEngine(engine) {}
-        virtual bool knock_in() const {
-           return false;
-        }
+        bool knock_in() const override { return false; }
     };
 
 }

@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -66,20 +66,24 @@ namespace QuantLib {
         enum Discretization { PartialTruncation, FullTruncation,
                               Reflection};
 
-        GJRGARCHProcess(const Handle<YieldTermStructure>& riskFreeRate,
-                        const Handle<YieldTermStructure>& dividendYield,
-                        const Handle<Quote>& s0,
-                        Real v0, Real omega, Real alpha, Real beta,
-                        Real gamma, Real lambda, Real daysPerYear = 252.0,
+        GJRGARCHProcess(Handle<YieldTermStructure> riskFreeRate,
+                        Handle<YieldTermStructure> dividendYield,
+                        Handle<Quote> s0,
+                        Real v0,
+                        Real omega,
+                        Real alpha,
+                        Real beta,
+                        Real gamma,
+                        Real lambda,
+                        Real daysPerYear = 252.0,
                         Discretization d = FullTruncation);
 
-        Size size() const;
-        Disposable<Array> initialValues() const;
-        Disposable<Array> drift(Time t, const Array& x) const;
-        Disposable<Matrix> diffusion(Time t, const Array& x) const;
-        Disposable<Array> apply(const Array& x0, const Array& dx) const;
-        Disposable<Array> evolve(Time t0, const Array& x0,
-                                 Time dt, const Array& dw) const;
+        Size size() const override;
+        Array initialValues() const override;
+        Array drift(Time t, const Array& x) const override;
+        Matrix diffusion(Time t, const Array& x) const override;
+        Array apply(const Array& x0, const Array& dx) const override;
+        Array evolve(Time t0, const Array& x0, Time dt, const Array& dw) const override;
 
         Real v0()     const { return v0_; }
         Real lambda() const { return lambda_; }
@@ -93,7 +97,8 @@ namespace QuantLib {
         const Handle<YieldTermStructure>& dividendYield() const;
         const Handle<YieldTermStructure>& riskFreeRate() const;
 
-        Time time(const Date&) const;
+        Time time(const Date&) const override;
+
       private:
         Handle<YieldTermStructure> riskFreeRate_, dividendYield_;
         Handle<Quote> s0_;

@@ -14,7 +14,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -22,7 +22,6 @@
 */
 
 #include <ql/models/marketmodels/curvestates/lmmcurvestate.hpp>
-#include <ql/auto_ptr.hpp>
 
 namespace QuantLib {
 
@@ -196,8 +195,8 @@ namespace QuantLib {
         return cmSwapRates_;
     }
 
-    QL_UNIQUE_OR_AUTO_PTR<CurveState> LMMCurveState::clone() const {
-        return QL_UNIQUE_OR_AUTO_PTR<CurveState>(new LMMCurveState(*this));
+    std::unique_ptr<CurveState> LMMCurveState::clone() const {
+        return std::make_unique<LMMCurveState>(*this);
     }
 
 }

@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -38,6 +38,7 @@ namespace QuantLib {
         <li>Bank Holiday, January 3rd</li>
         <li>Coming of Age Day, 2nd Monday in January</li>
         <li>National Foundation Day, February 11th</li>
+        <li>Emperor's Birthday, February 23rd since 2020 and December 23rd before</li>
         <li>Vernal Equinox</li>
         <li>Greenery Day, April 29th</li>
         <li>Constitution Memorial Day, May 3rd</li>
@@ -50,7 +51,6 @@ namespace QuantLib {
         <li>Health and Sports Day, 2nd Monday in October</li>
         <li>National Culture Day, November 3rd</li>
         <li>Labor Thanksgiving Day, November 23rd</li>
-        <li>Emperor's Birthday, December 23rd</li>
         <li>Bank Holiday, December 31st</li>
         <li>a few one-shot holidays</li>
         </ul>
@@ -61,11 +61,11 @@ namespace QuantLib {
     */
     class Japan : public Calendar {
       private:
-        class Impl : public Calendar::Impl {
+        class Impl final : public Calendar::Impl {
           public:
-            std::string name() const { return "Japan"; }
-            bool isWeekend(Weekday) const;
-            bool isBusinessDay(const Date&) const;
+            std::string name() const override { return "Japan"; }
+            bool isWeekend(Weekday) const override;
+            bool isBusinessDay(const Date&) const override;
         };
       public:
         Japan();

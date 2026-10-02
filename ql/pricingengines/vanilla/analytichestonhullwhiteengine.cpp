@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -19,35 +19,38 @@
 */
 
 #include <ql/pricingengines/vanilla/analytichestonhullwhiteengine.hpp>
+#include <utility>
 
 namespace QuantLib {
 
     AnalyticHestonHullWhiteEngine::AnalyticHestonHullWhiteEngine(
-                        const ext::shared_ptr<HestonModel>& hestonModel,
-                        const ext::shared_ptr<HullWhite>& hullWhiteModel,
-                        Size integrationOrder)
-    : AnalyticHestonEngine(hestonModel, integrationOrder),
-      hullWhiteModel_(hullWhiteModel) {
-
-        update();
+        const ext::shared_ptr<HestonModel>& hestonModel,
+        ext::shared_ptr<HullWhite> hullWhiteModel,
+        Size integrationOrder)
+    : AnalyticHestonEngine(
+            hestonModel, AnalyticHestonEngine::Gatheral,
+            AnalyticHestonEngine::Integration::gaussLaguerre(integrationOrder)),
+      hullWhiteModel_(std::move(hullWhiteModel)) {
+        setParameters();
         registerWith(hullWhiteModel_);
     }
 
     AnalyticHestonHullWhiteEngine::AnalyticHestonHullWhiteEngine(
-                    const ext::shared_ptr<HestonModel>& hestonModel,
-                    const ext::shared_ptr<HullWhite>& hullWhiteModel,
-                    Real relTolerance, Size maxEvaluations)
-    : AnalyticHestonEngine(hestonModel, relTolerance, maxEvaluations),
-      hullWhiteModel_(hullWhiteModel) {
-
-        update();
+        const ext::shared_ptr<HestonModel>& hestonModel,
+        ext::shared_ptr<HullWhite> hullWhiteModel,
+        Real relTolerance,
+        Size maxEvaluations)
+    : AnalyticHestonEngine(
+        hestonModel, AnalyticHestonEngine::Gatheral,
+        AnalyticHestonEngine::Integration::gaussLobatto(
+            relTolerance, Null<Real>(), maxEvaluations)),
+      hullWhiteModel_(std::move(hullWhiteModel)) {
+        setParameters();
         registerWith(hullWhiteModel_);
     }
-        
-    void AnalyticHestonHullWhiteEngine::update() {
-        a_ = hullWhiteModel_->params()[0];
-        sigma_ = hullWhiteModel_->params()[1];
 
+    void AnalyticHestonHullWhiteEngine::update() {
+        setParameters();
         AnalyticHestonEngine::update();
     }
 
@@ -64,6 +67,11 @@ namespace QuantLib {
         }
 
         AnalyticHestonEngine::calculate();
+    }
+
+    void AnalyticHestonHullWhiteEngine::setParameters() {
+        a_ = hullWhiteModel_->params()[0];
+        sigma_ = hullWhiteModel_->params()[1];
     }
 
 }

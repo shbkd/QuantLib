@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -24,14 +24,16 @@
 #ifndef quantlib_commodity_hpp
 #define quantlib_commodity_hpp
 
+#include <ql/any.hpp>
 #include <ql/instrument.hpp>
 #include <ql/money.hpp>
-#include <vector>
 #include <iosfwd>
+#include <utility>
+#include <vector>
 
 namespace QuantLib {
 
-    typedef std::map<std::string, boost::any> SecondaryCosts;
+    typedef std::map<std::string, std::any> SecondaryCosts;
     typedef std::map<std::string, Money> SecondaryCostAmounts;
 
     std::ostream& operator<<(std::ostream& out,
@@ -46,10 +48,8 @@ namespace QuantLib {
         std::string error;
         std::string detail;
 
-        PricingError(Level errorLevel,
-                     const std::string& error,
-                     const std::string& detail)
-        : errorLevel(errorLevel), error(error), detail(detail) {}
+        PricingError(Level errorLevel, std::string error, std::string detail)
+        : errorLevel(errorLevel), error(std::move(error)), detail(std::move(detail)) {}
     };
 
     typedef std::vector<PricingError> PricingErrors;
@@ -62,8 +62,7 @@ namespace QuantLib {
     /*! \ingroup instruments */
     class Commodity : public Instrument {
       public:
-        explicit Commodity(
-                     const ext::shared_ptr<SecondaryCosts>& secondaryCosts);
+        explicit Commodity(ext::shared_ptr<SecondaryCosts> secondaryCosts);
         const ext::shared_ptr<SecondaryCosts>& secondaryCosts() const;
         const SecondaryCostAmounts& secondaryCostAmounts() const;
         const PricingErrors& pricingErrors() const;

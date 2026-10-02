@@ -12,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -42,9 +42,7 @@ namespace QuantLib {
         BinomialTree(const ext::shared_ptr<StochasticProcess1D>& process,
                      Time end,
                      Size steps)
-        : Tree<T>(steps+1) {
-            x0_ = process->x0();
-            dt_ = end/steps;
+        : Tree<T>(steps+1), x0_(process->x0()), dt_(end/steps) {
             driftPerStep_ = process->drift(0.0, x0_) * dt_;
         }
         Size size(Size i) const {

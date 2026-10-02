@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -19,6 +19,7 @@
 
 #include <ql/experimental/commodities/unitofmeasure.hpp>
 #include <ostream>
+#include <utility>
 
 namespace QuantLib {
 
@@ -36,8 +37,7 @@ namespace QuantLib {
     UnitOfMeasure::UnitOfMeasure(const std::string& name,
                                  const std::string& code,
                                  UnitOfMeasure::Type unitType) {
-        std::map<std::string,
-            ext::shared_ptr<UnitOfMeasure::Data> >::const_iterator i =
+        auto i =
             unitsOfMeasure_.find(name);
         if (i != unitsOfMeasure_.end()) {
             data_ = i->second;
@@ -48,14 +48,12 @@ namespace QuantLib {
         }
     }
 
-    UnitOfMeasure::Data::Data(const std::string& name,
-                              const std::string& code,
+    UnitOfMeasure::Data::Data(std::string name,
+                              std::string code,
                               UnitOfMeasure::Type unitType,
-                              const UnitOfMeasure& triangulationUnitOfMeasure,
+                              UnitOfMeasure triangulationUnitOfMeasure,
                               const Rounding& rounding)
-    : name(name), code(code), unitType(unitType),
-      triangulationUnitOfMeasure(triangulationUnitOfMeasure),
-      rounding(rounding) {}
-
+    : name(std::move(name)), code(std::move(code)), unitType(unitType),
+      triangulationUnitOfMeasure(std::move(triangulationUnitOfMeasure)), rounding(rounding) {}
 }
 

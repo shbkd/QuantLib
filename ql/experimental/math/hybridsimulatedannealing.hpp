@@ -10,7 +10,7 @@ QuantLib is free software: you can redistribute it and/or modify it
 under the terms of the QuantLib license.  You should have received a
 copy of the license along with this program; if not, please email
 <quantlib-dev@lists.sf.net>. The license is also available online at
-<http://quantlib.org/license.shtml>.
+<https://www.quantlib.org/license.shtml>.
 
 This program is distributed in the hope that it will be useful, but WITHOUT
 ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -26,10 +26,13 @@ Mathl. Comput. Modelling, 967-973, 1989
 #ifndef quantlib_optimization_hybridsimulatedannealing_hpp
 #define quantlib_optimization_hybridsimulatedannealing_hpp
 
-#include <ql/math/optimization/problem.hpp>
-#include <ql/math/optimization/constraint.hpp>
 #include <ql/experimental/math/hybridsimulatedannealingfunctors.hpp>
+#include <ql/math/optimization/constraint.hpp>
 #include <ql/math/optimization/levenbergmarquardt.hpp>
+#include <ql/math/optimization/problem.hpp>
+#include <ql/shared_ptr.hpp>
+#include <algorithm>
+#include <utility>
 
 namespace QuantLib {
 
@@ -76,30 +79,29 @@ namespace QuantLib {
             ResetToOrigin
         };
 
-        HybridSimulatedAnnealing(const Sampler &sampler,
-            const Probability &probability,
-            const Temperature &temperature,
-            const Reannealing &reannealing = ReannealingTrivial(),
-            Real startTemperature = 200.0,
-            Real endTemperature = 0.01,
-            Size reAnnealSteps = 50,
-            ResetScheme resetScheme = ResetToBestPoint,
-            Size resetSteps = 150,
-            ext::shared_ptr<OptimizationMethod> localOptimizer
-            = ext::shared_ptr<OptimizationMethod>(),
-            LocalOptimizeScheme optimizeScheme = EveryBestPoint)
-            : sampler_(sampler), probability_(probability),
-            temperature_(temperature), reannealing_(reannealing),
-            startTemperature_(startTemperature), endTemperature_(endTemperature),
-            reAnnealSteps_(reAnnealSteps == 0 ? QL_MAX_INTEGER : reAnnealSteps), resetScheme_(resetScheme),
-            resetSteps_(resetSteps == 0 ? QL_MAX_INTEGER : resetSteps), localOptimizer_(localOptimizer),
-            optimizeScheme_(localOptimizer ? optimizeScheme : NoLocalOptimize) {
-            if (!localOptimizer)
-                localOptimizer.reset(new LevenbergMarquardt);
-        }
+        HybridSimulatedAnnealing(const Sampler& sampler,
+                                 const Probability& probability,
+                                 Temperature temperature,
+                                 const Reannealing& reannealing = ReannealingTrivial(),
+                                 Real startTemperature = 200.0,
+                                 Real endTemperature = 0.01,
+                                 Size reAnnealSteps = 50,
+                                 ResetScheme resetScheme = ResetToBestPoint,
+                                 Size resetSteps = 150,
+                                 const ext::shared_ptr<OptimizationMethod>& localOptimizer =
+                                     ext::make_shared<LevenbergMarquardt>(),
+                                 LocalOptimizeScheme optimizeScheme = EveryBestPoint)
+        : sampler_(sampler), probability_(probability), temperature_(std::move(temperature)),
+          reannealing_(reannealing), startTemperature_(startTemperature),
+          endTemperature_(endTemperature),
+          reAnnealSteps_(reAnnealSteps == 0 ? QL_MAX_INTEGER : reAnnealSteps),
+          resetScheme_(resetScheme), resetSteps_(resetSteps == 0 ? QL_MAX_INTEGER : resetSteps),
+          localOptimizer_(localOptimizer),
+          optimizeScheme_(localOptimizer != nullptr ? optimizeScheme : NoLocalOptimize) {}
 
-        EndCriteria::Type minimize(Problem &P, const EndCriteria &endCriteria);
-    private:
+        EndCriteria::Type minimize(Problem& P, const EndCriteria& endCriteria) override;
+
+      private:
         Sampler sampler_;
         Probability probability_;
         Temperature temperature_;
@@ -131,7 +133,7 @@ namespace QuantLib {
         Array annealStep(n, 1.0);
         Array bestPoint(x);
         Array currentPoint(x);
-        Array startingPoint(x);
+        const Array& startingPoint(x);
         Array newPoint(x);
         Real bestValue = P.value(bestPoint);
         Real currentValue = bestValue;
@@ -176,8 +178,8 @@ namespace QuantLib {
             //Increase steps
             k++;
             kStationary++;
-            for (Size i = 0; i < annealStep.size(); i++)
-                annealStep[i]++;
+            for (Real& i : annealStep)
+                i++;
 
             //Reanneal if necessary
             if (kReAnneal == reAnnealSteps_) {
@@ -208,8 +210,9 @@ namespace QuantLib {
             temperature_(currentTemperature, currentTemperature, annealStep);
 
             //Check if temperature condition is breached
-            for (Size i = 0; i < n; i++)
-                temperatureBreached = temperatureBreached && currentTemperature[i] < endTemperature_;
+            temperatureBreached = std::all_of(
+                currentTemperature.begin(), currentTemperature.end(),
+                [this](Real temperature) { return temperature < endTemperature_; });
         }
         
         //Change end criteria type if appropriate

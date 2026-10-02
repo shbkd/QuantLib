@@ -8,8 +8,10 @@
  Copyright (C) 2007 Cristina Duminuco
  Copyright (C) 2007 Chiara Fornarola
  Copyright (C) 2013 Gary Kennedy
- Copyright (C) 2015 Peter Caspers
+ Copyright (C) 2015, 2024 Peter Caspers
  Copyright (C) 2017 Klaus Spanderen
+ Copyright (C) 2019 Wojciech Ślusarski
+ Copyright (C) 2020 Marcin Rybacki
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -18,7 +20,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -29,15 +31,9 @@
 #include <ql/math/functional.hpp>
 #include <ql/math/solvers1d/newtonsafe.hpp>
 #include <ql/math/distributions/normaldistribution.hpp>
-#if defined(__GNUC__) && (((__GNUC__ == 4) && (__GNUC_MINOR__ >= 8)) || (__GNUC__ > 4))
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-local-typedefs"
-#endif
+#include <boost/math/distributions/normal.hpp>
+#include <boost/math/special_functions/fpclassify.hpp>
 #include <boost/math/special_functions/atanh.hpp>
-#if defined(__GNUC__) && (((__GNUC__ == 4) && (__GNUC_MINOR__ >= 8)) || (__GNUC__ > 4))
-#pragma GCC diagnostic pop
-#endif
-
 #include <boost/math/special_functions/sign.hpp>
 
 namespace {
@@ -73,8 +69,10 @@ namespace QuantLib {
         QL_REQUIRE(discount>0.0,
                    "discount (" << discount << ") must be positive");
 
-        if (stdDev==0.0)
-            return std::max((forward-strike)*optionType, Real(0.0))*discount;
+        auto sign = Integer(optionType);
+
+        if (stdDev == 0.0)
+            return std::max((forward-strike) * sign, Real(0.0)) * discount;
 
         forward = forward + displacement;
         strike = strike + displacement;
@@ -82,14 +80,14 @@ namespace QuantLib {
         // since displacement is non-negative strike==0 iff displacement==0
         // so returning forward*discount is OK
         if (strike==0.0)
-            return (optionType==Option::Call ? forward*discount : 0.0);
+            return (optionType==Option::Call ? Real(forward*discount) : 0.0);
 
         Real d1 = std::log(forward/strike)/stdDev + 0.5*stdDev;
         Real d2 = d1 - stdDev;
         CumulativeNormalDistribution phi;
-        Real nd1 = phi(optionType*d1);
-        Real nd2 = phi(optionType*d2);
-        Real result = discount * optionType * (forward*nd1 - strike*nd2);
+        Real nd1 = phi(sign * d1);
+        Real nd2 = phi(sign * d2);
+        Real result = discount * sign * (forward*nd1 - strike*nd2);
         QL_ENSURE(result>=0.0,
                   "negative value (" << result << ") for " <<
                   stdDev << " stdDev, " <<
@@ -105,6 +103,45 @@ namespace QuantLib {
                       Real discount,
                       Real displacement) {
         return blackFormula(payoff->optionType(),
+            payoff->strike(), forward, stdDev, discount, displacement);
+    }
+
+    Real blackFormulaForwardDerivative(Option::Type optionType,
+                                       Real strike,
+                                       Real forward,
+                                       Real stdDev,
+                                       Real discount,
+                                       Real displacement)
+    {
+        checkParameters(strike, forward, displacement);
+        QL_REQUIRE(stdDev>=0.0,
+                   "stdDev (" << stdDev << ") must be non-negative");
+        QL_REQUIRE(discount>0.0,
+                   "discount (" << discount << ") must be positive");
+
+        auto sign = Integer(optionType);
+
+        if (stdDev == 0.0)
+            return sign * std::max(1.0 * boost::math::sign((forward - strike) * sign), 0.0) * discount;
+
+        forward = forward + displacement;
+        strike = strike + displacement;
+
+        if (strike == 0.0)
+            return (optionType == Option::Call ? discount : 0.0);
+
+        Real d1 = std::log(forward/strike)/stdDev + 0.5*stdDev;
+        CumulativeNormalDistribution phi;
+        return sign * phi(sign * d1) * discount;
+    }
+
+    Real blackFormulaForwardDerivative(const ext::shared_ptr<PlainVanillaPayoff>& payoff,
+                                       Real forward,
+                                       Real stdDev,
+                                       Real discount,
+                                       Real displacement) 
+    {
+        return blackFormulaForwardDerivative(payoff->optionType(),
             payoff->strike(), forward, stdDev, discount, displacement);
     }
 
@@ -129,7 +166,7 @@ namespace QuantLib {
             stdDev = blackPrice/discount*std::sqrt(2.0 * M_PI)/forward;
         else {
             // Corrado and Miller extended moneyness approximation
-            Real moneynessDelta = optionType*(forward-strike);
+            Real moneynessDelta = Integer(optionType) * (forward-strike);
             Real moneynessDelta_2 = moneynessDelta/2.0;
             Real temp = blackPrice/discount - moneynessDelta_2;
             Real moneynessDelta_PI = moneynessDelta*moneynessDelta/M_PI;
@@ -245,36 +282,41 @@ namespace QuantLib {
         const Real ey2 = ey*ey;
         const Real y = std::log(ey);
         const Real alpha = marketValue/(K*df);
-        const Real R = 2*alpha + ((type == Option::Call) ? -ey+1.0 : ey-1.0);
+        const Real R = 2 * alpha + ((type == Option::Call) ? Real(-ey + 1.0) : ey - 1.0);
         const Real R2 = R*R;
 
         const Real a = std::exp((1.0-M_2_PI)*y);
-        const Real A = square<Real>()(a - 1.0/a);
+        const Real A = squared(a - 1.0/a);
         const Real b = std::exp(M_2_PI*y);
         const Real B = 4.0*(b + 1/b)
             - 2*K/F*(a + 1.0/a)*(ey2 + 1 - R2);
-        const Real C = (R2-square<Real>()(ey-1))*(square<Real>()(ey+1)-R2)/ey2;
+        const Real C = std::max(0.0, (R2-squared(ey-1))*(squared(ey+1)-R2)/ey2);
 
         const Real beta = 2*C/(B+std::sqrt(B*B+4*A*C));
         const Real gamma = -M_PI_2*std::log(beta);
 
+        const auto sqrtDiff = [](Real g, Real yy) {
+            return std::isfinite(g) ? Real(std::sqrt(g + yy) - std::sqrt(g - yy))
+                                    : Real(0.0);
+        };
+
         if (y >= 0.0) {
             const Real M0 = K*df*(
-                (type == Option::Call) ? ey*Af(std::sqrt(2*y)) - 0.5
+                (type == Option::Call) ? Real(ey*Af(std::sqrt(2*y)) - 0.5)
                                        : 0.5-ey*Af(-std::sqrt(2*y)));
 
             if (marketValue <= M0)
-                return std::sqrt(gamma+y)-std::sqrt(gamma-y);
+                return sqrtDiff(gamma, y);
             else
                 return std::sqrt(gamma+y)+std::sqrt(gamma-y);
         }
         else {
             const Real M0 = K*df*(
-                (type == Option::Call) ? 0.5*ey - Af(-std::sqrt(-2*y))
+                (type == Option::Call) ? Real(0.5*ey - Af(-std::sqrt(-2*y)))
                                        : Af(std::sqrt(-2*y)) - 0.5*ey);
 
             if (marketValue <= M0)
-                return std::sqrt(gamma-y)-std::sqrt(gamma+y);
+                return sqrtDiff(gamma, -y);
             else
                 return std::sqrt(gamma+y)+std::sqrt(gamma-y);
         }
@@ -297,16 +339,18 @@ namespace QuantLib {
                                  Real forward,
                                  Real undiscountedBlackPrice,
                                  Real displacement = 0.0)
-        : halfOptionType_(0.5*optionType), signedStrike_(optionType*(strike+displacement)),
-          signedForward_(optionType*(forward+displacement)),
+        : halfOptionType_(0.5 * Integer(optionType)),
+          signedStrike_(Integer(optionType) * (strike+displacement)),
+          signedForward_(Integer(optionType) * (forward+displacement)),
           undiscountedBlackPrice_(undiscountedBlackPrice)
         {
             checkParameters(strike, forward, displacement);
             QL_REQUIRE(undiscountedBlackPrice>=0.0,
                        "undiscounted Black price (" <<
                        undiscountedBlackPrice << ") must be non-negative");
-            signedMoneyness_ = optionType*std::log((forward+displacement)/(strike+displacement));
+            signedMoneyness_ = Integer(optionType) * std::log((forward+displacement)/(strike+displacement));
         }
+
         Real operator()(Real stdDev) const {
             #if defined(QL_EXTRA_SAFETY_CHECKS)
             QL_REQUIRE(stdDev>=0.0,
@@ -358,7 +402,7 @@ namespace QuantLib {
         QL_REQUIRE(blackPrice>=0.0,
                    "option price (" << blackPrice << ") must be non-negative");
         // check the price of the "other" option implied by put-call paity
-        Real otherOptionPrice = blackPrice - optionType*(forward-strike)*discount;
+        Real otherOptionPrice = blackPrice - Integer(optionType) * (forward-strike)*discount;
         QL_REQUIRE(otherOptionPrice>=0.0,
                    "negative " << Option::Type(-1*optionType) <<
                    " price (" << otherOptionPrice <<
@@ -474,7 +518,7 @@ namespace QuantLib {
 
         Real x = std::log(forward/strike);
         Real cs = (optionType == Option::Call)
-            ? blackPrice / (forward*discount)
+            ? Real(blackPrice / (forward*discount))
             : (blackPrice/ (forward*discount) + 1.0 - strike/forward);
 
         QL_REQUIRE(cs >= 0.0, "normalized call price (" << cs
@@ -486,6 +530,9 @@ namespace QuantLib {
             QL_REQUIRE(cs >= 0.0, "negative option price from in-out duality");
             x = -x;
         }
+
+        if (cs == 0.0)
+            return 0.0;
 
         Size nIter = 0;
         Real dv, vk, vkp1 = guess;
@@ -527,16 +574,19 @@ namespace QuantLib {
                                         Real stdDev,
                                         Real displacement) {
         checkParameters(strike, forward, displacement);
+
+        auto sign = Integer(optionType);
+
         if (stdDev==0.0)
-            return (forward*optionType > strike*optionType ? 1.0 : 0.0);
+            return (forward * sign > strike * sign ? 1.0 : 0.0);
 
         forward = forward + displacement;
         strike = strike + displacement;
         if (strike==0.0)
-            return (optionType==Option::Call ? 1.0 : 0.0);
+            return (optionType == Option::Call ? 1.0 : 0.0);
         Real d2 = std::log(forward/strike)/stdDev - 0.5*stdDev;
         CumulativeNormalDistribution phi;
-        return phi(optionType*d2);
+        return phi(sign * d2);
     }
 
     Real blackFormulaCashItmProbability(
@@ -545,6 +595,37 @@ namespace QuantLib {
                         Real stdDev,
                         Real displacement) {
         return blackFormulaCashItmProbability(payoff->optionType(),
+            payoff->strike(), forward, stdDev , displacement);
+    }
+
+    Real blackFormulaAssetItmProbability(
+                        Option::Type optionType,
+                        Real strike,
+                        Real forward,
+                        Real stdDev,
+                        Real displacement) {
+        checkParameters(strike, forward, displacement);
+
+        auto sign = Integer(optionType);
+
+        if (stdDev==0.0)
+            return (forward * sign > strike * sign ? 1.0 : 0.0);
+
+        forward = forward + displacement;
+        strike = strike + displacement;
+        if (strike == 0.0)
+            return (optionType == Option::Call ? 1.0 : 0.0);
+        Real d1 = std::log(forward/strike)/stdDev + 0.5*stdDev;
+        CumulativeNormalDistribution phi;
+        return phi(sign * d1);
+    }
+
+    Real blackFormulaAssetItmProbability(
+                        const ext::shared_ptr<PlainVanillaPayoff>& payoff,
+                        Real forward,
+                        Real stdDev,
+                        Real displacement) {
+        return blackFormulaAssetItmProbability(payoff->optionType(),
             payoff->strike(), forward, stdDev , displacement);
     }
 
@@ -639,7 +720,7 @@ namespace QuantLib {
                    "stdDev (" << stdDev << ") must be non-negative");
         QL_REQUIRE(discount>0.0,
                    "discount (" << discount << ") must be positive");
-        Real d = (forward-strike)*optionType, h = d/stdDev;
+        Real d = (forward-strike) * Integer(optionType), h = d / stdDev;
         if (stdDev==0.0)
             return discount*std::max(d, 0.0);
         CumulativeNormalDistribution phi;
@@ -659,6 +740,31 @@ namespace QuantLib {
                         Real stdDev,
                         Real discount) {
         return bachelierBlackFormula(payoff->optionType(),
+            payoff->strike(), forward, stdDev, discount);
+    }
+
+    Real bachelierBlackFormulaForwardDerivative(
+        Option::Type optionType, Real strike, Real forward, Real stdDev, Real discount)
+    {
+        QL_REQUIRE(stdDev>=0.0,
+                   "stdDev (" << stdDev << ") must be non-negative");
+        QL_REQUIRE(discount>0.0,
+                   "discount (" << discount << ") must be positive");
+        auto sign = Integer(optionType);
+        if (stdDev == 0.0)
+            return sign * std::max(1.0 * boost::math::sign((forward - strike) * sign), 0.0) * discount;
+        Real d = (forward - strike) * sign, h = d / stdDev;
+        CumulativeNormalDistribution phi;
+        return sign * phi(h) * discount;
+    }
+
+    Real bachelierBlackFormulaForwardDerivative(
+        const ext::shared_ptr<PlainVanillaPayoff>& payoff,
+        Real forward,
+        Real stdDev,
+        Real discount)
+    {
+        return bachelierBlackFormulaForwardDerivative(payoff->optionType(),
             payoff->strike(), forward, stdDev, discount);
     }
 
@@ -697,12 +803,12 @@ namespace QuantLib {
 
     }
 
-    Real bachelierBlackFormulaImpliedVol(Option::Type optionType,
-                                   Real strike,
-                                   Real forward,
-                                   Real tte,
-                                   Real bachelierPrice,
-                                   Real discount) {
+    Real bachelierBlackFormulaImpliedVolChoi(Option::Type optionType,
+                                             Real strike,
+                                             Real forward,
+                                             Real tte,
+                                             Real bachelierPrice,
+                                             Real discount) {
 
         const static Real SQRT_QL_EPSILON = std::sqrt(QL_EPSILON);
 
@@ -727,7 +833,7 @@ namespace QuantLib {
         nu = std::max(-1.0 + QL_EPSILON, std::min(nu,1.0 - QL_EPSILON));
 
         // nu / arctanh(nu) -> 1 as nu -> 0
-        Real eta = (std::fabs(nu) < SQRT_QL_EPSILON) ? 1.0 : nu / boost::math::atanh(nu);
+        Real eta = (std::fabs(nu) < SQRT_QL_EPSILON) ? 1.0 : Real(nu / boost::math::atanh(nu));
 
         Real heta = h(eta);
 
@@ -736,8 +842,97 @@ namespace QuantLib {
         return impliedBpvol;
     }
 
+    namespace {
 
-        Real bachelierBlackFormulaStdDevDerivative(Rate strike,
+        boost::math::normal_distribution<Real> normal_dist;
+
+        Real phi(const Real x) {
+            return boost::math::pdf(normal_dist, x);
+        }
+
+        Real Phi(const Real x) {
+            return boost::math::cdf(normal_dist, x);
+        }
+
+        Real PhiTilde(const Real x) {
+            return Phi(x) + phi(x) / x;
+        }
+
+        Real inversePhiTilde(const Real PhiTildeStar) {
+            QL_REQUIRE(PhiTildeStar < 0.0,
+                       "inversePhiTilde(" << PhiTildeStar << "): negative argument required");
+            Real xbar;
+            if (PhiTildeStar < -0.001882039271) {
+                Real g = 1.0 / (PhiTildeStar - 0.5);
+                Real xibar =
+                    (0.032114372355 -
+                     g * g *
+                         (0.016969777977 - g * g * (2.6207332461E-3 - 9.6066952861E-5 * g * g))) /
+                    (1.0 -
+                     g * g * (0.6635646938 - g * g * (0.14528712196 - 0.010472855461 * g * g)));
+                xbar = g * (0.3989422804014326 + xibar * g * g);
+            } else {
+                Real h = std::sqrt(-std::log(-PhiTildeStar));
+                xbar =
+                    (9.4883409779 - h * (9.6320903635 - h * (0.58556997323 + 2.1464093351 * h))) /
+                    (1.0 - h * (0.65174820867 + h * (1.5120247828 + 6.6437847132E-5 * h)));
+            }
+            Real q = (PhiTilde(xbar) - PhiTildeStar) / phi(xbar);
+            Real xstar =
+                xbar +
+                3.0 * q * xbar * xbar * (2.0 - q * xbar * (2.0 + xbar * xbar)) /
+                    (6.0 + q * xbar *
+                               (-12.0 +
+                                xbar * (6.0 * q + xbar * (-6.0 + q * xbar * (3.0 + xbar * xbar)))));
+            return xstar;
+        }
+
+    } // namespace
+
+    Real bachelierBlackFormulaImpliedVol(Option::Type optionType,
+                                         Real strike,
+                                         Real forward,
+                                         Real tte,
+                                         Real bachelierPrice,
+                                         Real discount) {
+
+        Real theta = optionType == Option::Call ? 1.0 : -1.0;
+
+        // compound bechelierPrice, so that effectively discount = 1
+
+        bachelierPrice /= discount;
+
+        // handle case strike = forward
+
+        if (close_enough(strike, forward)) {
+            return bachelierPrice / (std::sqrt(tte) * phi(0.0));
+        }
+
+        // handle case strike != forward
+
+        Real intrinsicValue = std::max(theta * (forward - strike), 0.0);
+        Real timeValue = bachelierPrice - intrinsicValue;
+
+        // the subtraction above cancels, so compare the two operands directly:
+        // close_enough against 0 degrades to an absolute tolerance of
+        // (n*epsilon)^2, far below the rounding error of the difference itself
+        if (close_enough(bachelierPrice, intrinsicValue))
+            return 0.0;
+
+        QL_REQUIRE(timeValue > 0.0, "bachelierBlackFormulaImpliedVolExact(theta="
+                                        << theta << ",strike=" << strike << ",forward=" << forward
+                                        << ",tte=" << tte << ",price=" << bachelierPrice
+                                        << "): option price implies negative time value ("
+                                        << timeValue << ")");
+
+        Real PhiTildeStar = -std::abs(timeValue / (strike - forward));
+        Real xstar = inversePhiTilde(PhiTildeStar);
+        Real impliedVol = std::abs((strike - forward) / (xstar * std::sqrt(tte)));
+
+        return impliedVol;
+    }
+
+    Real bachelierBlackFormulaStdDevDerivative(Rate strike,
                                       Rate forward,
                                       Real stdDev,
                                       Real discount)
@@ -764,5 +959,26 @@ namespace QuantLib {
                                      stdDev, discount);
     }
 
+    Real bachelierBlackFormulaAssetItmProbability(
+                        Option::Type optionType,
+                        Real strike,
+                        Real forward,
+                        Real stdDev) {
+        QL_REQUIRE(stdDev>=0.0,
+                   "stdDev (" << stdDev << ") must be non-negative");
+        Real d = (forward - strike) * Integer(optionType);
+        if (stdDev==0.0)
+            return (d > 0.0 ? 1.0 : 0.0);
+        CumulativeNormalDistribution phi;
+        Real result = phi(d / stdDev);
+        return result;
+    }
 
+    Real bachelierBlackFormulaAssetItmProbability(
+                        const ext::shared_ptr<PlainVanillaPayoff>& payoff,
+                        Real forward,
+                        Real stdDev) {
+        return bachelierBlackFormulaAssetItmProbability(payoff->optionType(),
+            payoff->strike(), forward, stdDev);
+    }
 }

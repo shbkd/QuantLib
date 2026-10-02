@@ -13,7 +13,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -28,7 +28,6 @@
 #define quantlib_exp_correlations_hpp
 
 #include <ql/math/matrix.hpp>
-#include <ql/utilities/disposable.hpp>
 #include <ql/models/marketmodels/piecewiseconstantcorrelation.hpp>
 
 namespace QuantLib {
@@ -39,27 +38,27 @@ namespace QuantLib {
         gamma = exponent for time to go
         t = time dependence
     */
-    Disposable<Matrix> exponentialCorrelations(
-                                    const std::vector<Time>& rateTimes,
-                                    Real longTermCorr = 0.5,
-                                    Real beta = 0.2,
-                                    Real gamma = 1.0,
-                                    Time t = 0.0);
+    Matrix exponentialCorrelations(const std::vector<Time>& rateTimes,
+                                   Real longTermCorr = 0.5,
+                                   Real beta = 0.2,
+                                   Real gamma = 1.0,
+                                   Time t = 0.0);
 
     class ExponentialForwardCorrelation :
         public PiecewiseConstantCorrelation {
       public:
-        ExponentialForwardCorrelation(
-                        const std::vector<Time>& rateTimes,
-                        Real longTermCorr = 0.5,
-                        Real beta = 0.2,
-                        Real gamma = 1.0,
-                        const std::vector<Time>& times = std::vector<Time>());
-        const std::vector<Time>& times() const;
-        const std::vector<Time>& rateTimes() const;
-        const std::vector<Matrix>& correlations() const;
-        Size numberOfRates() const;
-    private:
+        // TODO: Review whether this constructor should remain implicit.
+        ExponentialForwardCorrelation(const std::vector<Time>& rateTimes,
+                                      Real longTermCorr = 0.5,
+                                      Real beta = 0.2,
+                                      Real gamma = 1.0,
+                                      std::vector<Time> times = std::vector<Time>());
+        const std::vector<Time>& times() const override;
+        const std::vector<Time>& rateTimes() const override;
+        const std::vector<Matrix>& correlations() const override;
+        Size numberOfRates() const override;
+
+      private:
         Size numberOfRates_;
         Real longTermCorr_, beta_, gamma_;
         std::vector<Time> rateTimes_, times_;

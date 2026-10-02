@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -27,8 +27,6 @@
 
 #include <ql/math/distributions/normaldistribution.hpp>
 #include <ql/math/interpolations/lagrangeinterpolation.hpp>
-
-#include <boost/function.hpp>
 #include <functional>
 
 namespace QuantLib {
@@ -41,10 +39,10 @@ namespace QuantLib {
         http://papers.ssrn.com/sol3/papers.cfm?abstract_id=2529691
      */
 
-    class StochasticCollocationInvCDF : public std::unary_function<Real,Real> {
+    class StochasticCollocationInvCDF {
       public:
         StochasticCollocationInvCDF(
-            const boost::function<Real(Real)>& invCDF,
+            const std::function<Real(Real)>& invCDF,
             Size lagrangeOrder,
             Real pMax = Null<Real>(),
             Real pMin = Null<Real>());

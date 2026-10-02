@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -39,22 +39,20 @@ namespace QuantLib {
     */
     class BMAIndex : public InterestRateIndex {
       public:
-        explicit BMAIndex(const Handle<YieldTermStructure>& h =
-                                                Handle<YieldTermStructure>());
+        explicit BMAIndex(Handle<YieldTermStructure> h = {});
         //! \name Index interface
         //@{
         /*! BMA is fixed weekly on Wednesdays.
         */
-        std::string name() const { return "BMA"; }
-        bool isValidFixingDate(const Date& fixingDate) const;
+        bool isValidFixingDate(const Date& fixingDate) const override;
         //@}
         //! \name Inspectors
         //@{
-        Handle<YieldTermStructure> forwardingTermStructure() const;
+        const Handle<YieldTermStructure>& forwardingTermStructure() const;
         //@}
         //! \name Date calculations
         //@{
-        Date maturityDate(const Date& valueDate) const;
+        Date maturityDate(const Date& valueDate) const override;
         /*! This method returns a schedule of fixing dates between
             start and end.
         */
@@ -62,7 +60,7 @@ namespace QuantLib {
                                 const Date& end);
         // @}
       protected:
-        Rate forecastFixing(const Date& fixingDate) const;
+        Rate forecastFixing(const Date& fixingDate) const override;
         Handle<YieldTermStructure> termStructure_;
     };
 

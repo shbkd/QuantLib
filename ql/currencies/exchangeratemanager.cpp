@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -22,16 +22,16 @@
 #include <ql/currencies/europe.hpp>
 #include <ql/currencies/america.hpp>
 #include <ql/settings.hpp>
+#include <algorithm>
 
 namespace QuantLib {
 
     namespace {
 
-        struct valid_at
-            : public std::unary_function<ExchangeRateManager::Entry,bool> {
+        struct valid_at {
             Date d;
             explicit valid_at(const Date& d) : d(d) {}
-            bool operator()(const ExchangeRateManager::Entry& e) {
+            bool operator()(const ExchangeRateManager::Entry& e) const {
                 return d >= e.startDate && d <= e.endDate;
             }
         };
@@ -46,7 +46,7 @@ namespace QuantLib {
                                   const Date& startDate,
                                   const Date& endDate) {
         Key k = hash(rate.source(), rate.target());
-        data_[k].push_front(Entry(rate,startDate,endDate));
+        data_[k].emplace_front(rate,startDate,endDate);
     }
 
     ExchangeRate ExchangeRateManager::lookup(const Currency& source,
@@ -195,11 +195,8 @@ namespace QuantLib {
                                                    const Currency& target,
                                                    const Date& date) const {
         const std::list<Entry>& rates = data_[hash(source,target)];
-        std::list<Entry>::const_iterator i =
-            std::find_if(rates.begin(), rates.end(), valid_at(date));
-        return i == rates.end() ?
-            (const ExchangeRate*) 0 :
-            &(i->rate);
+        auto i = std::find_if(rates.begin(), rates.end(), valid_at(date));
+        return i == rates.end() ? (const ExchangeRate*)nullptr : &(i->rate);
     }
 
 }

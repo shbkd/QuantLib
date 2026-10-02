@@ -9,14 +9,19 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-/*! \defgroup yieldtermstructures Term structures
+/*! \defgroup termstructuressss Term structures
+
+    @{
+*/
+
+/*! \defgroup yieldtermstructures Interest-rate term structures
 
     The abstract class QuantLib::YieldTermStructure provides the common
     interface to concrete yield-rate term structure models. Among
@@ -27,3 +32,9 @@
     non-redundant part.
 */
 
+/*! \defgroup defaultprobabilitytermstructures Default-probability term structures */
+
+/*! \defgroup inflationtermstructures Inflation term structures */
+
+
+/*! @} */

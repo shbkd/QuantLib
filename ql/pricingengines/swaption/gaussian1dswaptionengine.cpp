@@ -2,6 +2,7 @@
 
 /*
  Copyright (C) 2013 Peter Caspers
+ Copyright (C) 2026 Kyrylo Protsenko
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -10,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -18,6 +19,7 @@
 */
 
 #include <ql/pricingengines/swaption/gaussian1dswaptionengine.hpp>
+#include <ql/cashflows/overnightindexedcoupon.hpp>
 #include <ql/math/interpolations/cubicinterpolation.hpp>
 #include <ql/payoff.hpp>
 
@@ -25,8 +27,12 @@ namespace QuantLib {
 
     void Gaussian1dSwaptionEngine::calculate() const {
 
-        QL_REQUIRE(arguments_.settlementType == Settlement::Physical,
-                   "cash-settled swaptions not yet implemented ...");
+        QL_REQUIRE(arguments_.settlementMethod != Settlement::ParYieldCurve,
+                   "cash settled (ParYieldCurve) swaptions not priced with "
+                   "Gaussian1dSwaptionEngine");
+
+        QL_REQUIRE(arguments_.nominal != Null<Real>(),
+                   "non-constant nominals are not supported yet");
 
         Date settlement = model_->termStructure()->referenceDate();
 
@@ -43,11 +49,21 @@ namespace QuantLib {
                              arguments_.exercise->dates().end(), settlement) -
             arguments_.exercise->dates().begin());
 
-        VanillaSwap swap = *arguments_.swap;
+        auto swap = arguments_.swap;
         Option::Type type =
-            arguments_.type == VanillaSwap::Payer ? Option::Call : Option::Put;
-        Schedule fixedSchedule = swap.fixedSchedule();
-        Schedule floatSchedule = swap.floatingSchedule();
+            arguments_.type == Swap::Payer ? Option::Call : Option::Put;
+        const Schedule& fixedSchedule = swap->fixedSchedule();
+        const Schedule& floatSchedule = swap->floatingSchedule();
+
+        Handle<YieldTermStructure> forwardingCurve =
+            swap->iborIndex()->forwardingTermStructure();
+
+        const Leg& floatingLeg = swap->floatingLeg();
+        std::vector<ext::shared_ptr<OvernightIndexedCoupon> >
+            overnightCoupons(floatingLeg.size());
+        for (Size l = 0; l < floatingLeg.size(); ++l)
+            overnightCoupons[l] =
+                ext::dynamic_pointer_cast<OvernightIndexedCoupon>(floatingLeg[l]);
 
         Array npv0(2 * integrationPoints_ + 1, 0.0),
             npv1(2 * integrationPoints_ + 1, 0.0);
@@ -57,16 +73,16 @@ namespace QuantLib {
         // for probability computation
         std::vector<Array> npvp0, npvp1;
         if (probabilities_ != None) {
-            for (Size i = 0; i < static_cast<Size>(idx - minIdxAlive + 2); ++i) {
+            for (int i = 0; i < idx - minIdxAlive + 2; ++i) {
                 Array npvTmp0(2 * integrationPoints_ + 1, 0.0);
                 Array npvTmp1(2 * integrationPoints_ + 1, 0.0);
                 npvp0.push_back(npvTmp0);
                 npvp1.push_back(npvTmp1);
             }
         }
-        // end probabkility computation
+        // end probability computation
 
-        Date expiry1 = Null<Date>(), expiry0;
+        Date expiry1 = Date(), expiry0;
         Time expiry1Time = Null<Real>(), expiry0Time;
 
         do {
@@ -100,9 +116,12 @@ namespace QuantLib {
                               expiry0Time, 0.0);
             if (expiry0 > settlement) {
                 for (Size l = k1; l < arguments_.floatingCoupons.size(); l++) {
-                    model_->forwardRate(arguments_.floatingFixingDates[l],
-                                        expiry0, 0.0,
-                                        arguments_.swap->iborIndex());
+                    if (overnightCoupons[l] != nullptr)
+                        model_->compoundedRate(
+                            *overnightCoupons[l], expiry0, 0.0, forwardingCurve);
+                    else
+                        model_->forwardRate(arguments_.floatingFixingDates[l],
+                                            expiry0, 0.0, swap->iborIndex());
                     model_->zerobond(arguments_.floatingPayDates[l], expiry0,
                                      0.0, discountCurve_);
                 }
@@ -137,7 +156,7 @@ namespace QuantLib {
                         CubicInterpolation::Lagrange, 0.0,
                         CubicInterpolation::Lagrange, 0.0);
                     for (Size i = 0; i < z.size() - 1; i++) {
-                        price += model_->gaussianShiftedPolynomialIntegral(
+                        price += Gaussian1dModel::gaussianShiftedPolynomialIntegral(
                             0.0, payoff1.cCoefficients()[i],
                             payoff1.bCoefficients()[i],
                             payoff1.aCoefficients()[i], p[i], z[i], z[i],
@@ -145,15 +164,15 @@ namespace QuantLib {
                     }
                     if (extrapolatePayoff_) {
                         if (flatPayoffExtrapolation_) {
-                            price += model_->gaussianShiftedPolynomialIntegral(
+                            price += Gaussian1dModel::gaussianShiftedPolynomialIntegral(
                                 0.0, 0.0, 0.0, 0.0, p[z.size() - 2],
                                 z[z.size() - 2], z[z.size() - 1], 100.0);
-                            price += model_->gaussianShiftedPolynomialIntegral(
+                            price += Gaussian1dModel::gaussianShiftedPolynomialIntegral(
                                 0.0, 0.0, 0.0, 0.0, p[0], z[0], -100.0, z[0]);
                         } else {
                             if (type == Option::Call)
                                 price +=
-                                    model_->gaussianShiftedPolynomialIntegral(
+                                    Gaussian1dModel::gaussianShiftedPolynomialIntegral(
                                         0.0,
                                         payoff1.cCoefficients()[z.size() - 2],
                                         payoff1.bCoefficients()[z.size() - 2],
@@ -162,7 +181,7 @@ namespace QuantLib {
                                         z[z.size() - 1], 100.0);
                             if (type == Option::Put)
                                 price +=
-                                    model_->gaussianShiftedPolynomialIntegral(
+                                    Gaussian1dModel::gaussianShiftedPolynomialIntegral(
                                         0.0, payoff1.cCoefficients()[0],
                                         payoff1.bCoefficients()[0],
                                         payoff1.aCoefficients()[0], p[0], z[0],
@@ -196,7 +215,7 @@ namespace QuantLib {
                                 CubicInterpolation::Lagrange, 0.0);
                             for (Size i = 0; i < z.size() - 1; i++) {
                                 price +=
-                                    model_->gaussianShiftedPolynomialIntegral(
+                                    Gaussian1dModel::gaussianShiftedPolynomialIntegral(
                                         0.0, payoff1.cCoefficients()[i],
                                         payoff1.bCoefficients()[i],
                                         payoff1.aCoefficients()[i], p[i], z[i],
@@ -205,22 +224,19 @@ namespace QuantLib {
                             if (extrapolatePayoff_) {
                                 if (flatPayoffExtrapolation_) {
                                     price +=
-                                        model_
-                                            ->gaussianShiftedPolynomialIntegral(
+                                        Gaussian1dModel::gaussianShiftedPolynomialIntegral(
                                                   0.0, 0.0, 0.0, 0.0,
                                                   p[z.size() - 2],
                                                   z[z.size() - 2],
                                                   z[z.size() - 1], 100.0);
                                     price +=
-                                        model_
-                                            ->gaussianShiftedPolynomialIntegral(
+                                        Gaussian1dModel::gaussianShiftedPolynomialIntegral(
                                                   0.0, 0.0, 0.0, 0.0, p[0],
                                                   z[0], -100.0, z[0]);
                                 } else {
                                     if (type == Option::Call)
                                         price +=
-                                            model_
-                                                ->gaussianShiftedPolynomialIntegral(
+                                            Gaussian1dModel::gaussianShiftedPolynomialIntegral(
                                                       0.0,
                                                       payoff1.cCoefficients()
                                                           [z.size() - 2],
@@ -233,8 +249,7 @@ namespace QuantLib {
                                                       z[z.size() - 1], 100.0);
                                     if (type == Option::Put)
                                         price +=
-                                            model_
-                                                ->gaussianShiftedPolynomialIntegral(
+                                            Gaussian1dModel::gaussianShiftedPolynomialIntegral(
                                                       0.0,
                                                       payoff1
                                                           .cCoefficients()[0],
@@ -256,13 +271,18 @@ namespace QuantLib {
                     Real floatingLegNpv = 0.0;
                     for (Size l = k1; l < arguments_.floatingCoupons.size();
                          l++) {
+                        const Real floatingRate = overnightCoupons[l] != nullptr
+                            ? model_->compoundedRate(
+                                  *overnightCoupons[l], expiry0, z[k],
+                                  forwardingCurve)
+                            : model_->forwardRate(
+                                  arguments_.floatingFixingDates[l], expiry0,
+                                  z[k], swap->iborIndex());
                         floatingLegNpv +=
                             arguments_.nominal *
                             arguments_.floatingAccrualTimes[l] *
                             (arguments_.floatingSpreads[l] +
-                             model_->forwardRate(
-                                 arguments_.floatingFixingDates[l], expiry0,
-                                 z[k], arguments_.swap->iborIndex())) *
+                             floatingRate) *
                             model_->zerobond(arguments_.floatingPayDates[l],
                                              expiry0, z[k], discountCurve_);
                     }
@@ -287,7 +307,7 @@ namespace QuantLib {
                                           // the no call probability
                             npvp0.back()[k] =
                                 probabilities_ == Naive
-                                    ? 1.0
+                                    ? Real(1.0)
                                     : 1.0 / (model_->zerobond(expiry0Time, 0.0,
                                                               0.0,
                                                               discountCurve_) *
@@ -296,7 +316,7 @@ namespace QuantLib {
                         if (exerciseValue >= npv0[k]) {
                             npvp0[idx - minIdxAlive][k] =
                                 probabilities_ == Naive
-                                    ? 1.0
+                                    ? Real(1.0)
                                     : 1.0 /
                                           (model_->zerobond(expiry0Time, 0.0,
                                                             0.0,

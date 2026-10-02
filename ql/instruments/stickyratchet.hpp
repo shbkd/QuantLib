@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -47,10 +47,10 @@ namespace QuantLib {
           accrualFactor_(accrualFactor) {}
         //! \name Payoff interface
         //@{
-        std::string name() const;
-        Real operator()(Real forward) const;
-        std::string description() const;
-        virtual void accept(AcyclicVisitor&);
+        std::string name() const override;
+        Real operator()(Real forward) const override;
+        std::string description() const override;
+        void accept(AcyclicVisitor&) override;
         //@}
       protected:
         Real type1_ ,type2_;
@@ -72,8 +72,8 @@ namespace QuantLib {
                             accrualFactor) {}
         //! \name Payoff interface
         //@{
-        std::string name() const { return "Ratchet";}
-        //@}
+         std::string name() const override { return "Ratchet"; }
+         //@}
     };    
 
     //! Sticky payoff (single option)
@@ -89,8 +89,8 @@ namespace QuantLib {
                             accrualFactor) {}
         //! \name Payoff interface
         //@{
-        std::string name() const { return "Sticky";}
-        //@}
+         std::string name() const override { return "Sticky"; }
+         //@}
     };
 
     //! RatchetMax payoff (double option)
@@ -107,8 +107,8 @@ namespace QuantLib {
                                     accrualFactor) {}
         //! \name Payoff interface
         //@{
-        std::string name() const { return "RatchetMax";}
-        //@}
+         std::string name() const override { return "RatchetMax"; }
+         //@}
     };    
 
     //! RatchetMin payoff (double option)
@@ -125,8 +125,8 @@ namespace QuantLib {
                                     accrualFactor) {}
         //! \name Payoff interface
         //@{
-        std::string name() const { return "RatchetMin";}
-        //@}
+         std::string name() const override { return "RatchetMin"; }
+         //@}
     };    
 
     //! StickyMax payoff (double option)
@@ -143,8 +143,8 @@ namespace QuantLib {
                                     accrualFactor) {}
         //! \name Payoff interface
         //@{
-        std::string name() const { return "StickyMax";}
-        //@}
+         std::string name() const override { return "StickyMax"; }
+         //@}
     };    
 
     //! StickyMin payoff (double option)
@@ -161,8 +161,8 @@ namespace QuantLib {
                                     accrualFactor) {}
         //! \name Payoff interface
         //@{
-        std::string name() const { return "StickyMin";}
-        //@}
+         std::string name() const override { return "StickyMin"; }
+         //@}
     };    
 
 /*---------------------------------------------------------------------------------

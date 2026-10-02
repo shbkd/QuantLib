@@ -12,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -21,12 +21,19 @@
 
 #include <ql/termstructures/volatility/swaption/cmsmarketcalibration.hpp>
 #include <ql/termstructures/volatility/swaption/cmsmarket.hpp>
-#include <ql/termstructures/volatility/swaption/swaptionvolcube1.hpp>
+#include <ql/termstructures/volatility/swaption/sabrswaptionvolatilitycube.hpp>
+#include <ql/math/functional.hpp>
 #include <ql/math/optimization/problem.hpp>
 #include <ql/math/optimization/constraint.hpp>
 
 namespace {
     using namespace QuantLib;
+
+    // Parametric beta term structure: betaInf, beta0, and decay.
+    constexpr Size nParametricParameters = 3;
+    constexpr Size betaInfIndex = 0;
+    constexpr Size beta0Index = 1;
+    constexpr Size decayIndex = 2;
 
     class ObjectiveFunction : public CostFunction {
       public:
@@ -36,12 +43,12 @@ namespace {
               weights_(smileAndCms->weights_),
               calibrationType_(smileAndCms->calibrationType_) {};
 
-        Real value(const Array &x) const;
-        Disposable<Array> values(const Array &x) const;
+        Real value(const Array& x) const override;
+        Array values(const Array& x) const override;
 
       protected:
         Real switchErrorFunctionOnCalibrationType() const;
-        Disposable<Array> switchErrorsFunctionOnCalibrationType() const;
+        Array switchErrorsFunctionOnCalibrationType() const;
 
         CmsMarketCalibration *smileAndCms_;
         Handle<SwaptionVolatilityStructure> volCube_;
@@ -61,7 +68,7 @@ namespace {
               fixedMeanReversion_(fixedMeanReversion) {};
 
       private:
-        virtual void updateVolatilityCubeAndCmsMarket(const Array &x) const;
+        void updateVolatilityCubeAndCmsMarket(const Array& x) const override;
         Real fixedMeanReversion_;
     };
 
@@ -71,7 +78,7 @@ namespace {
             : ObjectiveFunction(smileAndCms) {};
 
       private:
-        virtual void updateVolatilityCubeAndCmsMarket(const Array &x) const;
+        void updateVolatilityCubeAndCmsMarket(const Array& x) const override;
     };
 
     class ObjectiveFunction4 : public ObjectiveFunction {
@@ -82,7 +89,7 @@ namespace {
               fixedMeanReversion_(fixedMeanReversion) {};
 
       private:
-        virtual void updateVolatilityCubeAndCmsMarket(const Array &x) const;
+        void updateVolatilityCubeAndCmsMarket(const Array& x) const override;
         Real fixedMeanReversion_;
     };
 
@@ -94,7 +101,7 @@ namespace {
               fixedMeanReversion_(fixedMeanReversion) {};
 
       private:
-        virtual void updateVolatilityCubeAndCmsMarket(const Array &x) const;
+        void updateVolatilityCubeAndCmsMarket(const Array& x) const override;
         Real fixedMeanReversion_;
     };
 
@@ -104,7 +111,7 @@ namespace {
             : ObjectiveFunction(smileAndCms) {};
 
       private:
-        virtual void updateVolatilityCubeAndCmsMarket(const Array &x) const;
+        void updateVolatilityCubeAndCmsMarket(const Array& x) const override;
     };
 
     //===========================================================================//
@@ -116,7 +123,7 @@ namespace {
         return switchErrorFunctionOnCalibrationType();
     }
 
-    Disposable<Array> ObjectiveFunction::values(const Array &x) const {
+    Array ObjectiveFunction::values(const Array &x) const {
         updateVolatilityCubeAndCmsMarket(x);
         return switchErrorsFunctionOnCalibrationType();
     }
@@ -127,13 +134,13 @@ namespace {
         Size nSwapTenors = swapTenors.size();
         QL_REQUIRE(nSwapTenors + 1 == x.size(),
                    "bad calibration guess nSwapTenors+1 != x.size()");
-        const ext::shared_ptr<SwaptionVolCube1> volCubeBySabr =
-            ext::dynamic_pointer_cast<SwaptionVolCube1>(*volCube_);
+        const ext::shared_ptr<SabrSwaptionVolatilityCube> volCubeBySabr =
+            ext::dynamic_pointer_cast<SabrSwaptionVolatilityCube>(*volCube_);
         for (Size i = 0; i < nSwapTenors; ++i)
-            volCubeBySabr->recalibration(
-                smileAndCms_->betaTransformDirect(x[i]), swapTenors[i]);
+            volCubeBySabr->recalibration(CmsMarketCalibration::betaTransformDirect(x[i]),
+                                         swapTenors[i]);
         Real meanReversion =
-            smileAndCms_->reversionTransformDirect(x[nSwapTenors]);
+            CmsMarketCalibration::reversionTransformDirect(x[nSwapTenors]);
         cmsMarket_->reprice(volCube_, meanReversion);
     }
 
@@ -150,8 +157,7 @@ namespace {
         }
     }
 
-    Disposable<Array>
-    ObjectiveFunction::switchErrorsFunctionOnCalibrationType() const {
+    Array ObjectiveFunction::switchErrorsFunctionOnCalibrationType() const {
         switch (calibrationType_) {
         case CmsMarketCalibration::OnSpread:
             return cmsMarket_->weightedSpreadErrors(weights_);
@@ -174,16 +180,15 @@ namespace {
         Size nSwapTenors = swapTenors.size();
         QL_REQUIRE(nSwapTenors == x.size(),
                    "bad calibration guess nSwapTenors != x.size()");
-        const ext::shared_ptr<SwaptionVolCube1> volCubeBySabr =
-            ext::dynamic_pointer_cast<SwaptionVolCube1>(*volCube_);
+        const ext::shared_ptr<SabrSwaptionVolatilityCube> volCubeBySabr =
+            ext::dynamic_pointer_cast<SabrSwaptionVolatilityCube>(*volCube_);
         for (Size i = 0; i < nSwapTenors; ++i)
-            volCubeBySabr->recalibration(
-                smileAndCms_->betaTransformDirect(x[i]), swapTenors[i]);
-        cmsMarket_->reprice(
-            volCube_,
-            fixedMeanReversion_ == Null<Real>()
-                ? Null<Real>()
-                : smileAndCms_->reversionTransformDirect(fixedMeanReversion_));
+            volCubeBySabr->recalibration(QuantLib::CmsMarketCalibration::betaTransformDirect(x[i]),
+                                         swapTenors[i]);
+        cmsMarket_->reprice(volCube_, fixedMeanReversion_ == Null<Real>() ?
+                                          Null<Real>() :
+                                          QuantLib::CmsMarketCalibration::reversionTransformDirect(
+                                              fixedMeanReversion_));
     }
 
     //===========================================================================//
@@ -199,17 +204,17 @@ namespace {
         QL_REQUIRE(
             (nSwapLengths * nSwapTenors) + 1 == x.size(),
             "bad calibration guess (nSwapLengths*nSwapTenors)+1 != x.size()");
-        const ext::shared_ptr<SwaptionVolCube1> volCubeBySabr =
-            ext::dynamic_pointer_cast<SwaptionVolCube1>(*volCube_);
+        const ext::shared_ptr<SabrSwaptionVolatilityCube> volCubeBySabr =
+            ext::dynamic_pointer_cast<SabrSwaptionVolatilityCube>(*volCube_);
         for (Size i = 0; i < nSwapTenors; ++i) {
             std::vector<Real> beta(x.begin() + (i * nSwapLengths),
                                    x.begin() + ((i + 1) * nSwapLengths));
-            for (Size j = 0; j < beta.size(); ++j)
-                beta[j] = smileAndCms_->betaTransformDirect(beta[j]);
+            for (Real& j : beta)
+                j = CmsMarketCalibration::betaTransformDirect(j);
             volCubeBySabr->recalibration(swapLengths, beta, swapTenors[i]);
         }
-        Real meanReversion = smileAndCms_->reversionTransformDirect(
-            x[nSwapLengths + nSwapTenors]);
+        Real meanReversion =
+            CmsMarketCalibration::reversionTransformDirect(x[nSwapLengths * nSwapTenors]);
         cmsMarket_->reprice(volCube_, meanReversion);
     }
 
@@ -226,20 +231,19 @@ namespace {
         QL_REQUIRE(
             (nSwapLengths * nSwapTenors) == x.size(),
             "bad calibration guess (nSwapLengths*nSwapTenors) != x.size()");
-        const ext::shared_ptr<SwaptionVolCube1> volCubeBySabr =
-            ext::dynamic_pointer_cast<SwaptionVolCube1>(*volCube_);
+        const ext::shared_ptr<SabrSwaptionVolatilityCube> volCubeBySabr =
+            ext::dynamic_pointer_cast<SabrSwaptionVolatilityCube>(*volCube_);
         for (Size i = 0; i < nSwapTenors; ++i) {
             std::vector<Real> beta(x.begin() + (i * nSwapLengths),
                                    x.begin() + ((i + 1) * nSwapLengths));
-            for (Size j = 0; j < beta.size(); ++j)
-                beta[j] = smileAndCms_->betaTransformDirect(beta[j]);
+            for (Real& j : beta)
+                j = CmsMarketCalibration::betaTransformDirect(j);
             volCubeBySabr->recalibration(swapLengths, beta, swapTenors[i]);
         }
-        cmsMarket_->reprice(
-            volCube_,
-            fixedMeanReversion_ == Null<Real>()
-                ? Null<Real>()
-                : smileAndCms_->reversionTransformDirect(fixedMeanReversion_));
+        cmsMarket_->reprice(volCube_, fixedMeanReversion_ == Null<Real>() ?
+                                          Null<Real>() :
+                                          CmsMarketCalibration::reversionTransformDirect(
+                                              fixedMeanReversion_));
     }
 
     //=============================================================================//
@@ -252,14 +256,14 @@ namespace {
         const std::vector<Period> &swapLengths = cmsMarket_->swapLengths();
         Size nSwapTenors = swapTenors.size();
         Size nSwapLengths = swapLengths.size();
-        QL_REQUIRE((3 * nSwapTenors) == x.size(),
-                   "bad calibration guess (3*nSwapTenors) != x.size()");
-        const ext::shared_ptr<SwaptionVolCube1> volCubeBySabr =
-            ext::dynamic_pointer_cast<SwaptionVolCube1>(*volCube_);
+        QL_REQUIRE((nParametricParameters * nSwapTenors) == x.size(),
+               "bad calibration guess (nParametricParameters*nSwapTenors) != x.size()");
+        const ext::shared_ptr<SabrSwaptionVolatilityCube> volCubeBySabr =
+            ext::dynamic_pointer_cast<SabrSwaptionVolatilityCube>(*volCube_);
         for (Size i = 0; i < nSwapTenors; ++i) {
-            Real betaInf = smileAndCms_->betaTransformDirect(x[0 + 3 * i]);
-            Real beta0 = smileAndCms_->betaTransformDirect(x[1 + 3 * i]);
-            Real decay = x[2 + 3 * i] * x[2 + 3 * i];
+            Real betaInf = CmsMarketCalibration::betaTransformDirect(x[betaInfIndex + nParametricParameters * i]);
+            Real beta0 = CmsMarketCalibration::betaTransformDirect(x[beta0Index + nParametricParameters * i]);
+            Real decay = squared(x[decayIndex + nParametricParameters * i]);
             std::vector<Real> beta(nSwapLengths);
             for (Size j = 0; j < beta.size(); ++j) {
                 Real t = smileAndCms_->volCube_->timeFromReference(
@@ -268,11 +272,10 @@ namespace {
             }
             volCubeBySabr->recalibration(swapLengths, beta, swapTenors[i]);
         }
-        cmsMarket_->reprice(
-            volCube_,
-            fixedMeanReversion_ == Null<Real>()
-                ? Null<Real>()
-                : smileAndCms_->reversionTransformDirect(fixedMeanReversion_));
+        cmsMarket_->reprice(volCube_, fixedMeanReversion_ == Null<Real>() ?
+                                          Null<Real>() :
+                                          CmsMarketCalibration::reversionTransformDirect(
+                                              fixedMeanReversion_));
     }
 
     //===========================================================================//
@@ -285,14 +288,14 @@ namespace {
         const std::vector<Period> &swapLengths = cmsMarket_->swapLengths();
         Size nSwapTenors = swapTenors.size();
         Size nSwapLengths = swapLengths.size();
-        QL_REQUIRE((3 * nSwapTenors) == x.size(),
-                   "bad calibration guess (3*nSwapTenors) != x.size()");
-        const ext::shared_ptr<SwaptionVolCube1> volCubeBySabr =
-            ext::dynamic_pointer_cast<SwaptionVolCube1>(*volCube_);
+        QL_REQUIRE((nParametricParameters * nSwapTenors + 1) == x.size(),
+               "bad calibration guess (nParametricParameters*nSwapTenors)+1 != x.size()");
+        const ext::shared_ptr<SabrSwaptionVolatilityCube> volCubeBySabr =
+            ext::dynamic_pointer_cast<SabrSwaptionVolatilityCube>(*volCube_);
         for (Size i = 0; i < nSwapTenors; ++i) {
-            Real betaInf = smileAndCms_->betaTransformDirect(x[0 + 3 * i]);
-            Real beta0 = smileAndCms_->betaTransformDirect(x[1 + 3 * i]);
-            Real decay = x[2 + 3 * i] * x[2 + 3 * i];
+            Real betaInf = CmsMarketCalibration::betaTransformDirect(x[betaInfIndex + nParametricParameters * i]);
+            Real beta0 = CmsMarketCalibration::betaTransformDirect(x[beta0Index + nParametricParameters * i]);
+            Real decay = squared(x[decayIndex + nParametricParameters * i]);
             std::vector<Real> beta(nSwapLengths);
             for (Size j = 0; j < beta.size(); ++j) {
                 Real t = smileAndCms_->volCube_->timeFromReference(
@@ -302,7 +305,7 @@ namespace {
             volCubeBySabr->recalibration(swapLengths, beta, swapTenors[i]);
         }
         Real meanReversion =
-            smileAndCms_->reversionTransformDirect(x[3 * nSwapTenors]);
+            CmsMarketCalibration::reversionTransformDirect(x[nParametricParameters * nSwapTenors]);
         cmsMarket_->reprice(volCube_, meanReversion);
     }
 }
@@ -384,8 +387,8 @@ namespace QuantLib {
                 result[i] = betaTransformDirect(result[i]);
             result[nBeta] = reversionTransformDirect(result[nBeta]);
         }
-        const ext::shared_ptr<SwaptionVolCube1> volCubeBySabr =
-            ext::dynamic_pointer_cast<SwaptionVolCube1>(*volCube_);
+        const ext::shared_ptr<SabrSwaptionVolatilityCube> volCubeBySabr =
+            ext::dynamic_pointer_cast<SabrSwaptionVolatilityCube>(*volCube_);
         volCubeBySabr->updateAfterRecalibration();
         sparseSabrParameters_ = volCubeBySabr->sparseSabrParameters();
         denseSabrParameters_ = volCubeBySabr->denseSabrParameters();
@@ -473,8 +476,8 @@ namespace QuantLib {
                 result[j][nSwapTenors] = reversionTransformDirect(tmp[nBeta]);
             }
         }
-        const ext::shared_ptr<SwaptionVolCube1> volCubeBySabr =
-            ext::dynamic_pointer_cast<SwaptionVolCube1>(*volCube_);
+        const ext::shared_ptr<SabrSwaptionVolatilityCube> volCubeBySabr =
+            ext::dynamic_pointer_cast<SabrSwaptionVolatilityCube>(*volCube_);
         volCubeBySabr->updateAfterRecalibration();
         sparseSabrParameters_ = volCubeBySabr->sparseSabrParameters();
         denseSabrParameters_ = volCubeBySabr->denseSabrParameters();
@@ -490,7 +493,6 @@ namespace QuantLib {
         const Real meanReversionGuess) {
 
         Size nSwapTenors = cmsMarket_->swapTenors().size();
-        Size nSwapLengths = cmsMarket_->swapLengths().size();
         QL_REQUIRE(isMeanReversionFixed || meanReversionGuess != Null<Real>(),
                    "if mean reversion is not fixed, a guess must be provided");
         QL_REQUIRE(nSwapTenors == guess.columns(),
@@ -498,20 +500,20 @@ namespace QuantLib {
                        << nSwapTenors
                        << ") must be equal to number of guess columns ("
                        << guess.columns() << ")");
-        QL_REQUIRE(3 == guess.rows(),
+        QL_REQUIRE(nParametricParameters == guess.rows(),
                    "number of parameters ("
-                       << 3 << ") must be equal to number of guess rows ("
+                       << nParametricParameters << ") must be equal to number of guess rows ("
                        << guess.rows() << ")");
 
         Matrix result;
-        Size nParams = nSwapTenors * 3;
+        Size nParams = nSwapTenors * nParametricParameters;
         if (isMeanReversionFixed) {
             NoConstraint constraint;
             Array betasGuess(nParams);
             for (Size i = 0; i < nSwapTenors; ++i) {
-                for (Size j = 0; j < nParams; ++j) {
-                    betasGuess[i * 3 + j] =
-                        (j == 0 || j == 1) ? betaTransformInverse(guess[j][i])
+                for (Size j = 0; j < nParametricParameters; ++j) {
+                    betasGuess[i * nParametricParameters + j] =
+                        (j == betaInfIndex || j == beta0Index) ? betaTransformInverse(guess[j][i])
                                            : std::sqrt(guess[j][i]);
                 }
             }
@@ -524,16 +526,16 @@ namespace QuantLib {
             Array tmp = problem.currentValue();
             error_ = costFunction.value(tmp);
             result = Matrix(
-                3, nSwapTenors + (meanReversionGuess != Null<Real>() ? 1 : 0));
+                nParametricParameters, nSwapTenors + (meanReversionGuess != Null<Real>() ? 1 : 0));
             for (Size i = 0; i < nSwapTenors; ++i) {
-                for (Size j = 0; j < 3; ++j) {
-                    result[j][i] = (j == 0 || j == 1)
-                                       ? betaTransformDirect(tmp[i * 3 + j])
-                                       : tmp[i * 3 + j] * tmp[i * 3 + j];
+                for (Size j = 0; j < nParametricParameters; ++j) {
+                    result[j][i] = (j == betaInfIndex || j == beta0Index)
+                                       ? betaTransformDirect(tmp[i * nParametricParameters + j])
+                                       : squared(tmp[i * nParametricParameters + j]);
                 }
             }
             if (meanReversionGuess != Null<Real>()) {
-                for (Size j = 0; j < nSwapLengths; ++j) {
+                for (Size j = 0; j < nParametricParameters; ++j) {
                     result[j][nSwapTenors] = meanReversionGuess;
                 }
             }
@@ -541,9 +543,10 @@ namespace QuantLib {
             NoConstraint constraint;
             Array betasReversionGuess(nParams + 1);
             for (Size i = 0; i < nSwapTenors; ++i) {
-                for (Size j = 0; j < nParams; ++j) {
-                    betasReversionGuess[i * nSwapLengths + j] =
-                        (j == 0 || j == 1) ? betaTransformInverse(guess[j][i])
+                for (Size j = 0; j < nParametricParameters; ++j) {
+                    betasReversionGuess[i * nParametricParameters + j] =
+                        (j == betaInfIndex || j == beta0Index)
+                            ? betaTransformInverse(guess[j][i])
                                            : std::sqrt(guess[j][i]);
                 }
             }
@@ -554,22 +557,22 @@ namespace QuantLib {
             endCriteria_ = method->minimize(problem, *endCriteria);
             Array tmp = problem.currentValue();
             error_ = costFunction.value(tmp);
-            result = Matrix(3, nSwapTenors + 1);
+            result = Matrix(nParametricParameters, nSwapTenors + 1);
             for (Size i = 0; i < nSwapTenors; ++i) {
-                for (Size j = 0; j < 3; ++j) {
+                for (Size j = 0; j < nParametricParameters; ++j) {
                     result[j][i] =
-                        (j == 0 || j == 1)
-                            ? betaTransformDirect(tmp[i * nSwapLengths + j])
-                            : tmp[i * 3 + j] * tmp[i * 3 + j];
+                        (j == betaInfIndex || j == beta0Index)
+                            ? betaTransformDirect(tmp[i * nParametricParameters + j])
+                                : squared(tmp[i * nParametricParameters + j]);
                 }
             }
-            for (Size j = 0; j < nSwapLengths; ++j) {
+            for (Size j = 0; j < nParametricParameters; ++j) {
                 result[j][nSwapTenors] = reversionTransformDirect(tmp[nParams]);
             }
         }
 
-        const ext::shared_ptr<SwaptionVolCube1> volCubeBySabr =
-            ext::dynamic_pointer_cast<SwaptionVolCube1>(*volCube_);
+        const ext::shared_ptr<SabrSwaptionVolatilityCube> volCubeBySabr =
+            ext::dynamic_pointer_cast<SabrSwaptionVolatilityCube>(*volCube_);
         volCubeBySabr->updateAfterRecalibration();
         sparseSabrParameters_ = volCubeBySabr->sparseSabrParameters();
         denseSabrParameters_ = volCubeBySabr->denseSabrParameters();

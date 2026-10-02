@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -24,17 +24,15 @@
 #include <ql/methods/finitedifferences/operators/fdmblackscholesop.hpp>
 #include <ql/methods/finitedifferences/solvers/fdm2dimsolver.hpp>
 #include <ql/methods/finitedifferences/solvers/fdmsimple2dbssolver.hpp>
+#include <utility>
 
 namespace QuantLib {
 
-    FdmSimple2dBSSolver::FdmSimple2dBSSolver(
-        const Handle<GeneralizedBlackScholesProcess>& process,
-        Real strike,
-        const FdmSolverDesc& solverDesc,
-        const FdmSchemeDesc& schemeDesc)
-    : process_(process),
-      strike_(strike),
-      solverDesc_(solverDesc),
+    FdmSimple2dBSSolver::FdmSimple2dBSSolver(Handle<GeneralizedBlackScholesProcess> process,
+                                             Real strike,
+                                             FdmSolverDesc solverDesc,
+                                             const FdmSchemeDesc& schemeDesc)
+    : process_(std::move(process)), strike_(strike), solverDesc_(std::move(solverDesc)),
       schemeDesc_(schemeDesc) {
 
         registerWith(process_);

@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -33,14 +33,14 @@ namespace QuantLib {
 
     class EnergySwap : public EnergyCommodity {
       public:
-        EnergySwap(const Calendar& calendar,
-                   const Currency& payCurrency,
-                   const Currency& receiveCurrency,
-                   const PricingPeriods& pricingPeriods,
+        EnergySwap(Calendar calendar,
+                   Currency payCurrency,
+                   Currency receiveCurrency,
+                   PricingPeriods pricingPeriods,
                    const CommodityType& commodityType,
                    const ext::shared_ptr<SecondaryCosts>& secondaryCosts);
 
-        bool isExpired() const;
+        bool isExpired() const override;
         const Calendar& calendar() const { return calendar_; }
         const Currency& payCurrency() const { return payCurrency_; }
         const Currency& receiveCurrency() const { return receiveCurrency_; }
@@ -53,7 +53,7 @@ namespace QuantLib {
         }
 
         const CommodityType& commodityType() const;
-        Quantity quantity() const;
+        Quantity quantity() const override;
 
       protected:
         Calendar calendar_;

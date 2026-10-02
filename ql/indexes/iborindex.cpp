@@ -12,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -21,6 +21,7 @@
 
 #include <ql/indexes/iborindex.hpp>
 #include <ql/termstructures/yieldtermstructure.hpp>
+#include <utility>
 
 namespace QuantLib {
 
@@ -32,12 +33,11 @@ namespace QuantLib {
                          BusinessDayConvention convention,
                          bool endOfMonth,
                          const DayCounter& dayCounter,
-                         const Handle<YieldTermStructure>& h)
-    : InterestRateIndex(familyName, tenor, settlementDays, currency,
-                        fixingCalendar, dayCounter),
-      convention_(convention), termStructure_(h), endOfMonth_(endOfMonth) {
+                         Handle<YieldTermStructure> h)
+    : InterestRateIndex(familyName, tenor, settlementDays, currency, fixingCalendar, dayCounter),
+      convention_(convention), termStructure_(std::move(h)), endOfMonth_(endOfMonth) {
         registerWith(termStructure_);
-      }
+    }
 
     Rate IborIndex::forecastFixing(const Date& fixingDate) const {
         Date d1 = valueDate(fixingDate);
@@ -84,13 +84,12 @@ namespace QuantLib {
 
     ext::shared_ptr<IborIndex> OvernightIndex::clone(
                                const Handle<YieldTermStructure>& h) const {
-        return ext::shared_ptr<IborIndex>(
-                                        new OvernightIndex(familyName(),
-                                                           fixingDays(),
-                                                           currency(),
-                                                           fixingCalendar(),
-                                                           dayCounter(),
-                                                           h));
+        return ext::make_shared<OvernightIndex>(familyName(),
+                                                fixingDays(),
+                                                currency(),
+                                                fixingCalendar(),
+                                                dayCounter(),
+                                                h);
     }
 
 }

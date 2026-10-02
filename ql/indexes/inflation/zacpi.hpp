@@ -2,6 +2,7 @@
 
 /*
  Copyright (C) 2007, 2009 Chris Kenyon
+ Copyright (C) 2021 Ralf Konrad Eckel
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -10,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -24,57 +25,28 @@
 #ifndef quantlib_zacpi_hpp
 #define quantlib_zacpi_hpp
 
-#include <ql/indexes/inflationindex.hpp>
 #include <ql/currencies/africa.hpp>
+#include <ql/indexes/inflationindex.hpp>
 
 namespace QuantLib {
 
-    //! South African Comsumer Price Inflation Index
+    //! South African Consumer Price Inflation Index
     class ZACPI : public ZeroInflationIndex {
       public:
-        ZACPI(bool interpolated,
-              const Handle<ZeroInflationTermStructure>& ts =
-                    Handle<ZeroInflationTermStructure>())
-        : ZeroInflationIndex("CPI",
-                             ZARegion(),
-                             false,
-                             interpolated,
-                             Monthly,
-                             Period(1, Months),
-                             ZARCurrency(),
-                             ts) {}
+        explicit ZACPI(const Handle<ZeroInflationTermStructure>& ts = {})
+        : ZeroInflationIndex(
+              "CPI", ZARegion(), false, Monthly, Period(1, Months), ZARCurrency(), ts) {}
     };
 
 
-    //! Genuine year-on-year South African CPI (i.e. not a ratio of ZA CPI)
+    //! Quoted year-on-year South African CPI (i.e. not a ratio of ZA CPI)
     class YYZACPI : public YoYInflationIndex {
       public:
-        YYZACPI(bool interpolated,
-                const Handle<YoYInflationTermStructure>& ts =
-                        Handle<YoYInflationTermStructure>())
+        explicit YYZACPI(
+            const Handle<YoYInflationTermStructure>& ts = {})
         : YoYInflationIndex("YY_CPI",
                             ZARegion(),
                             false,
-                            interpolated,
-                            false,
-                            Monthly,
-                            Period(1, Months),
-                            ZARCurrency(),
-                            ts) {}
-    };
-
-
-    //! Fake year-on-year South African CPI (i.e. a ratio of ZA CPI)
-    class YYZACPIr : public YoYInflationIndex {
-      public:
-        YYZACPIr(bool interpolated,
-                 const Handle<YoYInflationTermStructure>& ts =
-                        Handle<YoYInflationTermStructure>())
-        : YoYInflationIndex("YYR_CPI",
-                            ZARegion(),
-                            false,
-                            interpolated,
-                            true,
                             Monthly,
                             Period(1, Months),
                             ZARCurrency(),

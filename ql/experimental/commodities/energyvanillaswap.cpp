@@ -10,40 +10,41 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include <ql/experimental/commodities/energyvanillaswap.hpp>
 #include <ql/experimental/commodities/commoditysettings.hpp>
+#include <ql/experimental/commodities/energyvanillaswap.hpp>
+#include <utility>
 
 namespace QuantLib {
 
-    EnergyVanillaSwap::EnergyVanillaSwap(
-                    bool payer, const Calendar& calendar,
-                    const Money& fixedPrice,
-                    const UnitOfMeasure& fixedPriceUnitOfMeasure,
-                    const ext::shared_ptr<CommodityIndex>& index,
-                    const Currency& payCurrency,
-                    const Currency& receiveCurrency,
-                    const PricingPeriods& pricingPeriods,
-                    const CommodityType& commodityType,
-                    const ext::shared_ptr<SecondaryCosts>& secondaryCosts,
-                    const Handle<YieldTermStructure>& payLegTermStructure,
-                    const Handle<YieldTermStructure>& receiveLegTermStructure,
-                    const Handle<YieldTermStructure>& discountTermStructure)
-    : EnergySwap(calendar, payCurrency, receiveCurrency, pricingPeriods,
-                 commodityType, secondaryCosts),
-      payReceive_(payer ? 1 : 0), fixedPrice_(fixedPrice),
-      fixedPriceUnitOfMeasure_(fixedPriceUnitOfMeasure),
-      index_(index), payLegTermStructure_(payLegTermStructure),
-      receiveLegTermStructure_(receiveLegTermStructure),
-      discountTermStructure_(discountTermStructure) {
+    EnergyVanillaSwap::EnergyVanillaSwap(bool payer,
+                                         const Calendar& calendar,
+                                         Money fixedPrice,
+                                         UnitOfMeasure fixedPriceUnitOfMeasure,
+                                         ext::shared_ptr<CommodityIndex> index,
+                                         const Currency& payCurrency,
+                                         const Currency& receiveCurrency,
+                                         const PricingPeriods& pricingPeriods,
+                                         const CommodityType& commodityType,
+                                         const ext::shared_ptr<SecondaryCosts>& secondaryCosts,
+                                         Handle<YieldTermStructure> payLegTermStructure,
+                                         Handle<YieldTermStructure> receiveLegTermStructure,
+                                         Handle<YieldTermStructure> discountTermStructure)
+    : EnergySwap(
+          calendar, payCurrency, receiveCurrency, pricingPeriods, commodityType, secondaryCosts),
+      payReceive_(payer ? 1 : 0), fixedPrice_(std::move(fixedPrice)),
+      fixedPriceUnitOfMeasure_(std::move(fixedPriceUnitOfMeasure)), index_(std::move(index)),
+      payLegTermStructure_(std::move(payLegTermStructure)),
+      receiveLegTermStructure_(std::move(receiveLegTermStructure)),
+      discountTermStructure_(std::move(discountTermStructure)) {
 
-        QL_REQUIRE(pricingPeriods_.size() > 0, "no pricing periods");
+        QL_REQUIRE(!pricingPeriods_.empty(), "no pricing periods");
         registerWith(index_);
     }
 
@@ -123,12 +124,8 @@ namespace QuantLib {
             Real totalQuantityAmount = 0;
 
             // price each period
-            for (PricingPeriods::const_iterator pi = pricingPeriods_.begin();
-                 pi != pricingPeriods_.end(); ++pi) {
-                const ext::shared_ptr<PricingPeriod>& pricingPeriod = *pi;
-
-                QL_REQUIRE(pricingPeriod->quantity().amount() != 0,
-                           "quantity is zero");
+            for (const auto& pricingPeriod : pricingPeriods_) {
+                QL_REQUIRE(pricingPeriod->quantity().amount() != 0, "quantity is zero");
 
                 Integer periodDayCount = 0;
 
@@ -143,7 +140,7 @@ namespace QuantLib {
                     Real quoteValue = 0;
 
                     if (stepDate <= lastQuoteDate) {
-                        quoteValue = index_->price(stepDate);
+                        quoteValue = index_->fixing(stepDate);
                     } else {
                         quoteValue = index_->forwardPrice(stepDate);
                     }
@@ -186,15 +183,14 @@ namespace QuantLib {
                 totalQuantityAmount += periodQuantityAmount;
 
                 Real avgDailyQuantityAmount =
-                    periodDayCount == 0 ? 0 :
+                    periodDayCount == 0 ? Real(0) :
                                           periodQuantityAmount / periodDayCount;
 
                 Real payLegValue = 0;
                 Real receiveLegValue = 0;
-                for (std::map<Date, EnergyDailyPosition>::iterator dpi =
-                         dailyPositions_.find(periodStartDate);
-                     dpi != dailyPositions_.end() &&
-                         dpi->first <= pricingPeriod->endDate(); ++dpi) {
+                for (auto dpi = dailyPositions_.find(periodStartDate);
+                     dpi != dailyPositions_.end() && dpi->first <= pricingPeriod->endDate();
+                     ++dpi) {
                     EnergyDailyPosition& dailyPosition = dpi->second;
                     dailyPosition.quantityAmount = avgDailyQuantityAmount;
                     dailyPosition.riskDelta =
@@ -254,10 +250,8 @@ namespace QuantLib {
 
             QL_REQUIRE(!paymentCashFlows_.empty(), "no cashflows");
 
-            for (SecondaryCostAmounts::const_iterator i =
-                     secondaryCostAmounts_.begin();
-                 i != secondaryCostAmounts_.end(); ++i) {
-                Real amount = i->second.value();
+            for (auto & secondaryCostAmount : secondaryCostAmounts_) {
+                Real amount = secondaryCostAmount.second.value();
                 NPV_ -= amount;
             }
 

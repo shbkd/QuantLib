@@ -12,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -28,6 +28,7 @@
 
 #include <ql/methods/finitedifferences/meshers/fdmmesher.hpp>
 #include <ql/methods/finitedifferences/operators/fdmlinearopiterator.hpp>
+#include <memory>
 
 namespace QuantLib {
 
@@ -37,22 +38,21 @@ namespace QuantLib {
             const ext::shared_ptr<FdmLinearOpLayout> & index,
             const std::vector<std::pair<Real, Real> > & boundaries);
 
-        Real dplus(const FdmLinearOpIterator&, Size direction) const {
+        Real dplus(const FdmLinearOpIterator&, Size direction) const override {
             return dx_[direction];
         }
-        Real dminus(const FdmLinearOpIterator&, Size direction) const {
+        Real dminus(const FdmLinearOpIterator&, Size direction) const override {
             return dx_[direction];
         }
 
-        Real location(const FdmLinearOpIterator& iter,
-                      Size direction) const {
+        Real location(const FdmLinearOpIterator& iter, Size direction) const override {
             return locations_[direction][iter.coordinates()[direction]];
         }
 
-        Disposable<Array> locations(Size direction) const;
+        Array locations(Size direction) const override;
 
       private:
-        boost::scoped_array<Real> dx_;
+        std::unique_ptr<Real[]> dx_;
         std::vector<std::vector<Real> > locations_;
     };
 }

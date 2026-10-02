@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -40,7 +40,7 @@ namespace QuantLib {
         //! \todo Generalize for n-dimensional conditions
         enum Side { None, Upper, Lower };
         // destructor
-        virtual ~BoundaryCondition() {}
+        virtual ~BoundaryCondition() = default;
         // interface
         /*! This method modifies an operator \f$ L \f$ before it is
             applied to an array \f$ u \f$ so that \f$ v = Lu \f$ will
@@ -62,53 +62,47 @@ namespace QuantLib {
         virtual void setTime(Time t) = 0;
     };
 
-    // Time-independent boundary conditions for tridiagonal operators
 
-    //! Neumann boundary condition (i.e., constant derivative)
-    /*! \warning The value passed must not be the value of the derivative.
-                 Instead, it must be comprehensive of the grid step
-                 between the first two points--i.e., it must be the
-                 difference between f[0] and f[1].
-        \todo generalize to time-dependent conditions.
 
-        \ingroup findiff
+    /*! \deprecated Part of the old FD framework; copy this function
+                    in your codebase if needed.
+                    Deprecated in version 1.42.
     */
-    class NeumannBC : public BoundaryCondition<TridiagonalOperator> {
+    class [[deprecated("Part of the old FD framework; copy this function in your codebase if needed")]] NeumannBC : public BoundaryCondition<TridiagonalOperator> {
       public:
         NeumannBC(Real value, Side side);
         // interface
-        void applyBeforeApplying(TridiagonalOperator&) const;
-        void applyAfterApplying(Array&) const;
-        void applyBeforeSolving(TridiagonalOperator&, Array& rhs) const;
-        void applyAfterSolving(Array&) const;
-        void setTime(Time) {}
+        void applyBeforeApplying(TridiagonalOperator&) const override;
+        void applyAfterApplying(Array&) const override;
+        void applyBeforeSolving(TridiagonalOperator&, Array& rhs) const override;
+        void applyAfterSolving(Array&) const override;
+        void setTime(Time) override {}
+
       private:
         Real value_;
         Side side_;
     };
 
-    //! Neumann boundary condition (i.e., constant value)
-    /*! \todo generalize to time-dependent conditions.
-
-        \ingroup findiff
+    /*! \deprecated Part of the old FD framework; copy this function
+                    in your codebase if needed.
+                    Deprecated in version 1.42.
     */
-    class DirichletBC : public BoundaryCondition<TridiagonalOperator> {
+    class [[deprecated("Part of the old FD framework; copy this function in your codebase if needed")]] DirichletBC : public BoundaryCondition<TridiagonalOperator> {
       public:
         DirichletBC(Real value, Side side);
         // interface
-        void applyBeforeApplying(TridiagonalOperator&) const;
-        void applyAfterApplying(Array&) const;
-        void applyBeforeSolving(TridiagonalOperator&, Array& rhs) const;
-        void applyAfterSolving(Array&) const;
-        void setTime(Time) {}
+        void applyBeforeApplying(TridiagonalOperator&) const override;
+        void applyAfterApplying(Array&) const override;
+        void applyBeforeSolving(TridiagonalOperator&, Array& rhs) const override;
+        void applyAfterSolving(Array&) const override;
+        void setTime(Time) override {}
+
       private:
         Real value_;
         Side side_;
     };
 
 }
-
-
 
 
 #endif

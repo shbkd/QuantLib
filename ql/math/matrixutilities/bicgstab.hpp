@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -19,14 +19,14 @@
 */
 
 /*! \file bicgstab.hpp
-    \brief bi-conjugated gradient stableized algorithm
+    \brief Biconjugate gradient stabilized method
 */
 
 #ifndef quantlib_bicgstab_hpp
 #define quantlib_bicgstab_hpp
 
 #include <ql/math/array.hpp>
-#include <boost/function.hpp>
+#include <functional>
 
 namespace QuantLib {
 
@@ -38,20 +38,13 @@ namespace QuantLib {
 
     class BiCGstab  {
       public:
-        typedef boost::function1<Disposable<Array> , const Array& > MatrixMult;
-        
-        BiCGstab(const MatrixMult& A, Size maxIter, Real relTol,
-                 const MatrixMult& preConditioner = MatrixMult());
-        
+        typedef std::function<Array(const Array&)> MatrixMult;
+
+        BiCGstab(MatrixMult A, Size maxIter, Real relTol, MatrixMult preConditioner = MatrixMult());
+
         BiCGStabResult solve(const Array& b, const Array& x0 = Array()) const;
         
       protected:
-        /*! \deprecated use Norm2(a).
-                        Deprecated in version 1.11.
-        */
-        QL_DEPRECATED
-        Real norm2(const Array& a) const;
-
         const MatrixMult A_, M_;
         const Size maxIter_;
         const Real relTol_;  

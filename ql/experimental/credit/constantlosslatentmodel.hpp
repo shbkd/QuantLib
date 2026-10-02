@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -140,34 +140,27 @@ namespace QuantLib {
             integralType, nVariables,ini) {}
 
     protected:
-        //Disposable<std::vector<Probability> > probsBeingNthEvent(
+        //std::vector<Probability> probsBeingNthEvent(
         //    Size n, const Date& d) const {
         //    return 
         //      ConstantLossLatentmodel<copulaPolicy>::probsBeingNthEvent(n, d);
         //}
-        Real defaultCorrelation(const Date& d, Size iName, 
-            Size jName) const {
-            return 
-              ConstantLossLatentmodel<copulaPolicy>::defaultCorrelation(d, 
-                iName, jName);
-        }
-        Probability probAtLeastNEvents(Size n, const Date& d) const {
-            return 
-              ConstantLossLatentmodel<copulaPolicy>::probAtLeastNEvents(n, d);
-        }
-        Real expectedRecovery(const Date& d, Size iName, 
-            const DefaultProbKey& k) const {
-                return 
-                    ConstantLossLatentmodel<copulaPolicy>::expectedRecovery(d, 
-                        iName, k);
-        }
-    private:
-        virtual void resetModel() {
-            // update the default latent model we derive from
-            DefaultLatentModel<copulaPolicy>::resetBasket(
-                DefaultLossModel::basket_.currentLink());// forces interface
-        }
+      Real defaultCorrelation(const Date& d, Size iName, Size jName) const override {
+          return ConstantLossLatentmodel<copulaPolicy>::defaultCorrelation(d, iName, jName);
+      }
+      Probability probAtLeastNEvents(Size n, const Date& d) const override {
+          return ConstantLossLatentmodel<copulaPolicy>::probAtLeastNEvents(n, d);
+      }
+      Real expectedRecovery(const Date& d, Size iName, const DefaultProbKey& k) const override {
+          return ConstantLossLatentmodel<copulaPolicy>::expectedRecovery(d, iName, k);
+      }
 
+    private:
+      void resetModel() override {
+          // update the default latent model we derive from
+          DefaultLatentModel<copulaPolicy>::resetBasket(
+              DefaultLossModel::basket_.currentLink()); // forces interface
+      }
     };
 
 }

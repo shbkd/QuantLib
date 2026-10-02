@@ -12,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -28,6 +28,7 @@
 
 #include <ql/payoff.hpp>
 #include <ql/processes/blackscholesprocess.hpp>
+#include <ql/methods/finitedifferences/utilities/fdmquantohelper.hpp>
 #include <ql/methods/finitedifferences/operators/firstderivativeop.hpp>
 #include <ql/methods/finitedifferences/operators/triplebandlinearop.hpp>
 #include <ql/methods/finitedifferences/operators/fdmlinearopcomposite.hpp>
@@ -42,22 +43,20 @@ namespace QuantLib {
             Real strike,
             bool localVol = false,
             Real illegalLocalVolOverwrite = -Null<Real>(),
-            Size direction = 0);
+            Size direction = 0,
+            ext::shared_ptr<FdmQuantoHelper> quantoHelper = ext::shared_ptr<FdmQuantoHelper>());
 
-        Size size() const;
-        void setTime(Time t1, Time t2);
+        Size size() const override;
+        void setTime(Time t1, Time t2) override;
 
-        Disposable<Array> apply(const Array& r) const;
-        Disposable<Array> apply_mixed(const Array& r) const;
-        Disposable<Array> apply_direction(Size direction,
-                                          const Array& r) const;
-        Disposable<Array> solve_splitting(Size direction,
-                                          const Array& r, Real s) const;
-        Disposable<Array> preconditioner(const Array& r, Real s) const;
+        Array apply(const Array& r) const override;
+        Array apply_mixed(const Array& r) const override;
+        Array apply_direction(Size direction, const Array& r) const override;
+        Array solve_splitting(Size direction, const Array& r, Real s) const override;
+        Array preconditioner(const Array& r, Real s) const override;
 
-#if !defined(QL_NO_UBLAS_SUPPORT)
-        Disposable<std::vector<SparseMatrix> > toMatrixDecomp() const;
-#endif
+        std::vector<SparseMatrix> toMatrixDecomp() const override;
+
       private:
         const ext::shared_ptr<FdmMesher> mesher_;
         const ext::shared_ptr<YieldTermStructure> rTS_, qTS_;
@@ -70,6 +69,7 @@ namespace QuantLib {
         const Real strike_;
         const Real illegalLocalVolOverwrite_;
         const Size direction_;
+        const ext::shared_ptr<FdmQuantoHelper> quantoHelper_;
     };
 }
 

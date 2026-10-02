@@ -12,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -24,8 +24,9 @@
 */
 
 #ifndef quantlib_defines_hpp
-/* install-hook */
 #define quantlib_defines_hpp
+
+/* install-hook */
 
 #ifdef _MSC_VER
 /* Microsoft-specific, but needs to be defined before
@@ -37,7 +38,9 @@
 
 #include <boost/config.hpp>
 #include <boost/version.hpp>
-#if BOOST_VERSION < 103900
+#if BOOST_VERSION < 104800
+    // Intentionally reject unsupported Boost versions during preprocessing.
+    // cppcheck-suppress preprocessorErrorDirective
     #error using an old version of Boost, please update.
 #endif
 #if !defined(BOOST_ENABLE_ASSERT_HANDLER)
@@ -50,7 +53,7 @@
    The idea is to provide a hook for defining QL_REAL and at the
    same time including any necessary headers for the new type.
 */
-#define INCLUDE_FILE(F) INCLUDE_FILE__(F)
+#define INCLUDE_FILE(F) INCLUDE_FILE_(F)
 #define INCLUDE_FILE_(F) #F
 #ifdef QL_INCLUDE_FIRST
 #    include INCLUDE_FILE(QL_INCLUDE_FIRST)
@@ -168,7 +171,7 @@
 /*! \def QL_EPSILON
     Defines the machine precision for operations over doubles
 */
-#include <boost/limits.hpp>
+#include <limits>
 // limits used as such
 #define QL_MIN_INTEGER         ((std::numeric_limits<QL_INTEGER>::min)())
 #define QL_MAX_INTEGER         ((std::numeric_limits<QL_INTEGER>::max)())
@@ -176,23 +179,44 @@
 #define QL_MAX_REAL            ((std::numeric_limits<QL_REAL>::max)())
 #define QL_MIN_POSITIVE_REAL   ((std::numeric_limits<QL_REAL>::min)())
 #define QL_EPSILON             ((std::numeric_limits<QL_REAL>::epsilon)())
-// specific values---these should fit into any Integer or Real
-#define QL_NULL_INTEGER        ((std::numeric_limits<int>::max)())
-#define QL_NULL_REAL           ((std::numeric_limits<float>::max)())
 /*! @} */
 
 /*! @}  */
 
 
-// emit warning when using deprecated features
-#if defined(BOOST_MSVC)       // Microsoft Visual C++
-#define QL_DEPRECATED __declspec(deprecated)
-#elif defined(__GNUC__) || defined(__clang__)
-#define QL_DEPRECATED __attribute__((deprecated))
-#else
-// we don't know how to enable it, just define the macro away
-#define QL_DEPRECATED
-#endif
+/*! Once we needed to keep this macro around for compatibility
+    with older compiler.  It's no longer needed.
 
+    \deprecated Use `[[deprecated("message")]]` and suggest an alternative in the message.
+                Deprecated in version 1.44.
+*/
+#define QL_DEPRECATED [[deprecated]]
+
+// emit warning when using deprecated features
+// clang-format off
+#if defined(BOOST_MSVC)       // Microsoft Visual C++
+#    define QL_DEPRECATED_DISABLE_WARNING \
+        __pragma(warning(push))           \
+        __pragma(warning(disable : 4996))
+#    define QL_DEPRECATED_ENABLE_WARNING \
+        __pragma(warning(pop))
+#elif defined(__clang__)
+#    define QL_DEPRECATED_DISABLE_WARNING                                 \
+        _Pragma("clang diagnostic push")                                  \
+        _Pragma("clang diagnostic ignored \"-Wdeprecated-declarations\"")
+#    define QL_DEPRECATED_ENABLE_WARNING \
+        _Pragma("clang diagnostic pop")
+#elif defined(__GNUC__)
+#    define QL_DEPRECATED_DISABLE_WARNING                               \
+        _Pragma("GCC diagnostic push")                                  \
+        _Pragma("GCC diagnostic ignored \"-Wdeprecated-declarations\"")
+#    define QL_DEPRECATED_ENABLE_WARNING \
+        _Pragma("GCC diagnostic pop")
+#else
+// we don't know how to enable it, just define the macros away
+#    define QL_DEPRECATED_DISABLE_WARNING
+#    define QL_DEPRECATED_ENABLE_WARNING
+#endif
+// clang-format on
 
 #endif

@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -39,27 +39,18 @@ namespace QuantLib {
         //@}
         //! \name Inspectors
         //@{
-        Real discountRatio(Size i,
-                           Size j) const;
-        Rate forwardRate(Size i) const;
+        Real discountRatio(Size i, Size j) const override;
+        Rate forwardRate(Size i) const override;
 
-        Rate coterminalSwapRate(Size i) const;
-        Rate coterminalSwapAnnuity(Size numeraire,
-                                   Size i) const;
+        Rate coterminalSwapRate(Size i) const override;
+        Rate coterminalSwapAnnuity(Size numeraire, Size i) const override;
 
-        Rate cmSwapRate(Size i,
-                        Size spanningForwards) const;
-        Rate cmSwapAnnuity(Size numeraire,
-                           Size i,
-                           Size spanningForwards) const;
-        const std::vector<Rate>& forwardRates() const;
-        const std::vector<Rate>& coterminalSwapRates() const;
-        const std::vector<Rate>& cmSwapRates(Size spanningForwards) const;
-        #if defined(QL_USE_STD_UNIQUE_PTR)
-        std::unique_ptr<CurveState> clone() const;
-        #else
-        std::auto_ptr<CurveState> clone() const;
-        #endif
+        Rate cmSwapRate(Size i, Size spanningForwards) const override;
+        Rate cmSwapAnnuity(Size numeraire, Size i, Size spanningForwards) const override;
+        const std::vector<Rate>& forwardRates() const override;
+        const std::vector<Rate>& coterminalSwapRates() const override;
+        const std::vector<Rate>& cmSwapRates(Size spanningForwards) const override;
+        std::unique_ptr<CurveState> clone() const override;
         //@}
       private:
         Size spanningFwds_;

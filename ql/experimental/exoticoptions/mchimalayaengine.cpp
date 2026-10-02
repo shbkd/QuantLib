@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -19,13 +19,13 @@
 
 #include <ql/experimental/exoticoptions/mchimalayaengine.hpp>
 #include <ql/payoff.hpp>
+#include <utility>
 
 namespace QuantLib {
 
-    HimalayaMultiPathPricer::HimalayaMultiPathPricer(
-                                      const ext::shared_ptr<Payoff>& payoff,
-                                      DiscountFactor discount)
-    : payoff_(payoff), discount_(discount) {}
+    HimalayaMultiPathPricer::HimalayaMultiPathPricer(ext::shared_ptr<Payoff> payoff,
+                                                     DiscountFactor discount)
+    : payoff_(std::move(payoff)), discount_(discount) {}
 
     Real HimalayaMultiPathPricer::operator()(const MultiPath& multiPath)
                                                                       const {
@@ -47,6 +47,7 @@ namespace QuantLib {
                     Real yield = price/multiPath[j].front();
                     if (yield >= bestYield) {
                         bestPrice = price;
+                        bestYield = yield;
                         removeAsset = j;
                     }
                 }

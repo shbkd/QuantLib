@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -27,6 +27,7 @@
 
 #include <ql/pricingengines/vanilla/mcvanillaengine.hpp>
 #include <ql/processes/hestonprocess.hpp>
+#include <utility>
 
 namespace QuantLib {
 
@@ -52,7 +53,7 @@ namespace QuantLib {
                                Size maxSamples,
                                BigNatural seed);
       protected:
-        ext::shared_ptr<path_pricer_type> pathPricer() const;
+        ext::shared_ptr<path_pricer_type> pathPricer() const override;
     };
 
     //! Monte Carlo Heston European engine factory
@@ -60,7 +61,7 @@ namespace QuantLib {
               class S = Statistics, class P = HestonProcess>
     class MakeMCEuropeanHestonEngine {
       public:
-        MakeMCEuropeanHestonEngine(const ext::shared_ptr<P>&);
+        explicit MakeMCEuropeanHestonEngine(ext::shared_ptr<P>);
         // named parameters
         MakeMCEuropeanHestonEngine& withSteps(Size steps);
         MakeMCEuropeanHestonEngine& withStepsPerYear(Size steps);
@@ -73,10 +74,10 @@ namespace QuantLib {
         operator ext::shared_ptr<PricingEngine>() const;
       private:
         ext::shared_ptr<P> process_;
-        bool antithetic_;
+        bool antithetic_ = false;
         Size steps_, stepsPerYear_, samples_, maxSamples_;
         Real tolerance_;
-        BigNatural seed_;
+        BigNatural seed_ = 0;
     };
 
 
@@ -85,7 +86,8 @@ namespace QuantLib {
         EuropeanHestonPathPricer(Option::Type type,
                                  Real strike,
                                  DiscountFactor discount);
-        Real operator()(const MultiPath& Multipath) const;
+        Real operator()(const MultiPath& Multipath) const override;
+
       private:
         PlainVanillaPayoff payoff_;
         DiscountFactor discount_;
@@ -120,24 +122,19 @@ namespace QuantLib {
             ext::dynamic_pointer_cast<P>(this->process_);
         QL_REQUIRE(process, "Heston like process required");
 
-        return ext::shared_ptr<
-            typename MCEuropeanHestonEngine<RNG,S,P>::path_pricer_type>(
-                   new EuropeanHestonPathPricer(
+        return ext::make_shared<EuropeanHestonPathPricer>(
                                         payoff->optionType(),
                                         payoff->strike(),
                                         process->riskFreeRate()->discount(
-                                                   this->timeGrid().back())));
+                                                   this->timeGrid().back()));
     }
 
 
-
     template <class RNG, class S, class P>
-    inline MakeMCEuropeanHestonEngine<RNG,S,P>::MakeMCEuropeanHestonEngine(
-                              const ext::shared_ptr<P>& process)
-    : process_(process), antithetic_(false),
-      steps_(Null<Size>()), stepsPerYear_(Null<Size>()),
-      samples_(Null<Size>()), maxSamples_(Null<Size>()),
-      tolerance_(Null<Real>()), seed_(0) {}
+    inline MakeMCEuropeanHestonEngine<RNG, S, P>::MakeMCEuropeanHestonEngine(
+        ext::shared_ptr<P> process)
+    : process_(std::move(process)), steps_(Null<Size>()), stepsPerYear_(Null<Size>()),
+      samples_(Null<Size>()), maxSamples_(Null<Size>()), tolerance_(Null<Real>()) {}
 
     template <class RNG, class S,class P>
     inline MakeMCEuropeanHestonEngine<RNG,S,P>&
@@ -205,14 +202,13 @@ namespace QuantLib {
     operator ext::shared_ptr<PricingEngine>() const {
         QL_REQUIRE(steps_ != Null<Size>() || stepsPerYear_ != Null<Size>(),
                    "number of steps not given");
-        return ext::shared_ptr<PricingEngine>(
-               new MCEuropeanHestonEngine<RNG,S,P>(process_,
+        return ext::make_shared<MCEuropeanHestonEngine<RNG,S,P>>(process_,
                                                    steps_,
                                                    stepsPerYear_,
                                                    antithetic_,
                                                    samples_, tolerance_,
                                                    maxSamples_,
-                                                   seed_));
+                                                   seed_);
     }
 
 

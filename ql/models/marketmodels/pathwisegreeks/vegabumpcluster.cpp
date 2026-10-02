@@ -10,16 +10,17 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include <ql/models/marketmodels/pathwisegreeks/vegabumpcluster.hpp>
 #include <ql/errors.hpp>
 #include <ql/models/marketmodels/evolutiondescription.hpp>
+#include <ql/models/marketmodels/pathwisegreeks/vegabumpcluster.hpp>
+#include <utility>
 #include <valarray>
 
 namespace QuantLib {
@@ -74,8 +75,6 @@ namespace QuantLib {
 
     bool VegaBumpCluster::isCompatible(const ext::shared_ptr<MarketModel>& volStructure) const
     {
-
-
         if (rateEnd_ > volStructure->numberOfRates())
             return false;
 
@@ -87,11 +86,7 @@ namespace QuantLib {
 
         Size firstAliveRate = volStructure->evolution().firstAliveRate()[stepEnd_-1];
 
-        if (rateBegin_ < firstAliveRate) // if the rate has reset before the beginning of the last step of the bump
-            return false;
-
-        return true;
-
+        return rateBegin_ >= firstAliveRate; // if the rate has reset after the beginning of the last step of the bump
     }
 
 
@@ -132,12 +127,13 @@ namespace QuantLib {
     }
 
 
-    VegaBumpCollection::VegaBumpCollection(const std::vector<VegaBumpCluster>& allBumps,  const ext::shared_ptr<MarketModel>& volStructure)
-        : allBumps_(allBumps), associatedVolStructure_(volStructure), checked_(false)
-    {
-        for (Size j=0; j < allBumps_.size(); ++j)
-            QL_REQUIRE(allBumps_[j].isCompatible(associatedVolStructure_),"incompatible bumps passed to VegaBumpCollection");
-
+    VegaBumpCollection::VegaBumpCollection(std::vector<VegaBumpCluster> allBumps,
+                                           ext::shared_ptr<MarketModel> volStructure)
+    : allBumps_(std::move(allBumps)), associatedVolStructure_(std::move(volStructure)),
+      checked_(false) {
+        for (auto& allBump : allBumps_)
+            QL_REQUIRE(allBump.isCompatible(associatedVolStructure_),
+                       "incompatible bumps passed to VegaBumpCollection");
     }
 
 
@@ -158,19 +154,19 @@ namespace QuantLib {
     //    std::fill(model.begin(), model.end(), false);
 
         std::vector<std::valarray<bool> > modelTwo;
+        modelTwo.reserve(associatedVolStructure_->numberOfRates());
         for (Size i=0; i < associatedVolStructure_->numberOfRates(); ++i)
             modelTwo.push_back(model);
 
+        v.reserve(associatedVolStructure_->numberOfSteps());
         for (Size j=0; j < associatedVolStructure_->numberOfSteps(); ++j)
             v.push_back(modelTwo);
 
-        for (Size k=0; k < allBumps_.size(); ++k)
-        {
-            for (Size f=allBumps_[k].factorBegin(); f <  allBumps_[k].factorEnd(); ++f)
-                for (Size r=allBumps_[k].rateBegin(); r <  allBumps_[k].rateEnd(); ++r)
-                    for (Size s= allBumps_[k].stepBegin(); s <  allBumps_[k].stepEnd(); ++s)
+        for (const auto& allBump : allBumps_) {
+            for (Size f = allBump.factorBegin(); f < allBump.factorEnd(); ++f)
+                for (Size r = allBump.rateBegin(); r < allBump.rateEnd(); ++r)
+                    for (Size s = allBump.stepBegin(); s < allBump.stepEnd(); ++s)
                         v[s][r][f] = true;
-
         }
 
         Size numberFailures =0;
@@ -199,25 +195,24 @@ namespace QuantLib {
         //std::fill(model.begin(), model.end(), false);
 
         std::vector<std::valarray<bool> > modelTwo;
+        modelTwo.reserve(associatedVolStructure_->numberOfRates());
         for (Size i=0; i < associatedVolStructure_->numberOfRates(); ++i)
             modelTwo.push_back(model);
 
+        v.reserve(associatedVolStructure_->numberOfSteps());
         for (Size j=0; j < associatedVolStructure_->numberOfSteps(); ++j)
             v.push_back(modelTwo);
 
         Size numberFailures=0;
 
-        for (Size k=0; k < allBumps_.size(); ++k)
-        {
-            for (Size f=allBumps_[k].factorBegin(); f <  allBumps_[k].factorEnd(); ++f)
-                for (Size r=allBumps_[k].rateBegin(); r <  allBumps_[k].rateEnd(); ++r)
-                    for (Size s= allBumps_[k].stepBegin(); s <  allBumps_[k].stepEnd(); ++s)
-                    {
+        for (const auto& allBump : allBumps_) {
+            for (Size f = allBump.factorBegin(); f < allBump.factorEnd(); ++f)
+                for (Size r = allBump.rateBegin(); r < allBump.rateEnd(); ++r)
+                    for (Size s = allBump.stepBegin(); s < allBump.stepEnd(); ++s) {
                         if (v[s][r][f])
                             ++numberFailures;
                         v[s][r][f] = true;
                     }
-
         }
 
         return numberFailures>0;

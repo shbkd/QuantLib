@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -26,12 +26,10 @@
 #define quantlib_optimization_lmdif_hpp
 
 #include <ql/types.hpp>
-#include <boost/function.hpp>
+#include <functional>
 
-namespace QuantLib {
-
-    namespace MINPACK {
-        typedef boost::function<void (int,
+namespace QuantLib::MINPACK {
+        typedef std::function<void (int,
                                       int, 
                                       Real*,
                                       Real*,
@@ -45,12 +43,17 @@ namespace QuantLib {
                    Real* wa1,Real* wa2,Real* wa3,Real* wa4,
                    const LmdifCostFunction& fcn,
                    const LmdifCostFunction& jacFcn);
-        
-        void qrsolv(int n,Real* r,int ldr,int* ipvt,
-                    Real* diag,Real* qtb, Real* x,
-                    Real* sdiag,Real* wa);
+
+        void qrsolv(int n,
+                    Real* r,
+                    int ldr,
+                    const int* ipvt,
+                    const Real* diag,
+                    const Real* qtb,
+                    Real* x,
+                    Real* sdiag,
+                    Real* wa);
         void qrfac(int m,int n,Real* a,int, int pivot,int* ipvt,
                    int,Real* rdiag,Real* acnorm,Real* wa);
     }
-}
 #endif

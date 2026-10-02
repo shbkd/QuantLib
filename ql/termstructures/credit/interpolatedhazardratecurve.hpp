@@ -13,7 +13,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -40,15 +40,14 @@ namespace QuantLib {
         : public HazardRateStructure,
           protected InterpolatedCurve<Interpolator> {
       public:
-        InterpolatedHazardRateCurve(
+        explicit InterpolatedHazardRateCurve(
             const std::vector<Date>& dates,
             const std::vector<Rate>& hazardRates,
             const DayCounter& dayCounter,
             const Calendar& cal = Calendar(),
-            const std::vector<Handle<Quote> >& jumps =
-                                                std::vector<Handle<Quote> >(),
-            const std::vector<Date>& jumpDates = std::vector<Date>(),
-            const Interpolator& interpolator = Interpolator());
+            const std::vector<Handle<Quote> >& jumps = {},
+            const std::vector<Date>& jumpDates = {},
+            const Interpolator& interpolator = {});
         InterpolatedHazardRateCurve(
             const std::vector<Date>& dates,
             const std::vector<Rate>& hazardRates,
@@ -62,7 +61,7 @@ namespace QuantLib {
             const Interpolator& interpolator);
         //! \name TermStructure interface
         //@{
-        Date maxDate() const;
+        Date maxDate() const override;
         //@}
         //! \name other inspectors
         //@{
@@ -75,26 +74,26 @@ namespace QuantLib {
       protected:
         InterpolatedHazardRateCurve(
             const DayCounter&,
-            const std::vector<Handle<Quote> >& jumps = std::vector<Handle<Quote> >(),
-            const std::vector<Date>& jumpDates = std::vector<Date>(),
-            const Interpolator& interpolator = Interpolator());
+            const std::vector<Handle<Quote> >& jumps = {},
+            const std::vector<Date>& jumpDates = {},
+            const Interpolator& interpolator = {});
         InterpolatedHazardRateCurve(
             const Date& referenceDate,
             const DayCounter&,
-            const std::vector<Handle<Quote> >& jumps = std::vector<Handle<Quote> >(),
-            const std::vector<Date>& jumpDates = std::vector<Date>(),
-            const Interpolator& interpolator = Interpolator());
+            const std::vector<Handle<Quote> >& jumps = {},
+            const std::vector<Date>& jumpDates = {},
+            const Interpolator& interpolator = {});
         InterpolatedHazardRateCurve(
             Natural settlementDays,
             const Calendar&,
             const DayCounter&,
-            const std::vector<Handle<Quote> >& jumps = std::vector<Handle<Quote> >(),
-            const std::vector<Date>& jumpDates = std::vector<Date>(),
-            const Interpolator& interpolator = Interpolator());
+            const std::vector<Handle<Quote> >& jumps = {},
+            const std::vector<Date>& jumpDates = {},
+            const Interpolator& interpolator = {});
         //! \name DefaultProbabilityTermStructure implementation
         //@{
-        Real hazardRateImpl(Time) const;
-        Probability survivalProbabilityImpl(Time) const;
+        Real hazardRateImpl(Time) const override;
+        Probability survivalProbabilityImpl(Time) const override;
         //@}
         mutable std::vector<Date> dates_;
       private:
@@ -255,24 +254,12 @@ namespace QuantLib {
         QL_REQUIRE(this->data_.size() == dates_.size(),
                    "dates/data count mismatch");
 
-        this->times_.resize(dates_.size());
-        this->times_[0] = 0.0;
-        for (Size i=1; i<dates_.size(); ++i) {
-            QL_REQUIRE(dates_[i] > dates_[i-1],
-                       "invalid date (" << dates_[i] << ", vs "
-                       << dates_[i-1] << ")");
-            this->times_[i] = dayCounter().yearFraction(dates_[0], dates_[i]);
-            QL_REQUIRE(!close(this->times_[i], this->times_[i-1]),
-                       "two dates correspond to the same time "
-                       "under this curve's day count convention");
+        for (Size i=0; i<dates_.size(); ++i) {
             QL_REQUIRE(this->data_[i] >= 0.0, "negative hazard rate");
         }
 
-        this->interpolation_ =
-            this->interpolator_.interpolate(this->times_.begin(),
-                                            this->times_.end(),
-                                            this->data_.begin());
-        this->interpolation_.update();
+        this->setupTimes(dates_, dates_[0], dayCounter());
+        this->setupInterpolation();
     }
 
 }

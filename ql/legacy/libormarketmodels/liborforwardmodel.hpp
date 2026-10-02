@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -61,14 +61,17 @@ namespace QuantLib {
         virtual ext::shared_ptr<SwaptionVolatilityMatrix>
             getSwaptionVolatilityMatrix() const;
 
-        DiscountFactor discount(Time t) const;
-        Real discountBond(Time now, Time maturity, Array factors) const;
-        Real discountBondOption(Option::Type type, Real strike,
-                                Time maturity, Time bondMaturity) const;
+        DiscountFactor discount(Time t) const override;
+        Real discountBond(Time now, Time maturity, Array factors) const override;
+        Real discountBondOption(Option::Type type,
+                                Real strike,
+                                Time maturity,
+                                Time bondMaturity) const override;
 
-        void setParams(const Array& params);
+        void setParams(const Array& params) override;
+
       protected:
-        Disposable<Array> w_0(Size alpha, Size beta) const;
+        Array w_0(Size alpha, Size beta) const;
 
         std::vector<Real> f_;
         std::vector<Time> accrualPeriod_;

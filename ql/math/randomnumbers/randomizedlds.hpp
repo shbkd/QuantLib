@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -24,8 +24,9 @@
 #ifndef quantlib_randomized_lds_hpp
 #define quantlib_randomized_lds_hpp
 
-#include <ql/math/randomnumbers/randomsequencegenerator.hpp>
 #include <ql/math/randomnumbers/mt19937uniformrng.hpp>
+#include <ql/math/randomnumbers/randomsequencegenerator.hpp>
+#include <utility>
 
 namespace QuantLib {
 
@@ -58,12 +59,12 @@ namespace QuantLib {
     class RandomizedLDS {
       public:
         typedef Sample<std::vector<Real> > sample_type;
-        RandomizedLDS(const LDS& ldsg,
-                      const PRS& prsg);
+        RandomizedLDS(const LDS& ldsg, PRS prsg);
+        // TODO: Review whether this constructor should remain implicit.
         RandomizedLDS(const LDS& ldsg);
-        RandomizedLDS(Size dimensionality,
-                      BigNatural ldsSeed = 0,
-                      BigNatural prsSeed = 0);
+        explicit RandomizedLDS(Size dimensionality,
+                               BigNatural ldsSeed = 0,
+                               BigNatural prsSeed = 0);
         //! returns next sample using a given randomizing vector
         const sample_type& nextSequence() const;
         const sample_type& lastSequence() const {
@@ -84,18 +85,16 @@ namespace QuantLib {
     };
 
     template <class LDS, class PRS>
-    RandomizedLDS<LDS, PRS>::RandomizedLDS(const LDS& ldsg, const PRS& prsg)
-    : ldsg_(ldsg), pristineldsg_(ldsg),
-      prsg_(prsg), dimension_(ldsg_.dimension()),
-      x(std::vector<Real> (dimension_), 1.0), randomizer_(std::vector<Real> (dimension_), 1.0) {
+    RandomizedLDS<LDS, PRS>::RandomizedLDS(const LDS& ldsg, PRS prsg)
+    : ldsg_(ldsg), pristineldsg_(ldsg), prsg_(std::move(prsg)), dimension_(ldsg_.dimension()),
+      x(std::vector<Real>(dimension_), 1.0), randomizer_(std::vector<Real>(dimension_), 1.0) {
 
         QL_REQUIRE(prsg_.dimension()==dimension_,
                    "generator mismatch: "
                    << dimension_ << "-dim low discrepancy "
-                   << "and " << prsg_.dimension() << "-dim pseudo random")
+                   << "and " << prsg_.dimension() << "-dim pseudo random");
 
         randomizer_ = prsg_.nextSequence();
-
     }
 
     template <class LDS, class PRS>

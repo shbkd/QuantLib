@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -52,10 +52,10 @@ namespace QuantLib {
     */
     class Ukraine : public Calendar {
       private:
-        class UseImpl : public Calendar::OrthodoxImpl {
+        class UseImpl final : public Calendar::OrthodoxImpl {
           public:
-            std::string name() const { return "Ukrainian stock exchange"; }
-            bool isBusinessDay(const Date&) const;
+            std::string name() const override { return "Ukrainian stock exchange"; }
+            bool isBusinessDay(const Date&) const override;
         };
       public:
         enum Market { USE    //!< Ukrainian stock exchange

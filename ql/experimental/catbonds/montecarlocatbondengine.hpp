@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -24,6 +24,7 @@
 #ifndef quantlib_montecarlo_catbond_engine_hpp
 #define quantlib_montecarlo_catbond_engine_hpp
 
+#include <ql/optional.hpp>
 #include <ql/experimental/catbonds/catbond.hpp>
 
 namespace QuantLib {
@@ -32,33 +33,31 @@ namespace QuantLib {
         public CatBond::engine
     {
     public:
-        MonteCarloCatBondEngine(
-              const ext::shared_ptr<CatRisk> catRisk,
-              const Handle<YieldTermStructure>& discountCurve =
-                                                Handle<YieldTermStructure>(),
-              boost::optional<bool> includeSettlementDateFlows = boost::none);
-        void calculate() const;
-        Handle<YieldTermStructure> discountCurve() const {
-            return discountCurve_;
-        }
+      explicit MonteCarloCatBondEngine(
+          ext::shared_ptr<CatRisk> catRisk,
+          Handle<YieldTermStructure> discountCurve = Handle<YieldTermStructure>(),
+          const std::optional<bool>& includeSettlementDateFlows = std::nullopt);
+      void calculate() const override;
+      const Handle<YieldTermStructure>& discountCurve() const { return discountCurve_; }
     protected:
-        Real cashFlowRiskyValue(const ext::shared_ptr<CashFlow> cf, 
-                                const NotionalPath& notionalPath) const;
+      Real cashFlowRiskyValue(const ext::shared_ptr<CashFlow>& cf,
+                              const NotionalPath& notionalPath) const;
 
-        Real npv(bool includeSettlementDateFlows, 
-                 Date settlementDate, 
-                 Date npvDate, 
-                 Real& lossProbability, 
-                 Real& exhaustionProbability, 
-                 Real& expectedLoss) const;
+      Real npv(bool includeSettlementDateFlows,
+               Date settlementDate,
+               Date npvDate,
+               Real& lossProbability,
+               Real& exhaustionProbability,
+               Real& expectedLoss) const;
 
-        Real pathNpv(bool includeSettlementDateFlows, 
-                     Date settlementDate, 
-                     const NotionalPath& notionalPath) const;
-      private:
-        ext::shared_ptr<CatRisk> catRisk_;
-        Handle<YieldTermStructure> discountCurve_;
-        boost::optional<bool> includeSettlementDateFlows_;
+      Real pathNpv(bool includeSettlementDateFlows,
+                   Date settlementDate,
+                   const NotionalPath& notionalPath) const;
+
+    private:
+      ext::shared_ptr<CatRisk> catRisk_;
+      Handle<YieldTermStructure> discountCurve_;
+      std::optional<bool> includeSettlementDateFlows_;
     };
 
 }

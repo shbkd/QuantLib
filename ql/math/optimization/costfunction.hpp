@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -27,23 +27,22 @@
 
 #include <ql/math/array.hpp>
 #include <ql/math/matrix.hpp>
-#include <ql/math/functional.hpp>
 
 namespace QuantLib {
 
     //!  Cost function abstract class for optimization problem
     class CostFunction {
       public:
-        virtual ~CostFunction() {}
+        virtual ~CostFunction() = default;
         //! method to overload to compute the cost function value in x
         virtual Real value(const Array& x) const {
             Array v = values(x);
-            std::transform(v.begin(), v.end(), v.begin(), square<Real>());
-            return std::sqrt(std::accumulate(v.begin(), v.end(), 0.0) /
+            std::transform(v.begin(), v.end(), v.begin(), [](Real x) -> Real { return x*x; });
+            return std::sqrt(std::accumulate(v.begin(), v.end(), Real(0.0)) /
                              static_cast<Real>(v.size()));
         }
         //! method to overload to compute the cost function values in x
-        virtual Disposable<Array> values(const Array& x) const =0;
+        virtual Array values(const Array& x) const =0;
 
         //! method to overload to compute grad_f, the first derivative of
         //  the cost function with respect to x
@@ -87,8 +86,8 @@ namespace QuantLib {
 
         //! method to overload to compute J_f, the jacobian of
         // the cost function with respect to x and also the cost function
-        virtual Disposable<Array> valuesAndJacobian(Matrix &jac,
-                                                    const Array &x) const {
+        virtual Array valuesAndJacobian(Matrix &jac,
+                                        const Array &x) const {
             jacobian(jac,x);
             return values(x);
         }
@@ -97,9 +96,19 @@ namespace QuantLib {
         virtual Real finiteDifferenceEpsilon() const { return 1e-8; }
     };
 
+    template <class ValuesFn>
+    class SimpleCostFunction : public CostFunction {
+      public:
+        explicit SimpleCostFunction(ValuesFn values) : values_(std::move(values)) {}
+
+        Array values(const Array& x) const override { return values_(x); }
+      private:
+        ValuesFn values_;
+    };
+
     class ParametersTransformation {
       public:
-        virtual ~ParametersTransformation() {}
+        virtual ~ParametersTransformation() = default;
         virtual Array direct(const Array& x) const = 0;
         virtual Array inverse(const Array& x) const = 0;
     };

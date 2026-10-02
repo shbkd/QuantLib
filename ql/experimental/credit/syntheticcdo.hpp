@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -30,6 +30,7 @@
 
 #include <ql/instrument.hpp>
 #include <ql/default.hpp>
+#include <ql/optional.hpp>
 #include <ql/time/schedule.hpp>
 
 #include <ql/experimental/credit/basket.hpp>
@@ -41,8 +42,8 @@ namespace QuantLib {
 
     //! Synthetic Collateralized Debt Obligation
     /*!
-      The instrument prices a mezzanine CDO tranche with loss given default 
-      between attachment point \f$ D_1\f$ and detachment point 
+      The instrument prices a mezzanine CDO tranche with loss given default
+      between attachment point \f$ D_1\f$ and detachment point
       \f$ D_2 > D_1 \f$.
 
       For purchased protection, the instrument value is given by the difference
@@ -52,12 +53,12 @@ namespace QuantLib {
 
       The protection leg is priced as follows:
 
-      - Build the probability distribution for volume of defaults \f$ L \f$ 
-      (before recovery) or Loss Given Default \f$ LGD = (1-r)\,L \f$ at 
+      - Build the probability distribution for volume of defaults \f$ L \f$
+      (before recovery) or Loss Given Default \f$ LGD = (1-r)\,L \f$ at
       times/dates \f$ t_i, i=1, ..., N\f$ (premium schedule times with
       intermediate steps)
 
-      - Determine the expected value 
+      - Determine the expected value
       \f$ E_i = E_{t_i}\,\left[Pay(LGD)\right] \f$
       of the protection payoff \f$ Pay(LGD) \f$  at each time \f$ t_i\f$ where
       \f[
@@ -75,7 +76,7 @@ namespace QuantLib {
       where \f$ d_i\f$ is the discount factor at time/date \f$ t_i \f$
 
       The premium is paid on the protected notional amount, initially
-      \f$ D_2 - D_1. \f$ This notional amount is reduced by the expected 
+      \f$ D_2 - D_1. \f$ This notional amount is reduced by the expected
       protection
       payments \f$ E_i \f$ at times \f$ t_i, \f$ so that the premium value is
       calculated as
@@ -98,8 +99,6 @@ namespace QuantLib {
       The pricing algorithm allows for varying notional amounts and
       default termstructures of the underlyings.
 
-      \ingroup credit
-
       \todo Investigate and fix cases \f$ E_{i+1} < E_i. \f$
     */
     class SyntheticCDO : public Instrument {
@@ -118,16 +117,16 @@ namespace QuantLib {
         */
         SyntheticCDO (const ext::shared_ptr<Basket>& basket,
                       Protection::Side side,
-                      const Schedule& schedule,
+                      Schedule schedule,
                       Rate upfrontRate,
                       Rate runningRate,
                       const DayCounter& dayCounter,
                       BusinessDayConvention paymentConvention,
-                      boost::optional<Real> notional = boost::none);
+                      std::optional<Real> notional = std::nullopt);
 
         const ext::shared_ptr<Basket>& basket() const { return basket_; }
 
-        bool isExpired () const;
+        bool isExpired() const override;
         Rate fairPremium() const;
         Rate fairUpfrontPremium() const;
         Rate premiumValue () const;
@@ -138,7 +137,7 @@ namespace QuantLib {
           Total outstanding tranche notional, not wiped out
         */
         Real remainingNotional() const;
-        /*! The number of times the contract contains the portfolio tranched 
+        /*! The number of times the contract contains the portfolio tranched
                 notional.
         */
         Real leverageFactor() const {
@@ -149,26 +148,26 @@ namespace QuantLib {
             return ext::dynamic_pointer_cast<FixedRateCoupon>(
                 normalizedLeg_.back())->accrualEndDate();
         }
-        /*! The Gaussian Copula LHP implied correlation that makes the 
+        /*! The Gaussian Copula LHP implied correlation that makes the
             contract zero value. This is for a flat correlation along
             time and portfolio loss level.
         */
         Real implicitCorrelation(const std::vector<Real>& recoveries,
-            const Handle<YieldTermStructure>& discountCurve, 
+            const Handle<YieldTermStructure>& discountCurve,
             Real targetNPV = 0.,
             Real accuracy = 1.0e-3) const;
 
         /*!
           Expected tranche loss for all payment dates
          */
-        Disposable<std::vector<Real> > expectedTrancheLoss() const;
+        std::vector<Real> expectedTrancheLoss() const;
         Size error () const;
 
-        void setupArguments(PricingEngine::arguments*) const;
-        void fetchResults(const PricingEngine::results*) const;
+        void setupArguments(PricingEngine::arguments*) const override;
+        void fetchResults(const PricingEngine::results*) const override;
 
-    private:
-        void setupExpired() const;
+      private:
+        void setupExpired() const override;
 
         ext::shared_ptr<Basket> basket_;
         Protection::Side side_;
@@ -193,7 +192,7 @@ namespace QuantLib {
         arguments() : side(Protection::Side(-1)),
                       upfrontRate(Null<Real>()),
                       runningRate(Null<Real>()) {}
-        void validate() const;
+        void validate() const override;
 
         ext::shared_ptr<Basket> basket;
         Protection::Side side;
@@ -208,23 +207,23 @@ namespace QuantLib {
 
     class SyntheticCDO::results : public Instrument::results {
     public:
-        void reset();
-        Real premiumValue;
-        Real protectionValue;
-        Real upfrontPremiumValue;
-        Real remainingNotional;
-        Real xMin, xMax;
-        Size error;
-        /* Expected tranche losses affecting this tranche coupons. Notice this 
-        number might be below the actual basket losses, since the cdo protection
-        might start after basket inception (forward start CDO)*/
-        std::vector<Real> expectedTrancheLoss;
+      void reset() override;
+      Real premiumValue;
+      Real protectionValue;
+      Real upfrontPremiumValue;
+      Real remainingNotional;
+      Real xMin, xMax;
+      Size error;
+      /* Expected tranche losses affecting this tranche coupons. Notice this
+      number might be below the actual basket losses, since the cdo protection
+      might start after basket inception (forward start CDO)*/
+      std::vector<Real> expectedTrancheLoss;
     };
 
 
     //! CDO base engine
-    class SyntheticCDO::engine : 
-        public GenericEngine<SyntheticCDO::arguments, 
+    class SyntheticCDO::engine :
+        public GenericEngine<SyntheticCDO::arguments,
                              SyntheticCDO::results> { };
 
 }

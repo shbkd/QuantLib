@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -25,8 +25,9 @@
 #ifndef quantlib_generic_model_engine_hpp
 #define quantlib_generic_model_engine_hpp
 
-#include <ql/pricingengine.hpp>
 #include <ql/handle.hpp>
+#include <ql/pricingengine.hpp>
+#include <utility>
 
 namespace QuantLib {
 
@@ -38,9 +39,8 @@ namespace QuantLib {
     class GenericModelEngine
         : public GenericEngine<ArgumentsType, ResultsType> {
       public:
-        explicit GenericModelEngine(
-                         const Handle<ModelType>& model = Handle<ModelType>())
-        : model_(model) {
+        explicit GenericModelEngine(Handle<ModelType> model = Handle<ModelType>())
+        : model_(std::move(model)) {
             this->registerWith(model_);
         }
         explicit GenericModelEngine(const ext::shared_ptr<ModelType>& model)

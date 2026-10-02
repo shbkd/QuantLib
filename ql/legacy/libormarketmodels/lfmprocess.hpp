@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -57,22 +57,19 @@ namespace QuantLib {
     */
     class LiborForwardModelProcess : public StochasticProcess {
       public:
+        LiborForwardModelProcess(Size size, ext::shared_ptr<IborIndex> index);
 
-        LiborForwardModelProcess(Size size,
-                                 const ext::shared_ptr<IborIndex>& index);
-
-        Disposable<Array>  initialValues() const;
-        Disposable<Array>  drift(Time t, const Array& x) const;
-        Disposable<Matrix> diffusion(Time t, const Array& x) const;
-        Disposable<Matrix> covariance(Time t0, const Array& x0, Time dt) const;
-        Disposable<Array>  apply(const Array& x0, const Array& dx) const;
+        Array initialValues() const override;
+        Array drift(Time t, const Array& x) const override;
+        Matrix diffusion(Time t, const Array& x) const override;
+        Matrix covariance(Time t0, const Array& x0, Time dt) const override;
+        Array apply(const Array& x0, const Array& dx) const override;
 
         // implements the predictor-corrector schema
-        Disposable<Array>  evolve(Time t0, const Array& x0,
-                                  Time dt, const Array& dw) const;
+        Array evolve(Time t0, const Array& x0, Time dt, const Array& dw) const override;
 
-        Size size() const;
-        Size factors() const;
+        Size size() const override;
+        Size factors() const override;
 
         ext::shared_ptr<IborIndex> index() const;
         Leg cashFlows(

@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -19,14 +19,15 @@
 
 #include <ql/models/equity/gjrgarchmodel.hpp>
 #include <ql/quotes/simplequote.hpp>
+#include <ql/shared_ptr.hpp>
 
 namespace QuantLib {
 
     class GJRGARCHModel::VolatilityConstraint : public Constraint {
       private:
-        class Impl : public Constraint::Impl {
+        class Impl final : public Constraint::Impl {
           public:
-            bool test(const Array& params) const {
+            bool test(const Array& params) const override {
                 const Real beta  = params[2];
                 const Real gamma = params[3];
 
@@ -57,7 +58,7 @@ namespace QuantLib {
         constraint_ = ext::shared_ptr<Constraint>(
             new CompositeConstraint(*constraint_, VolatilityConstraint()));
 
-        generateArguments();
+        GJRGARCHModel::generateArguments();
 
         registerWith(process_->riskFreeRate());
         registerWith(process_->dividendYield());
@@ -65,13 +66,13 @@ namespace QuantLib {
     }
 
     void GJRGARCHModel::generateArguments() {
-        process_.reset(new GJRGARCHProcess(process_->riskFreeRate(),
+        process_ = ext::make_shared<GJRGARCHProcess>(process_->riskFreeRate(),
                                            process_->dividendYield(),
                                            process_->s0(),
                                            v0(), omega(),
                                            alpha(), beta(),
                                            gamma(), lambda(),
-                                           process_->daysPerYear()));
+                                           process_->daysPerYear());
     }
 }
 

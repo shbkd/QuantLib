@@ -10,17 +10,17 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "twoassetbarrieroption.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
-#include <ql/experimental/exoticoptions/twoassetbarrieroption.hpp>
-#include <ql/experimental/exoticoptions/analytictwoassetbarrierengine.hpp>
+#include <ql/instruments/twoassetbarrieroption.hpp>
+#include <ql/pricingengines/barrier/analytictwoassetbarrierengine.hpp>
 #include <ql/time/calendars/target.hpp>
 #include <ql/time/daycounters/actual360.hpp>
 #include <ql/quotes/simplequote.hpp>
@@ -28,28 +28,28 @@
 using namespace QuantLib;
 using namespace boost::unit_test_framework;
 
-namespace {
+BOOST_FIXTURE_TEST_SUITE(QuantLibTests, TopLevelFixture)
 
-    struct OptionData {
-        Barrier::Type barrierType;
-        Option::Type type;
-        Real barrier;
-        Real strike;
-        Real s1;       // spot
-        Rate q1;       // dividend
-        Volatility v1; // volatility
-        Real s2;
-        Rate q2;
-        Volatility v2;
-        Real correlation;
-        Rate r;        // risk-free rate
-        Real result;   // result
-    };
+BOOST_AUTO_TEST_SUITE(TwoAssetBarrierOptionTests)
 
-}
+struct OptionData {
+    Barrier::Type barrierType;
+    Option::Type type;
+    Real barrier;
+    Real strike;
+    Real s1;       // spot
+    Rate q1;       // dividend
+    Volatility v1; // volatility
+    Real s2;
+    Rate q2;
+    Volatility v2;
+    Real correlation;
+    Rate r;        // risk-free rate
+    Real result;   // result
+};
 
 
-void TwoAssetBarrierOptionTest::testHaugValues() {
+BOOST_AUTO_TEST_CASE(testHaugValues) {
 
     BOOST_TEST_MESSAGE("Testing two-asset barrier options against Haug's values...");
 
@@ -106,31 +106,27 @@ void TwoAssetBarrierOptionTest::testHaugValues() {
                        new AnalyticTwoAssetBarrierEngine(process1, process2,
                                                          Handle<Quote>(rho)));
 
-    for (Size i=0; i<LENGTH(values); i++) {
+    for (auto& value : values) {
 
-        s1->setValue(values[i].s1);
-        q1->setValue(values[i].q1);
-        vol1->setValue(values[i].v1);
+        s1->setValue(value.s1);
+        q1->setValue(value.q1);
+        vol1->setValue(value.v1);
 
-        s2->setValue(values[i].s2);
-        q2->setValue(values[i].q2);
-        vol2->setValue(values[i].v2);
+        s2->setValue(value.s2);
+        q2->setValue(value.q2);
+        vol2->setValue(value.v2);
 
-        rho->setValue(values[i].correlation);
+        rho->setValue(value.correlation);
 
-        r->setValue(values[i].r);
+        r->setValue(value.r);
 
-        ext::shared_ptr<StrikedTypePayoff> payoff(
-                    new PlainVanillaPayoff(values[i].type, values[i].strike));
+        ext::shared_ptr<StrikedTypePayoff> payoff(new PlainVanillaPayoff(value.type, value.strike));
 
-        TwoAssetBarrierOption barrierOption(values[i].barrierType,
-                                            values[i].barrier,
-                                            payoff,
-                                            exercise);
+        TwoAssetBarrierOption barrierOption(value.barrierType, value.barrier, payoff, exercise);
         barrierOption.setPricingEngine(engine);
 
         Real calculated = barrierOption.NPV();
-        Real expected = values[i].result;
+        Real expected = value.result;
         Real error = std::fabs(calculated-expected);
         Real tolerance = 4.0e-3;
         if (error > tolerance) {
@@ -143,8 +139,6 @@ void TwoAssetBarrierOptionTest::testHaugValues() {
     }
 }
 
-test_suite* TwoAssetBarrierOptionTest::suite() {
-    test_suite* suite = BOOST_TEST_SUITE("Two-asset barrier option tests");
-    suite->add(QUANTLIB_TEST_CASE(&TwoAssetBarrierOptionTest::testHaugValues));
-    return suite;
-}
+BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_AUTO_TEST_SUITE_END()

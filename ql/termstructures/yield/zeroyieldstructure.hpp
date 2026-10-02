@@ -12,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -48,22 +48,20 @@ namespace QuantLib {
             constructors.
         */
         //@{
-        ZeroYieldStructure(
-            const DayCounter& dc = DayCounter(),
-            const std::vector<Handle<Quote> >& jumps = std::vector<Handle<Quote> >(),
-            const std::vector<Date>& jumpDates = std::vector<Date>());
-        ZeroYieldStructure(
+        explicit ZeroYieldStructure(
+            const DayCounter& dc = DayCounter());
+        explicit ZeroYieldStructure(
             const Date& referenceDate,
             const Calendar& calendar = Calendar(),
             const DayCounter& dc = DayCounter(),
-            const std::vector<Handle<Quote> >& jumps = std::vector<Handle<Quote> >(),
-            const std::vector<Date>& jumpDates = std::vector<Date>());
+            const std::vector<Handle<Quote> >& jumps = {},
+            const std::vector<Date>& jumpDates = {});
         ZeroYieldStructure(
             Natural settlementDays,
             const Calendar& calendar,
             const DayCounter& dc = DayCounter(),
-            const std::vector<Handle<Quote> >& jumps = std::vector<Handle<Quote> >(),
-            const std::vector<Date>& jumpDates = std::vector<Date>());
+            const std::vector<Handle<Quote> >& jumps = {},
+            const std::vector<Date>& jumpDates = {});
         //@}
       protected:
         /*! \name Calculations
@@ -83,7 +81,7 @@ namespace QuantLib {
         /*! Returns the discount factor for the given date calculating it
             from the zero yield.
         */
-        DiscountFactor discountImpl(Time) const;
+        DiscountFactor discountImpl(Time) const override;
         //@}
     };
 

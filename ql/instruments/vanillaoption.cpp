@@ -12,20 +12,20 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include <ql/instruments/vanillaoption.hpp>
-#include <ql/instruments/impliedvolatility.hpp>
-#include <ql/pricingengines/vanilla/analyticeuropeanengine.hpp>
-#include <ql/pricingengines/vanilla/fdamericanengine.hpp>
-#include <ql/pricingengines/vanilla/fdbermudanengine.hpp>
 #include <ql/exercise.hpp>
-#include <boost/scoped_ptr.hpp>
+#include <ql/instruments/impliedvolatility.hpp>
+#include <ql/instruments/vanillaoption.hpp>
+#include <ql/pricingengines/vanilla/analyticeuropeanengine.hpp>
+#include <ql/pricingengines/vanilla/analyticdividendeuropeanengine.hpp>
+#include <ql/pricingengines/vanilla/fdblackscholesvanillaengine.hpp>
+#include <memory>
 
 namespace QuantLib {
 
@@ -42,6 +42,18 @@ namespace QuantLib {
              Size maxEvaluations,
              Volatility minVol,
              Volatility maxVol) const {
+        return impliedVolatility(targetValue, process, DividendSchedule(),
+                                 accuracy, maxEvaluations, minVol, maxVol);
+    }
+
+    Volatility VanillaOption::impliedVolatility(
+             Real targetValue,
+             const ext::shared_ptr<GeneralizedBlackScholesProcess>& process,
+             const DividendSchedule& dividends,
+             Real accuracy,
+             Size maxEvaluations,
+             Volatility minVol,
+             Volatility maxVol) const {
 
         QL_REQUIRE(!isExpired(), "option expired");
 
@@ -51,16 +63,20 @@ namespace QuantLib {
             detail::ImpliedVolatilityHelper::clone(process, volQuote);
 
         // engines are built-in for the time being
-        boost::scoped_ptr<PricingEngine> engine;
+        std::unique_ptr<PricingEngine> engine;
         switch (exercise_->type()) {
           case Exercise::European:
-            engine.reset(new AnalyticEuropeanEngine(newProcess));
+            if (dividends.empty())
+                engine = std::make_unique<AnalyticEuropeanEngine>(newProcess);
+            else
+                engine = std::make_unique<AnalyticDividendEuropeanEngine>(newProcess, dividends);
             break;
           case Exercise::American:
-            engine.reset(new FDAmericanEngine<CrankNicolson>(newProcess));
-            break;
           case Exercise::Bermudan:
-            engine.reset(new FDBermudanEngine<CrankNicolson>(newProcess));
+            if (dividends.empty())
+                engine = std::make_unique<FdBlackScholesVanillaEngine>(newProcess);
+            else
+                engine = std::make_unique<FdBlackScholesVanillaEngine>(newProcess, dividends);
             break;
           default:
             QL_FAIL("unknown exercise type");
@@ -74,6 +90,6 @@ namespace QuantLib {
                                                           maxEvaluations,
                                                           minVol, maxVol);
     }
-
+    
 }
 

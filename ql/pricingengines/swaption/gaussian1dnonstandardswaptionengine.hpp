@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -90,13 +90,41 @@ namespace QuantLib {
                 registerWith(discountCurve_);
         }
 
-        void calculate() const;
+        Gaussian1dNonstandardSwaptionEngine(
+            const Handle<Gaussian1dModel> &model,
+            const int integrationPoints = 64, const Real stddevs = 7.0,
+            const bool extrapolatePayoff = true,
+            const bool flatPayoffExtrapolation = false,
+            const Handle<Quote> &oas = Handle<Quote>(), // continuously
+                                                        // compounded w.r.t. yts
+                                                        // daycounter
+            const Handle<YieldTermStructure> &discountCurve =
+                Handle<YieldTermStructure>(),
+            const Probabilities probabilities = None)
+            : BasketGeneratingEngine(model, oas, discountCurve),
+              GenericModelEngine<Gaussian1dModel,
+                                 NonstandardSwaption::arguments,
+                                 NonstandardSwaption::results>(model),
+              integrationPoints_(integrationPoints), stddevs_(stddevs),
+              extrapolatePayoff_(extrapolatePayoff),
+              flatPayoffExtrapolation_(flatPayoffExtrapolation),
+              discountCurve_(discountCurve), oas_(oas),
+              probabilities_(probabilities) {
+
+            if (!oas_.empty())
+                registerWith(oas_);
+
+            if (!discountCurve_.empty())
+                registerWith(discountCurve_);
+        }
+
+        void calculate() const override;
 
       protected:
-        Real underlyingNpv(const Date &expiry, const Real y) const;
-        VanillaSwap::Type underlyingType() const;
-        const Date underlyingLastDate() const;
-        const Disposable<Array> initialGuess(const Date &expiry) const;
+        Real underlyingNpv(const Date& expiry, Real y) const override;
+        Swap::Type underlyingType() const override;
+        const Date underlyingLastDate() const override;
+        const Array initialGuess(const Date& expiry) const override;
 
       private:
         const int integrationPoints_;

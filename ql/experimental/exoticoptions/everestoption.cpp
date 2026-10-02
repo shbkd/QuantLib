@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -37,9 +37,8 @@ namespace QuantLib {
     void EverestOption::setupArguments(PricingEngine::arguments* args) const {
         MultiAssetOption::setupArguments(args);
 
-        EverestOption::arguments* arguments =
-            dynamic_cast<EverestOption::arguments*>(args);
-        QL_REQUIRE(arguments != 0, "wrong argument type");
+        auto* arguments = dynamic_cast<EverestOption::arguments*>(args);
+        QL_REQUIRE(arguments != nullptr, "wrong argument type");
 
         arguments->notional = notional_;
         arguments->guarantee= guarantee_;
@@ -47,10 +46,8 @@ namespace QuantLib {
 
     void EverestOption::fetchResults(const PricingEngine::results* r) const {
         MultiAssetOption::fetchResults(r);
-        const EverestOption::results* results =
-            dynamic_cast<const EverestOption::results*>(r);
-        QL_ENSURE(results != 0,
-                  "no results returned from pricing engine");
+        const auto* results = dynamic_cast<const EverestOption::results*>(r);
+        QL_ENSURE(results != nullptr, "no results returned from pricing engine");
         yield_ = results->yield;
     }
 

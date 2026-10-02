@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -19,48 +19,33 @@
 
 #include <ql/math/ode/adaptiverungekutta.hpp>
 #include <ql/methods/finitedifferences/schemes/methodoflinesscheme.hpp>
-
-#if defined(__GNUC__) && (((__GNUC__ == 4) && (__GNUC_MINOR__ >= 8)) || (__GNUC__ > 4))
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-local-typedefs"
-#endif
-#include <boost/bind.hpp>
-#if defined(__GNUC__) && (((__GNUC__ == 4) && (__GNUC_MINOR__ >= 8)) || (__GNUC__ > 4))
-#pragma GCC diagnostic pop
-#endif
+#include <utility>
 
 namespace QuantLib {
 
-    MethodOfLinesScheme::MethodOfLinesScheme(
-        const Real eps,
-        const Real relInitStepSize,
-        const ext::shared_ptr<FdmLinearOpComposite> & map,
-        const bc_set& bcSet)
-    : dt_(Null<Real>()),
-      eps_(eps),
-      relInitStepSize_(relInitStepSize),
-      map_(map),
-      bcSet_(bcSet) {
-    }
+    MethodOfLinesScheme::MethodOfLinesScheme(const Real eps,
+                                             const Real relInitStepSize,
+                                             ext::shared_ptr<FdmLinearOpComposite> map,
+                                             const bc_set& bcSet)
+    : dt_(Null<Real>()), eps_(eps), relInitStepSize_(relInitStepSize), map_(std::move(map)),
+      bcSet_(bcSet) {}
 
 
-    Disposable<std::vector<Real> >
-    MethodOfLinesScheme::apply(Time t, const std::vector<Real>& u) const {
+    std::vector<Real> MethodOfLinesScheme::apply(Time t, const std::vector<Real>& u) const {
         map_->setTime(t, t + 0.0001);
         bcSet_.applyBeforeApplying(*map_);
 
-        const Array dxdt = -map_->apply(Array(u.begin(), u.end()));
+        const auto dxdt = -map_->apply(Array(u.begin(), u.end()));
 
-        std::vector<Real> retVal(dxdt.begin(), dxdt.end());
-        return retVal;
+        return {dxdt.begin(), dxdt.end()};
     }
 
     void MethodOfLinesScheme::step(array_type& a, Time t) {
         QL_REQUIRE(t-dt_ > -1e-8, "a step towards negative time given");
 
-        const std::vector<Real> v =
+        const auto v =
            AdaptiveRungeKutta<Real>(eps_, relInitStepSize_*dt_)(
-               boost::bind(&MethodOfLinesScheme::apply, this, _1, _2),
+               [&](Time _t, const std::vector<Real>& _u){ return apply(_t, _u); },
                std::vector<Real>(a.begin(), a.end()),
                t, std::max(0.0, t-dt_));
 
@@ -68,7 +53,7 @@ namespace QuantLib {
 
         bcSet_.applyAfterSolving(y);
 
-        a = y;
+        a = std::move(y);
     }
 
     void MethodOfLinesScheme::setStep(Time dt) {

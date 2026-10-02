@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -27,25 +27,22 @@
 namespace QuantLib {
 
     template <>
-    Disposable<Array> FdmAffineModelSwapInnerValue<HullWhite>::getState(
+    Array FdmAffineModelSwapInnerValue<HullWhite>::getState(
         const ext::shared_ptr<HullWhite>& model, Time t,
         const FdmLinearOpIterator& iter) const {
 
-        Array retVal(1, model->dynamics()->shortRate(t,
-                                    mesher_->location(iter, direction_)));
-        return retVal;
+        return { model->dynamics()->shortRate(t, mesher_->location(iter, direction_)) };
     }
 
     template <>
-    Disposable<Array> FdmAffineModelSwapInnerValue<G2>::getState(
+    Array FdmAffineModelSwapInnerValue<G2>::getState(
         const ext::shared_ptr<G2>&, Time,
         const FdmLinearOpIterator& iter) const {
 
-        Array retVal(2);
-        retVal[0] = mesher_->location(iter, direction_);
-        retVal[1] = mesher_->location(iter, direction_+1);
-
-        return retVal;
+        return {
+            mesher_->location(iter, direction_),
+            mesher_->location(iter, direction_+1)
+        };
     }
 
 }

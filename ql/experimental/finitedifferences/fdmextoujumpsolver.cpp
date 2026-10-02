@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -20,26 +20,24 @@
 /*! \file fdmextoujumpsolver.cpp
 */
 
-#include <ql/experimental/processes/extouwithjumpsprocess.hpp>
-#include <ql/methods/finitedifferences/solvers/fdm2dimsolver.hpp>
 #include <ql/experimental/finitedifferences/fdmextoujumpop.hpp>
 #include <ql/experimental/finitedifferences/fdmextoujumpsolver.hpp>
+#include <ql/experimental/processes/extouwithjumpsprocess.hpp>
+#include <ql/methods/finitedifferences/solvers/fdm2dimsolver.hpp>
+#include <utility>
 
 namespace QuantLib {
 
-    FdmExtOUJumpSolver::FdmExtOUJumpSolver(
-            const Handle<ExtOUWithJumpsProcess>& process,
-            const ext::shared_ptr<YieldTermStructure>& rTS,
-            const FdmSolverDesc& solverDesc,
-            const FdmSchemeDesc& schemeDesc) 
-    : process_     (process),
-      rTS_         (rTS),
-      solverDesc_  (solverDesc),
-      schemeDesc_  (schemeDesc) {
-                
+    FdmExtOUJumpSolver::FdmExtOUJumpSolver(Handle<ExtOUWithJumpsProcess> process,
+                                           ext::shared_ptr<YieldTermStructure> rTS,
+                                           FdmSolverDesc solverDesc,
+                                           const FdmSchemeDesc& schemeDesc)
+    : process_(std::move(process)), rTS_(std::move(rTS)), solverDesc_(std::move(solverDesc)),
+      schemeDesc_(schemeDesc) {
+
         registerWith(process_);
     }
-            
+
     void FdmExtOUJumpSolver::performCalculations() const {
         ext::shared_ptr<FdmLinearOpComposite>op(
             new FdmExtOUJumpOp(solverDesc_.mesher, process_.currentLink(),

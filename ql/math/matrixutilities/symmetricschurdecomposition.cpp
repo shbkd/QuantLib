@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -121,8 +121,7 @@ namespace QuantLib {
                       eigenVectors_.column_end(col), eigenVector.begin());
             temp[col] = std::make_pair(diagonal_[col], eigenVector);
         }
-        std::sort(temp.begin(), temp.end(),
-            std::greater<std::pair<Real, std::vector<Real> > >());
+        std::sort(temp.begin(), temp.end(), std::greater<>());
         Real maxEv = temp[0].first;
         for (col=0; col<size; col++) {
             // check for round-off errors

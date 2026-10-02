@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -245,6 +245,9 @@ namespace QuantLib {
                 || (d == 25 && m == May)
                 // Tuen Ng festival
                 || (d == 20 && m == June)
+                // The 70th anniversary day of the victory of the Chinese 
+                // people's war of resistance against Japanese aggression
+                || (d == 3 && m == September)
                 // Mid-autumn festival
                 || (d == 28 && m == September)
                 // Chung Yeung festival
@@ -324,6 +327,105 @@ namespace QuantLib {
                // Chung Yeung festival
                || (d == 26 && m == October))
                return false;
+        }
+
+        // data from https://www.hkex.com.hk/-/media/hkex-market/services/circulars-and-notices/participant-and-members-circulars/sehk/2020/ce_sehk_ct_038_2020.pdf
+        if (y == 2021)
+        {
+            if (// Lunar New Year
+                ((d == 12 || d == 15) && m == February)
+                // Ching Ming Festival
+                || (d == 5 && m == April)
+                // Buddha's birthday
+                || (d == 19 && m == May)
+                // Tuen Ng festival
+                || (d == 14 && m == June)
+                // Mid-autumn festival
+                || (d == 22 && m == September)
+                // Chung Yeung festival
+                || (d == 14 && m == October))
+                return false;
+        }
+
+        // data from https://www.hkex.com.hk/-/media/HKEX-Market/Services/Circulars-and-Notices/Participant-and-Members-Circulars/SEHK/2021/ce_SEHK_CT_082_2021.pdf
+        if (y == 2022)
+        {
+            if (// Lunar New Year
+                ((d >= 1 && d <= 3) && m == February)
+                // Ching Ming Festival
+                || (d == 5 && m == April)
+                // Buddha's birthday
+                || (d == 9 && m == May)
+                // Tuen Ng festival
+                || (d == 3 && m == June)
+                // Mid-autumn festival
+                || (d == 12 && m == September)
+                // Chung Yeung festival
+                || (d == 4 && m == October))
+                return false;
+        }
+
+        // data from https://www.hkex.com.hk/-/media/HKEX-Market/Services/Circulars-and-Notices/Participant-and-Members-Circulars/SEHK/2022/ce_SEHK_CT_058_2022.pdf
+        if (y == 2023)
+        {
+            if (// Lunar New Year
+                ((d >= 23 && d <= 25) && m == January)
+                // Ching Ming Festival
+                || (d == 5 && m == April)
+                // Buddha's birthday
+                || (d == 26 && m == May)
+                // Tuen Ng festival
+                || (d == 22 && m == June)
+                // Chung Yeung festival
+                || (d == 23 && m == October))
+                return false;
+        }
+
+        // data from https://www.hkex.com.hk/-/media/HKEX-Market/Services/Circulars-and-Notices/Participant-and-Members-Circulars/SEHK/2023/ce_SEHK_CT_079_2023.pdf
+        if (y == 2024) {
+            if (// Lunar New Year
+                ((d == 12 || d == 13) && m == February)
+                // Ching Ming Festival
+                || (d == 4 && m == April)
+                // Buddha's birthday
+                || (d == 15 && m == May)
+                // Tuen Ng festival
+                || (d == 10 && m == June)
+                // Mid-autumn festival
+                || (d == 18 && m == September)
+                // Chung Yeung festival
+                || (d == 11 && m == October))
+                return false;
+        }
+
+        // data from https://www.hkex.com.hk/-/media/HKEX-Market/Services/Circulars-and-Notices/Participant-and-Members-Circulars/SEHK/2024/ce_SEHK_CT_063_2024.pdf
+        if (y == 2025) {
+            if (// Lunar New Year
+                ((d >= 29 && d <= 31) && m == January)
+                // Ching Ming Festival
+                || (d == 4 && m == April)
+                // Buddha's birthday
+                || (d == 5 && m == May)
+                // Mid-autumn festival
+                || (d == 7 && m == October)
+                // Chung Yeung festival
+                || (d == 29 && m == October))
+                return false;
+        }
+
+        // data from https://www.gov.hk/en/about/abouthk/holiday/2026.htm
+        if (y == 2026) {
+            if (// Lunar New Year
+                ((d >= 17 && d <= 19) && m == February)
+                // The day following Easter Monday
+                || (d == 7 && m == April)
+                // Buddha's birthday
+                || (d == 25 && m == May)
+                // Tuen Ng festival
+                || (d == 19 && m == June)
+                // Chung Yeung festival
+                || (d == 19 && m == October))
+                return false;
         }
 
         return true;

@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -34,7 +34,7 @@ namespace QuantLib {
 
     class MarketModelExerciseValue {
       public:
-        virtual ~MarketModelExerciseValue() {}
+        virtual ~MarketModelExerciseValue() = default;
         virtual Size numberOfExercises() const = 0;
         // including any time at which state should be updated
         virtual const EvolutionDescription& evolution() const = 0;
@@ -43,13 +43,8 @@ namespace QuantLib {
         virtual void reset() = 0;
         // whether or not evolution times are exercise times
         virtual std::valarray<bool> isExerciseTime() const = 0;
-        virtual MarketModelMultiProduct::CashFlow value(
-                                               const CurveState&) const = 0;
-        #if defined(QL_USE_STD_UNIQUE_PTR)
+        virtual MarketModelMultiProduct::CashFlow value(const CurveState&) const = 0;
         virtual std::unique_ptr<MarketModelExerciseValue> clone() const = 0;
-        #else
-        virtual std::auto_ptr<MarketModelExerciseValue> clone() const = 0;
-        #endif
     };
 
 }

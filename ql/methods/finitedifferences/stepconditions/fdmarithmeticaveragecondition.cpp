@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -24,18 +24,19 @@
 #include <ql/math/interpolations/cubicinterpolation.hpp>
 #include <ql/methods/finitedifferences/operators/fdmlinearoplayout.hpp>
 #include <ql/methods/finitedifferences/stepconditions/fdmarithmeticaveragecondition.hpp>
+#include <utility>
 
 namespace QuantLib {
 
     FdmArithmeticAverageCondition::FdmArithmeticAverageCondition(
-                                    const std::vector<Time> & averageTimes,
-                                    Real, Size pastFixings,
-                                    const ext::shared_ptr<FdmMesher> & mesher,
-                                    Size equityDirection)
+        std::vector<Time> averageTimes,
+        Real,
+        Size pastFixings,
+        const ext::shared_ptr<FdmMesher>& mesher,
+        Size equityDirection)
     : x_(mesher->layout()->dim()[equityDirection]),
       a_(mesher->layout()->dim()[equityDirection == 0 ? 1 : 0]),
-      averageTimes_(averageTimes),
-      pastFixings_(pastFixings), mesher_(mesher),
+      averageTimes_(std::move(averageTimes)), pastFixings_(pastFixings), mesher_(mesher),
       equityDirection_(equityDirection) {
 
         QL_REQUIRE(mesher->layout()->dim().size()==2, "2D allowed only");
@@ -56,7 +57,10 @@ namespace QuantLib {
     }
 
     void FdmArithmeticAverageCondition::applyTo(Array& a, Time t) const {
-        const std::vector<Time>::const_iterator iter
+        QL_REQUIRE(mesher_->layout()->size() == a.size(),
+                   "inconsistent array dimensions");
+
+        const auto iter
             = std::find(averageTimes_.begin(), averageTimes_.end(), t);
         const Size nTimes
             = std::count(averageTimes_.begin(), averageTimes_.end(), t);

@@ -12,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -30,10 +30,7 @@ namespace QuantLib {
         const ext::shared_ptr<FdmMesher>& mesher)
     : TripleBandLinearOp(direction, mesher) {
 
-        const ext::shared_ptr<FdmLinearOpLayout> layout = mesher->layout();
-        const FdmLinearOpIterator endIter = layout->end();
-
-        for (FdmLinearOpIterator iter = layout->begin(); iter!=endIter; ++iter) {
+        for (const auto& iter : *mesher->layout()) {
             const Size i = iter.index();
             const Real hm = mesher->dminus(iter, direction_);
             const Real hp = mesher->dplus(iter, direction_);
@@ -43,7 +40,7 @@ namespace QuantLib {
             const Real zetap1 = hp*(hm+hp);
 
             const Size co = iter.coordinates()[direction_];
-            if (co == 0 || co == layout->dim()[direction]-1) {
+            if (co == 0 || co == mesher->layout()->dim()[direction]-1) {
                 lower_[i] = diag_[i] = upper_[i] = 0.0;
             }
             else {

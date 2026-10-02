@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -23,8 +23,10 @@
 
 #include <ql/processes/blackscholesprocess.hpp>
 #include <ql/termstructures/yieldtermstructure.hpp>
+#include <ql/termstructures/yield/quantotermstructure.hpp>
 #include <ql/termstructures/volatility/equityfx/blackconstantvol.hpp>
 #include <ql/math/distributions/normaldistribution.hpp>
+#include <ql/methods/finitedifferences/utilities/fdmquantohelper.hpp>
 #include <ql/methods/finitedifferences/meshers/uniform1dmesher.hpp>
 #include <ql/methods/finitedifferences/meshers/concentrating1dmesher.hpp>
 #include <ql/methods/finitedifferences/meshers/fdmblackscholesmesher.hpp>
@@ -38,37 +40,45 @@ namespace QuantLib {
         Real xMinConstraint, Real xMaxConstraint,
         Real eps, Real scaleFactor,
         const std::pair<Real, Real>& cPoint,
-        const DividendSchedule& dividendSchedule)
+        const DividendSchedule& dividendSchedule,
+        const ext::shared_ptr<FdmQuantoHelper>& fdmQuantoHelper,
+        Real spotAdjustment)
     : Fdm1dMesher(size) {
 
         const Real S = process->x0();
         QL_REQUIRE(S > 0.0, "negative or null underlying given");
 
         std::vector<std::pair<Time, Real> > intermediateSteps;
-        for (Size i=0; i < dividendSchedule.size()
-            && process->time(dividendSchedule[i]->date()) <= maturity; ++i)
-            intermediateSteps.push_back(
-                std::make_pair(
-                    process->time(dividendSchedule[i]->date()),
-                    dividendSchedule[i]->amount()
-                ) );
+        for (const auto& i : dividendSchedule) {
+            const Time t = process->time(i->date());
+            if (t <= maturity && t >= 0.0)
+                intermediateSteps.emplace_back(process->time(i->date()), i->amount());
+        }
 
-        const Size intermediateTimeSteps = std::max<Size>(2, 24.0*maturity);
+        const Size intermediateTimeSteps = std::max<Size>(2, Size(24.0*maturity));
         for (Size i=0; i < intermediateTimeSteps; ++i)
-            intermediateSteps.push_back(
-                std::make_pair((i+1)*(maturity/intermediateTimeSteps), 0.0));
+            intermediateSteps.emplace_back((i + 1) * (maturity / intermediateTimeSteps), 0.0);
 
         std::sort(intermediateSteps.begin(), intermediateSteps.end());
 
         const Handle<YieldTermStructure> rTS = process->riskFreeRate();
-        const Handle<YieldTermStructure> qTS = process->dividendYield();
+
+        const Handle<YieldTermStructure> qTS =
+            (fdmQuantoHelper) != nullptr ?
+                Handle<YieldTermStructure>(ext::make_shared<QuantoTermStructure>(
+                    process->dividendYield(), process->riskFreeRate(),
+                    Handle<YieldTermStructure>(fdmQuantoHelper->fTS_), process->blackVolatility(),
+                    strike, Handle<BlackVolTermStructure>(fdmQuantoHelper->fxVolTS_),
+                    fdmQuantoHelper->exchRateATMlevel_, fdmQuantoHelper->equityFxCorrelation_)) :
+                process->dividendYield();
 
         Time lastDivTime = 0.0;
-        Real fwd = S, mi = S, ma = S;
+        Real fwd = S + spotAdjustment;
+        Real mi = fwd, ma = fwd;
 
-        for (Size i=0; i < intermediateSteps.size(); ++i) {
-            const Time divTime = intermediateSteps[i].first;
-            const Real divAmount = intermediateSteps[i].second;
+        for (auto& intermediateStep : intermediateSteps) {
+            const Time divTime = intermediateStep.first;
+            const Real divAmount = intermediateStep.second;
 
             fwd = fwd / rTS->discount(divTime) * rTS->discount(lastDivTime)
                       * qTS->discount(divTime) / qTS->discount(lastDivTime);

@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -55,6 +55,7 @@ namespace QuantLib {
         class arguments;
         class results;
         class engine;
+
         //! \name Inspectors
         //@{
         //! return the bond's put/call schedule
@@ -62,6 +63,7 @@ namespace QuantLib {
             return putCallSchedule_;
         }
         //@}
+
         //! \name Calculations
         //@{
         //! returns the Black implied forward yield volatility
@@ -70,7 +72,7 @@ namespace QuantLib {
             schedules
         */
         Volatility impliedVolatility(
-                              Real targetValue,
+                              const Bond::Price& targetPrice,
                               const Handle<YieldTermStructure>& discountCurve,
                               Real accuracy,
                               Size maxEvaluations,
@@ -78,7 +80,7 @@ namespace QuantLib {
                               Volatility maxVol) const;
 
         //! Calculate the Option Adjusted Spread (OAS)
-        /*! Calculates the spread that needs to be added to the the
+        /*! Calculates the spread that needs to be added to the
             reference curve so that the theoretical model value
             matches the marketPrice.
 
@@ -123,59 +125,35 @@ namespace QuantLib {
                                 Frequency frequency,
                                 Real bump=2e-4);
         //@}
-        virtual void setupArguments(PricingEngine::arguments*) const {}
+
+        void setupArguments(PricingEngine::arguments* args) const override;
 
       protected:
         CallableBond(Natural settlementDays,
-                     const Schedule& schedule,
-                     const DayCounter& paymentDayCounter,
+                     const Date& maturityDate,
+                     const Calendar& calendar,
+                     DayCounter paymentDayCounter,
+                     Real faceAmount,
                      const Date& issueDate = Date(),
-                     const CallabilitySchedule& putCallSchedule
-                                                     = CallabilitySchedule());
+                     CallabilitySchedule putCallSchedule = CallabilitySchedule());
 
         DayCounter paymentDayCounter_;
         Frequency frequency_;
         CallabilitySchedule putCallSchedule_;
-        //! must be set by derived classes for impliedVolatility() to work
-        mutable ext::shared_ptr<PricingEngine> blackEngine_;
-        //! Black fwd yield volatility quote handle to internal blackEngine_
-        mutable RelinkableHandle<Quote> blackVolQuote_;
-        //! Black fwd yield volatility quote handle to internal blackEngine_
-        mutable RelinkableHandle<YieldTermStructure> blackDiscountCurve_;
-        //! helper class for Black implied volatility calculation
+        Real faceAmount_;
+        // helper class for Black implied volatility calculation
         class ImpliedVolHelper;
-        friend class ImpliedVolHelper;
-        class ImpliedVolHelper {
-          public:
-            ImpliedVolHelper(const CallableBond& bond,
-                             Real targetValue);
-            Real operator()(Volatility x) const;
-          private:
-            ext::shared_ptr<PricingEngine> engine_;
-            Real targetValue_;
-            ext::shared_ptr<SimpleQuote> vol_;
-            const Instrument::results* results_;
-        };
-        //! Helper class for option adjusted spread calculations
+        // helper class for option adjusted spread calculations
         class NPVSpreadHelper;
-        friend class NPVSpreadHelper;
-        class NPVSpreadHelper :
-            public std::unary_function<Real, Real>
-        {
-        public:
-            explicit NPVSpreadHelper(CallableBond& bond);
-            Real operator()(Spread x) const;
-        private:
-            CallableBond& bond_;
-            const Instrument::results* results_;
-        };
+
     };
 
     class CallableBond::arguments : public Bond::arguments {
       public:
-        arguments() {}
+        arguments() = default;
         std::vector<Date> couponDates;
         std::vector<Real> couponAmounts;
+        Real faceAmount;
         //! redemption = face amount * redemption / 100.
         Real redemption;
         Date redemptionDate;
@@ -189,7 +167,7 @@ namespace QuantLib {
         //! componded rate added to the model. Currently only applied
         //! by the TreeCallableFixedRateBondEngine
         Real spread;
-        void validate() const;
+        void validate() const override;
     };
 
     //! results for a callable bond calculation
@@ -213,27 +191,17 @@ namespace QuantLib {
       public:
         CallableFixedRateBond(Natural settlementDays,
                               Real faceAmount,
-                              const Schedule& schedule,
+                              Schedule schedule,
                               const std::vector<Rate>& coupons,
                               const DayCounter& accrualDayCounter,
-                              BusinessDayConvention paymentConvention
-                                                                  = Following,
+                              BusinessDayConvention paymentConvention = Following,
                               Real redemption = 100.0,
                               const Date& issueDate = Date(),
-                              const CallabilitySchedule& putCallSchedule
-                                                      = CallabilitySchedule());
-
-        virtual void setupArguments(PricingEngine::arguments* args) const;
-
-      private:
-        //! accrued interest used internally, where includeToday = false
-        /*! same as Bond::accruedAmount() but with enable early
-            payments true.  Forces accrued to be calculated in a
-            consistent way for future put/ call dates, which can be
-            problematic in lattice engines when option dates are also
-            coupon dates.
-        */
-        Real accrued(Date settlement) const;
+                              const CallabilitySchedule& putCallSchedule = {},
+                              const Period& exCouponPeriod = Period(),
+                              const Calendar& exCouponCalendar = Calendar(),
+                              BusinessDayConvention exCouponConvention = Unadjusted,
+                              bool exCouponEndOfMonth = false);
     };
 
     //! callable/puttable zero coupon bond
@@ -241,19 +209,17 @@ namespace QuantLib {
 
         \ingroup instruments
     */
-    class CallableZeroCouponBond : public CallableFixedRateBond {
+    class CallableZeroCouponBond : public CallableBond {
       public:
         CallableZeroCouponBond(Natural settlementDays,
                                Real faceAmount,
                                const Calendar& calendar,
                                const Date& maturityDate,
                                const DayCounter& dayCounter,
-                               BusinessDayConvention paymentConvention
-                                                                  = Following,
+                               BusinessDayConvention paymentConvention = Following,
                                Real redemption = 100.0,
                                const Date& issueDate = Date(),
-                               const CallabilitySchedule& putCallSchedule
-                                                     = CallabilitySchedule());
+                               const CallabilitySchedule& putCallSchedule = {});
     };
 
 }

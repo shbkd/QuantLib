@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -21,6 +21,7 @@
 #define quantlib_integral_ntd_engine_hpp
 
 #include <ql/experimental/credit/nthtodefault.hpp>
+#include <utility>
 
 namespace QuantLib {
 
@@ -29,14 +30,13 @@ namespace QuantLib {
     // Varying recoveries allowed, allow now for heterogeneous notionals
     class IntegralNtdEngine : public NthToDefault::engine {
     public:
-        IntegralNtdEngine(const Period& integrationStep,
-            const Handle<YieldTermStructure>& discountCurve)
-        : discountCurve_(discountCurve), 
-          integrationStepSize_(integrationStep)  {}
-        void calculate() const;
+      IntegralNtdEngine(const Period& integrationStep, Handle<YieldTermStructure> discountCurve)
+      : discountCurve_(std::move(discountCurve)), integrationStepSize_(integrationStep) {}
+      void calculate() const override;
+
     protected:
-        Handle<YieldTermStructure> discountCurve_;
-        Period integrationStepSize_;
+      Handle<YieldTermStructure> discountCurve_;
+      Period integrationStepSize_;
     };
 
 }

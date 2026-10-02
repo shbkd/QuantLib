@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -54,10 +54,10 @@ namespace QuantLib {
         : LineSearch(eps), alpha_(alpha), beta_(beta) {}
 
         //! Perform line search
-        Real operator()(Problem& P,             // Optimization problem
+        Real operator()(Problem& P, // Optimization problem
                         EndCriteria::Type& ecType,
                         const EndCriteria&,
-                        const Real t_ini);      // initial value of line-search step
+                        Real t_ini) override; // initial value of line-search step
       private:
         Real alpha_, beta_;
     };

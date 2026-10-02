@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -20,8 +20,8 @@
 /*
  Examples:
   1. Start with 12 worker processes
-     ./quantlib-test-suite --nProc=12 --log_level=message --report_level=short
-                           --build_info=yes
+    ./quantlib-test-suite --log_level=message --report_level=short
+                           --build_info=yes -- --nProc=12
   2. If parameter "--nProc" is omitted then the number
      of worker processes will be equal to the number of CPU cores.
  */
@@ -30,7 +30,9 @@
 #ifndef quantlib_parallel_test_runner_hpp
 #define quantlib_parallel_test_runner_hpp
 
+
 #include <ql/types.hpp>
+#include <ql/errors.hpp>
 
 #ifdef VERSION
 /* This comes from ./configure, and for some reason it interferes with
@@ -38,8 +40,15 @@
 #undef VERSION
 #endif
 
-#include <boost/timer.hpp>
-#include <boost/thread/thread.hpp>
+#if BOOST_VERSION >= 108800
+#include <boost/process/v1/system.hpp>
+#include <boost/process/v1/args.hpp>
+namespace bp = boost::process::v1;
+#else
+#include <boost/process.hpp>
+namespace bp = boost::process;
+#endif
+#include <boost/algorithm/string.hpp>
 #include <boost/interprocess/ipc/message_queue.hpp>
 #include <boost/interprocess/sync/scoped_lock.hpp>
 #include <boost/interprocess/sync/named_mutex.hpp>
@@ -47,27 +56,15 @@
 #define BOOST_TEST_NO_MAIN 1
 #include <boost/test/included/unit_test.hpp>
 
-#include <boost/algorithm/string.hpp>
-#include <boost/lexical_cast.hpp>
-
 #include <map>
 #include <list>
 #include <sstream>
 #include <utility>
 #include <fstream>
-
+#include <chrono>
 #include <string>
-#include <cstring>
-#include <cstdlib>
-
-#ifdef BOOST_MSVC
-#  define BOOST_LIB_NAME boost_system
-#  include <boost/config/auto_link.hpp>
-#  undef BOOST_LIB_NAME
-#  define BOOST_LIB_NAME boost_thread
-#  include <boost/config/auto_link.hpp>
-#  undef BOOST_LIB_NAME
-#endif
+#include <thread>
+#include <limits>
 
 using boost::unit_test::test_results;
 using namespace boost::interprocess;
@@ -75,8 +72,8 @@ using namespace boost::unit_test_framework;
 
 
 namespace {
-    int worker(const std::string& cmd) {
-        return system(cmd.c_str());
+    int worker(const char* exe, const std::vector<std::string>& args) {
+        return bp::system(exe, bp::args=args);
     }
 
     counter_t test_enabled(test_unit_id id) {
@@ -95,8 +92,9 @@ namespace {
 
         bool visit(test_unit const& tu) {
             if (tu.p_parent_id == framework::master_test_suite().p_id) {
-                QL_REQUIRE(!tu.p_name.get().compare("QuantLib test suite"),
-                     "could not find QuantLib test suite");
+                BOOST_TEST_MESSAGE(tu.p_name.get());
+                QL_REQUIRE(!tu.p_name.get().compare("QuantLibTests"),
+                           "could not find QuantLib test suite");
 
                 testSuiteId_ = tu.p_id;
             }
@@ -104,7 +102,7 @@ namespace {
         }
 
         void visit(test_case const& tc) {
-            if (test_enabled(tc.p_id))
+            if (test_enabled(tc.p_id) != 0u)
                 idMap_[tc.p_parent_id].push_back(tc.p_id);
         }
 
@@ -160,7 +158,7 @@ namespace {
 
         for (std::vector<std::string>::const_iterator iter = tok.begin();
             iter != tok.end(); ++iter) {
-            if (iter->length() && iter->compare("Running 1 test case...")) {
+            if ((iter->length() != 0u) && (iter->compare("Running 1 test case...") != 0)) {
                 out << *iter  << std::endl;
             }
         }
@@ -169,13 +167,13 @@ namespace {
         out.rdbuf(s.rdbuf());
     }
 
-	std::ostream& log_stream() {
-	#if BOOST_VERSION < 106200
-		return s_log_impl().stream();
-	#else
-		return s_log_impl().m_log_formatter_data.front().stream();
-	#endif
-	}
+    std::ostream& log_stream() {
+    #if BOOST_VERSION < 106200
+        return s_log_impl().stream();
+    #else
+        return s_log_impl().m_log_formatter_data.front().stream();
+    #endif
+    }
 }
 
 
@@ -183,7 +181,7 @@ test_suite* init_unit_test_suite(int, char* []);
 
 int main( int argc, char* argv[] )
 {
-    typedef QuantLib::Time Time;
+    using QuantLib::Time;
 
     const char* const profileFileName = ".unit_test_profile.txt";
     const char* const testUnitIdQueueName = "test_unit_queue";
@@ -202,22 +200,21 @@ int main( int argc, char* argv[] )
 
             std::ifstream in(profileFileName);
             if (in.good()) {
+                // NOLINTNEXTLINE(readability-implicit-bool-conversion)
                 for (std::string line; std::getline(in, line);) {
                     std::vector<std::string> tok;
-                    boost::split(tok, line, boost::is_any_of(" "));
+                    boost::split(tok, line, boost::is_any_of(":"));
 
                     QL_REQUIRE(tok.size() == 2,
                         "every line should consists of two entries");
-                    runTimeLog[tok[0]] = boost::lexical_cast<Time>(tok[1]);
+                    runTimeLog[tok[0]] = std::stod(tok[1]);
                 }
             }
             in.close();
 
-            unsigned nProc = boost::thread::hardware_concurrency();
+            auto nProc = std::thread::hardware_concurrency();
 
-            std::stringstream cmd;
-            cmd << "\"" << argv[0] << "\" ";
-
+            std::vector<std::string> workerArgs;
             std::vector<char*> localArgs(1, argv[0]);
 
             for( int i = 1; i < argc; ++i ) {
@@ -226,16 +223,17 @@ int main( int argc, char* argv[] )
                 // check for number of processes
                 std::vector<std::string> tok;
                 boost::split(tok, arg, boost::is_any_of("="));
-                if (tok.size() == 2 && tok[0] == "--nProc") {
-                    nProc = boost::lexical_cast<unsigned>(tok[1]);
+                if (tok[0] == "--nProc" && tok.size() == 2) {
+                    nProc = std::stoul(tok[1]);
                 }
-                else if (arg != "--build_info=yes") {
-                    cmd << arg << " ";
+                else if (tok[0] != "--build_info") {
+                    if (tok[0] != "--run_test")
+                        workerArgs.push_back(argv[i]);
                     localArgs.push_back(argv[i]);
                 }
             }
 
-            cmd << clientModeStr;
+            workerArgs.push_back(clientModeStr);
 
             framework::init(init_unit_test_suite,
                             localArgs.size(), &localArgs[0]);
@@ -266,15 +264,14 @@ int main( int argc, char* argv[] )
                 sizeof(RuntimeLog));
 
             // run root test cases in master process
-            const std::list<test_unit_id> qlRoot
-                = (tcc.map().count(tcc.testSuiteId()))
-                    ? tcc.map().find(tcc.testSuiteId())->second
-                    : std::list<test_unit_id>();
+            const std::list<test_unit_id> qlRoot = (tcc.map().count(tcc.testSuiteId())) != 0u ?
+                                                       tcc.map().find(tcc.testSuiteId())->second :
+                                                       std::list<test_unit_id>();
 
             // fork worker processes
-            boost::thread_group threadGroup;
-            for (unsigned i=0; i < nProc; ++i) {
-                threadGroup.create_thread(boost::bind(worker, cmd.str()));
+            std::vector<std::thread> threadGroup;
+            for (unsigned i = 0; i < nProc; ++i) {
+                threadGroup.emplace_back([&]() { worker(argv[0], workerArgs); });
             }
 
             struct mutex_remove {
@@ -305,14 +302,13 @@ int main( int argc, char* argv[] )
                         const std::string name
                             = framework::get(*it, TUT_ANY).p_name;
 
-                        if (runTimeLog.count(name)) {
+                        if (runTimeLog.count(name) != 0u) {
                             testsSortedByRunTime.insert(
                                 std::make_pair(runTimeLog[name], *it));
                         }
                         else {
                             testsSortedByRunTime.insert(
-                                std::make_pair(
-                                    std::numeric_limits<Time>::max(), *it));
+                                std::make_pair((std::numeric_limits<Time>::max)(), *it));
                         }
                     }
                 }
@@ -367,11 +363,13 @@ int main( int argc, char* argv[] )
             out << std::setprecision(6);
             for (std::map<std::string, QuantLib::Time>::const_iterator
                 iter = runTimeLog.begin(); iter != runTimeLog.end(); ++iter) {
-                out << iter->first << " " << iter->second << std::endl;
+                out << iter->first << ":" << iter->second << std::endl;
             }
             out.close();
 
-            threadGroup.join_all();
+            for (auto& thread : threadGroup) {
+                thread.join();
+            }
         }
         else {
             std::stringstream logBuf;
@@ -398,13 +396,12 @@ int main( int argc, char* argv[] )
             message_queue rq(open_only, testResultQueueName);
 
             while (!id.terminate) {
-                boost::timer t;
+                auto startTime = std::chrono::steady_clock::now();
 
                 #if BOOST_VERSION < 106200
                     BOOST_TEST_FOREACH( test_observer*, to,
                         framework::impl::s_frk_state().m_observers )
-                        framework::impl::s_frk_state().m_aux_em.vexecute(
-                            boost::bind( &test_observer::test_start, to, 1 ) );
+                        framework::impl::s_frk_state().m_aux_em.vexecute([&](){ to->test_start(1); });
 
                     framework::impl::s_frk_state().execute_test_tree( id.id );
 
@@ -416,8 +413,10 @@ int main( int argc, char* argv[] )
                     framework::run(id.id, false);
                 #endif
 
+                auto stopTime = std::chrono::steady_clock::now();
+                double T = std::chrono::duration_cast<std::chrono::microseconds>(stopTime - startTime).count() * 1e-6;
                 runTimeLogs.push_back(std::make_pair(
-                    framework::get(id.id, TUT_ANY).p_name, t.elapsed()));
+                    framework::get(id.id, TUT_ANY).p_name, T));
 
                 output_logstream(log_stream(), oldBuf, logBuf);
 
@@ -434,16 +433,19 @@ int main( int argc, char* argv[] )
             output_logstream(log_stream(), oldBuf, logBuf);
             log_stream().rdbuf(oldBuf);
 
-            RuntimeLog log;
-            log.testCaseName[sizeof(log.testCaseName)-1] = '\0';
+            // zero-initialized: the whole struct goes over the queue,
+            // padding and unused buffer tail included.
+            RuntimeLog log = {};
 
             message_queue lq(open_only, testRuntimeLogName);
             for (run_time_list_type::const_iterator iter = runTimeLogs.begin();
                 iter != runTimeLogs.end(); ++iter) {
                 log.time = iter->second;
 
-                std::strncpy(log.testCaseName, iter->first.c_str(),
-                    sizeof(log.testCaseName)-1);
+                const std::string& name = iter->first;
+                const std::string::size_type n =
+                    name.copy(log.testCaseName, sizeof(log.testCaseName)-1);
+                log.testCaseName[n] = '\0';
 
                 lq.send(&log, sizeof(RuntimeLog), 0);
             }

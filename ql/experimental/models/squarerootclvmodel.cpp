@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -26,7 +26,7 @@
 #include <ql/math/integrals/gaussianquadratures.hpp>
 
 #include <ql/experimental/models/squarerootclvmodel.hpp>
-#include <ql/experimental/finitedifferences/gbsmrndcalculator.hpp>
+#include <ql/methods/finitedifferences/utilities/gbsmrndcalculator.hpp>
 
 #include <boost/math/distributions/non_central_chi_squared.hpp>
 
@@ -35,17 +35,14 @@
 namespace QuantLib {
     SquareRootCLVModel::SquareRootCLVModel(
         const ext::shared_ptr<GeneralizedBlackScholesProcess>& bsProcess,
-        const ext::shared_ptr<SquareRootProcess>& sqrtProcess,
-        const std::vector<Date>& maturityDates,
-        Size lagrangeOrder, Real pMax, Real pMin)
-    : pMax_         (pMax),
-      pMin_         (pMin),
-      bsProcess_    (bsProcess),
-      sqrtProcess_  (sqrtProcess),
-      maturityDates_(maturityDates),
-      lagrangeOrder_(lagrangeOrder),
-      rndCalculator_(ext::make_shared<GBSMRNDCalculator>(bsProcess)) {
-    }
+        ext::shared_ptr<SquareRootProcess> sqrtProcess,
+        std::vector<Date> maturityDates,
+        Size lagrangeOrder,
+        Real pMax,
+        Real pMin)
+    : pMax_(pMax), pMin_(pMin), bsProcess_(bsProcess), sqrtProcess_(std::move(sqrtProcess)),
+      maturityDates_(std::move(maturityDates)), lagrangeOrder_(lagrangeOrder),
+      rndCalculator_(ext::make_shared<GBSMRNDCalculator>(bsProcess)) {}
 
     Real SquareRootCLVModel::cdf(const Date& d, Real k) const {
         return rndCalculator_->cdf(k, bsProcess_->time(d));
@@ -73,8 +70,8 @@ namespace QuantLib {
     }
 
 
-    Disposable<Array> SquareRootCLVModel::collocationPointsX(const Date& d)
-    const {
+    Array SquareRootCLVModel::collocationPointsX(const Date& d) const {
+
         const std::pair<Real, Real> p = nonCentralChiSquaredParams(d);
 
         Array x = GaussianQuadrature(lagrangeOrder_,
@@ -97,15 +94,14 @@ namespace QuantLib {
         const Real b = xMin - x.front();
         const Real a = (xMax - xMin)/(x.back() - x.front());
 
-        for (Size i=0, n=x.size(); i < n; ++i) {
-            x[i] = a*x[i] + b;
+        for (Real& i : x) {
+            i = a * i + b;
         }
 
         return x;
     }
 
-    Disposable<Array> SquareRootCLVModel::collocationPointsY(const Date& d)
-    const {
+    Array SquareRootCLVModel::collocationPointsY(const Date& d) const {
 
         const Array x = collocationPointsX(d);
         const std::pair<Real, Real> params = nonCentralChiSquaredParams(d);
@@ -122,13 +118,13 @@ namespace QuantLib {
         return s;
     }
 
-    boost::function<Real(Time, Real)> SquareRootCLVModel::g() const {
+    std::function<Real(Time, Real)> SquareRootCLVModel::g() const {
         calculate();
         return g_;
     }
 
     void SquareRootCLVModel::performCalculations() const {
-        g_ = boost::function<Real(Time, Real)>(MappingFunction(*this));
+        g_ = std::function<Real(Time, Real)>(MappingFunction(*this));
     }
 
     SquareRootCLVModel::MappingFunction::MappingFunction(
@@ -164,7 +160,7 @@ namespace QuantLib {
     }
 
     Real SquareRootCLVModel::MappingFunction::operator()(Time t,Real x) const {
-        const interpl_type::const_iterator ge = interpl.lower_bound(t);
+        const auto ge = interpl.lower_bound(t);
 
         if (close_enough(ge->first, t)) {
             return (*ge->second)(x, true);

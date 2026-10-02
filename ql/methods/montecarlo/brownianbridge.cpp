@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -20,7 +20,7 @@
 // ===========================================================================
 // NOTE: The following copyright notice applies to the original code,
 //
-// Copyright (C) 2002 Peter Jäckel "Monte Carlo Methods in Finance".
+// Copyright (C) 2002 Peter JÃ¤ckel "Monte Carlo Methods in Finance".
 // All rights reserved.
 //
 // Permission to use, copy, modify, and distribute this software is freely
@@ -79,11 +79,11 @@ namespace QuantLib {
         leftWeight_[0] = rightWeight_[0] = 0.0;
         for (Size j=0, i=1; i<size_; ++i) {
             // Find the next unpopulated entry in the map.
-            while (map[j])
+            while (map[j] != 0U)
                 ++j;
             Size k = j;
             // Find the next populated entry in the map from there.
-            while (!map[k])
+            while (map[k] == 0U)
                 ++k;
             // l-1 is now the index of the point to be constructed next.
             Size l = j + ((k-1-j)>>1);

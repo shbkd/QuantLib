@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -57,8 +57,8 @@ namespace QuantLib {
         ext::shared_ptr<LMIntegration> integration_;
     protected:
         //! access to integration:
-        const ext::shared_ptr<LMIntegration>& 
-            integration() const { return integration_; }
+      const ext::shared_ptr<LMIntegration>& integration() const override { return integration_; }
+
     private:
         typedef typename copulaPolicy::initTraits initTraits;
     public:
@@ -68,9 +68,9 @@ namespace QuantLib {
             Real modelA,
             LatentModelIntegrationType::LatentModelIntegrationType integralType,
             const initTraits& ini = initTraits()
-            ); 
+            );
 
-        void resetBasket(const ext::shared_ptr<Basket> basket) const;
+        void resetBasket(const ext::shared_ptr<Basket>& basket) const;
         Probability conditionalDefaultProbability(const Date& date, Size iName,
             const std::vector<Real>& mktFactors) const;
         Probability conditionalDefaultProbability(Probability prob, Size iName,
@@ -133,10 +133,9 @@ namespace QuantLib {
 
     // ------------------------------------------------------------------------
 
-    template<class CP>
-    inline void SpotRecoveryLatentModel<CP>::resetBasket(
-        const ext::shared_ptr<Basket> basket) const 
-    {
+    template <class CP>
+    inline void
+    SpotRecoveryLatentModel<CP>::resetBasket(const ext::shared_ptr<Basket>& basket) const {
         basket_ = basket;
         // in the future change 'size' to 'liveSize'
         QL_REQUIRE(basket_->size() == numNames_, 
@@ -186,7 +185,7 @@ namespace QuantLib {
     {
         Real sumMs = 
             std::inner_product(this->factorWeights_[iName].begin(), 
-                               this->factorWeights_[iName].end(), m.begin(), 0.);
+                               this->factorWeights_[iName].end(), m.begin(), Real(0.));
         Real res = this->cumulativeZ((invCumYProb - sumMs) / 
                 this->idiosyncFctrs_[iName] );
         #if defined(QL_EXTRA_SAFETY_CHECKS)
@@ -237,12 +236,12 @@ namespace QuantLib {
         //Size iRR = iName + basket_->size();// should be live pool
         const Real sumMs =
           std::inner_product(fctrs_[iName].begin(), fctrs_[iName].end(), 
-              mktFactors.begin(), 0.);
+              mktFactors.begin(), Real(0.));
         const Real sumBetaLoss = 
           std::inner_product(fctrs_[iName + numNames_].begin(),
               fctrs_[iName + numNames_].end(),
               fctrs_[iName + numNames_].begin(), 
-              0.);
+              Real(0.));
         return this->cumulativeZ((sumMs + std::sqrt(1.-crossIdiosyncFctrs_[iName])
                  * std::sqrt(1.+modelA_*modelA_) * 
                    invUncondRR
@@ -265,7 +264,7 @@ namespace QuantLib {
                 basket_->defaultKeys()[iName]);
         const Probability pdef = dfts->defaultProbability(d, true);
         // before asking for -\infty
-        if (pdef < 1.e-10) return 0.;
+        if (pdef < 1.e-10) return Real(0.);
 
         Size iRecovery = iName + numNames_;// should be live pool
         return cumulativeY(
@@ -330,15 +329,9 @@ namespace QuantLib {
         Real invRR = inverseCumulativeY(recoveries_[iName], iName + numNames_);
 
         return integratedExpectedValue(
-            boost::function<Real (const std::vector<Real>& v1)>(
-               boost::bind(
-               &SpotRecoveryLatentModel<CP>::conditionalExpLossRRInv,
-               this,
-               invP,
-               invRR,
-               iName,
-               _1)
-              ));
+            [&](const std::vector<Real>& v){
+                return conditionalExpLossRRInv(invP, invRR, iName, v);
+            });
     }
 
     template<class CP>
@@ -368,7 +361,7 @@ namespace QuantLib {
                 \sum_k a^2_{i,k} a^2_{N+i,k}
             */
         {
-            Real cumul = 0.;
+            Real cumul = Real(0.);
             for(Size iB=0; iB<factorWeights[iName].size(); iB++)
                 // actually this size is unique
                 cumul += factorWeights[iName][iB] * 

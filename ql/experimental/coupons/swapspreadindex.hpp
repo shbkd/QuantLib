@@ -8,7 +8,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
 
  This program is distributed in the hope that it will be useful, but
@@ -31,26 +31,26 @@ namespace QuantLib {
       public:
         SwapSpreadIndex(const std::string& familyName,
                         const ext::shared_ptr<SwapIndex>& swapIndex1,
-                        const ext::shared_ptr<SwapIndex>& swapIndex2,
-                        const Real gearing1 = 1.0,
-                        const Real gearing2 = -1.0);
+                        ext::shared_ptr<SwapIndex> swapIndex2,
+                        Real gearing1 = 1.0,
+                        Real gearing2 = -1.0);
 
         //! \name InterestRateIndex interface
         //@{
-        Date maturityDate(const Date& valueDate) const {
+        Date maturityDate(const Date& valueDate) const override {
             QL_FAIL("SwapSpreadIndex does not provide a single maturity date");
         }
-        Rate forecastFixing(const Date& fixingDate) const;
-        Rate pastFixing(const Date& fixingDate) const;
-        bool allowsNativeFixings() { return false; }
+        Rate forecastFixing(const Date& fixingDate) const override;
+        Rate pastFixing(const Date& fixingDate) const override;
+        bool allowsNativeFixings() override { return false; }
         //@}
 
         //! \name Inspectors
         //@{
         ext::shared_ptr<SwapIndex> swapIndex1() { return swapIndex1_; }
         ext::shared_ptr<SwapIndex> swapIndex2() { return swapIndex2_; }
-        Real gearing1() { return gearing1_; }
-        Real gearing2() { return gearing2_; }
+        Real gearing1() const { return gearing1_; }
+        Real gearing2() const { return gearing2_; }
         //@}
 
 

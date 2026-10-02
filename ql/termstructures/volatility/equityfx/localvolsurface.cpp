@@ -10,17 +10,18 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include <ql/termstructures/volatility/equityfx/localvolsurface.hpp>
-#include <ql/termstructures/volatility/equityfx/blackvoltermstructure.hpp>
-#include <ql/termstructures/yieldtermstructure.hpp>
 #include <ql/quotes/simplequote.hpp>
+#include <ql/termstructures/volatility/equityfx/blackvoltermstructure.hpp>
+#include <ql/termstructures/volatility/equityfx/localvolsurface.hpp>
+#include <ql/termstructures/yieldtermstructure.hpp>
+#include <utility>
 
 namespace QuantLib {
 
@@ -45,39 +46,34 @@ namespace QuantLib {
         return blackTS_->maxStrike();
     }
 
-    LocalVolSurface::LocalVolSurface(
-                                 const Handle<BlackVolTermStructure>& blackTS,
-                                 const Handle<YieldTermStructure>& riskFreeTS,
-                                 const Handle<YieldTermStructure>& dividendTS,
-                                 const Handle<Quote>& underlying)
-    : LocalVolTermStructure(blackTS->businessDayConvention(),
-                            blackTS->dayCounter()),
-      blackTS_(blackTS), riskFreeTS_(riskFreeTS), dividendTS_(dividendTS),
-      underlying_(underlying) {
+    LocalVolSurface::LocalVolSurface(const Handle<BlackVolTermStructure>& blackTS,
+                                     Handle<YieldTermStructure> riskFreeTS,
+                                     Handle<YieldTermStructure> dividendTS,
+                                     Handle<Quote> underlying)
+    : LocalVolTermStructure(blackTS->businessDayConvention(), blackTS->dayCounter()),
+      blackTS_(blackTS), riskFreeTS_(std::move(riskFreeTS)), dividendTS_(std::move(dividendTS)),
+      underlying_(std::move(underlying)) {
         registerWith(blackTS_);
         registerWith(riskFreeTS_);
         registerWith(dividendTS_);
         registerWith(underlying_);
     }
 
-    LocalVolSurface::LocalVolSurface(
-                                 const Handle<BlackVolTermStructure>& blackTS,
-                                 const Handle<YieldTermStructure>& riskFreeTS,
-                                 const Handle<YieldTermStructure>& dividendTS,
-                                 Real underlying)
-    : LocalVolTermStructure(blackTS->businessDayConvention(),
-                            blackTS->dayCounter()),
-      blackTS_(blackTS), riskFreeTS_(riskFreeTS), dividendTS_(dividendTS),
-      underlying_(ext::shared_ptr<Quote>(new SimpleQuote(underlying))) {
+    LocalVolSurface::LocalVolSurface(const Handle<BlackVolTermStructure>& blackTS,
+                                     Handle<YieldTermStructure> riskFreeTS,
+                                     Handle<YieldTermStructure> dividendTS,
+                                     Real underlying)
+    : LocalVolTermStructure(blackTS->businessDayConvention(), blackTS->dayCounter()),
+      blackTS_(blackTS), riskFreeTS_(std::move(riskFreeTS)), dividendTS_(std::move(dividendTS)),
+      underlying_(ext::make_shared<SimpleQuote>(underlying)) {
         registerWith(blackTS_);
         registerWith(riskFreeTS_);
         registerWith(dividendTS_);
     }
 
     void LocalVolSurface::accept(AcyclicVisitor& v) {
-        Visitor<LocalVolSurface>* v1 =
-            dynamic_cast<Visitor<LocalVolSurface>*>(&v);
-        if (v1 != 0)
+        auto* v1 = dynamic_cast<Visitor<LocalVolSurface>*>(&v);
+        if (v1 != nullptr)
             v1->visit(*this);
         else
             LocalVolTermStructure::accept(v);
@@ -95,7 +91,7 @@ namespace QuantLib {
         Real w, wp, wm, dwdy, d2wdy2;
         strike = underlyingLevel;
         y = std::log(strike/forwardValue);
-        dy = ((std::fabs(y) > 0.001) ? y*0.0001 : 0.000001);
+        dy = ((std::fabs(y) > 0.001) ? Real(y*0.0001) : 0.000001);
         strikep=strike*std::exp(dy);
         strikem=strike/std::exp(dy);
         w  = blackTS_->blackVariance(t, strike,  true);
@@ -159,4 +155,3 @@ namespace QuantLib {
     }
 
 }
-

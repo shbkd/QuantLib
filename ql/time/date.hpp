@@ -7,6 +7,8 @@
  Copyright (C) 2006 Katiuscia Manzoni
  Copyright (C) 2006 Toyin Akin
  Copyright (C) 2015 Klaus Spanderen
+ Copyright (C) 2020 Leonardo Arcari
+ Copyright (C) 2020 Kline s.r.l.
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -15,7 +17,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -32,13 +34,13 @@
 #include <ql/time/period.hpp>
 #include <ql/time/weekday.hpp>
 #include <ql/utilities/null.hpp>
-#include <boost/cstdint.hpp>
 
 #ifdef QL_HIGH_RESOLUTION_DATE
 #include <boost/date_time/posix_time/ptime.hpp>
 #include <boost/date_time/posix_time/posix_time_duration.hpp>
 #endif
 
+#include <cstdint>
 #include <utility>
 #include <functional>
 #include <string>
@@ -102,7 +104,7 @@ namespace QuantLib {
     typedef boost::posix_time::time_duration::fractional_seconds_type
         Millisecond;
 
-    //! Millisecond number
+    //! Microsecond number
     /*! \ingroup datetime */
     typedef boost::posix_time::time_duration::fractional_seconds_type
         Microsecond;
@@ -123,7 +125,7 @@ namespace QuantLib {
     class Date {
       public:
         //! serial number type
-        typedef boost::int_fast32_t serial_type;
+        typedef std::int_fast32_t serial_type;
         //! \name constructors
         //@{
         //! Default constructor returning a null date.
@@ -205,6 +207,10 @@ namespace QuantLib {
         static Date maxDate();
         //! whether the given year is a leap one
         static bool isLeap(Year y);
+        //! first day of the month to which the given date belongs
+        static Date startOfMonth(const Date& d);
+        //! whether a date is the first day of its month
+        static bool isStartOfMonth(const Date& d);
         //! last day of the month to which the given date belongs
         static Date endOfMonth(const Date& d);
         //! whether a date is the last day of its month
@@ -278,6 +284,29 @@ namespace QuantLib {
     /*! \relates Date */
     bool operator>=(const Date&, const Date&);
 
+    /*!
+      Compute a hash value of @p d.
+
+      This method makes Date hashable via <tt>boost::hash</tt>.
+
+      Example:
+
+      \code{.cpp}
+      #include <unordered_set>
+
+      std::unordered_set<Date> set;
+      Date d = Date(1, Jan, 2020); 
+
+      set.insert(d);
+      assert(set.count(d)); // 'd' was added to 'set'
+      \endcode
+
+      \param [in] d Date to hash
+      \return A hash value of @p d
+      \relates Date
+    */
+    std::size_t hash_value(const Date& d);
+
     /*! \relates Date */
     std::ostream& operator<<(std::ostream&, const Date&);
 
@@ -302,8 +331,7 @@ namespace QuantLib {
         std::ostream& operator<<(std::ostream&, const iso_date_holder&);
 
         struct formatted_date_holder {
-            formatted_date_holder(const Date& d, const std::string& f)
-            : d(d), f(f) {}
+            formatted_date_holder(const Date& d, std::string f) : d(d), f(std::move(f)) {}
             Date d;
             std::string f;
         };
@@ -346,18 +374,20 @@ namespace QuantLib {
 
     }
 
-    //! specialization of Null template for the Date class
-    template <>
-    class Null<Date> {
-      public:
-        Null() {}
-        operator Date() const { return Date(); }
-    };
 
-
-#ifndef QL_HIGH_RESOLUTION_DATE
     // inline definitions
 
+    inline Date Date::startOfMonth(const Date& d) {
+        Month m = d.month();
+        Year y = d.year();
+        return Date(1, m, y);
+    }
+
+    inline bool Date::isStartOfMonth(const Date& d) {
+       return (d.dayOfMonth() == 1);
+    }
+
+#ifndef QL_HIGH_RESOLUTION_DATE
     inline Weekday Date::weekday() const {
         Integer w = serialNumber_ % 7;
         return Weekday(w == 0 ? 7 : w);
@@ -394,7 +424,7 @@ namespace QuantLib {
     inline Date Date::endOfMonth(const Date& d) {
         Month m = d.month();
         Year y = d.year();
-        return Date(monthLength(m, isLeap(y)), m, y);
+        return {monthLength(m, isLeap(y)), m, y};
     }
 
     inline bool Date::isEndOfMonth(const Date& d) {
@@ -406,7 +436,7 @@ namespace QuantLib {
     }
 
     inline Time daysBetween(const Date& d1, const Date& d2) {
-        return Time(d2-d1);
+        return static_cast<Time>(d2-d1);
     }
 
     inline bool operator==(const Date& d1, const Date& d2) {
@@ -433,6 +463,15 @@ namespace QuantLib {
         return (d1.serialNumber() >= d2.serialNumber());
     }
 #endif
+}
+
+namespace std {
+    template<>
+    struct hash<QuantLib::Date> {
+        std::size_t operator()(const QuantLib::Date& d) const {
+            return QuantLib::hash_value(d);
+        }
+    };
 }
 
 #endif

@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -48,7 +48,7 @@ namespace QuantLib {
         Given an integer k it returns its probability in a Binomial
         distribution with parameters p and n.
     */
-    class BinomialDistribution : public std::unary_function<Real,Real> {
+    class BinomialDistribution {
       public:
         BinomialDistribution(Real p, BigNatural n);
         // function
@@ -64,8 +64,7 @@ namespace QuantLib {
         formula here ...
 
     */
-    class CumulativeBinomialDistribution
-    : public std::unary_function<Real,Real> {
+    class CumulativeBinomialDistribution {
       public:
         CumulativeBinomialDistribution(Real p, BigNatural n);
         // function
@@ -142,8 +141,12 @@ namespace QuantLib {
         Real result = (z/(n+1.0/3.0+0.1/(n+1.0)));
         result *= result;
         result = std::exp(-result*(n+1.0/6.0));
-        result = 0.5 + (z>0 ? 1 : -1) * std::sqrt((0.25 * (1.0-result)));
-        return result;
+        Real root = std::sqrt(1.0-result);
+        // 0.5*(1.0-root) rewritten to keep its digits as root nears 1
+        if (z > 0.0)
+            return 0.5*(1.0+root);
+        else
+            return 0.5*result/(1.0+root);
     }
 
 }

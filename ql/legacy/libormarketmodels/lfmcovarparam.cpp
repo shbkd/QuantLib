@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -41,18 +41,16 @@ namespace QuantLib {
         const Matrix m = param_->diffusion(t);
 
         return std::inner_product(m.row_begin(i_), m.row_end(i_),
-                                  m.row_begin(j_), 0.0);
+                                  m.row_begin(j_), Real(0.0));
     }
 
-    Disposable<Matrix> LfmCovarianceParameterization::covariance(
-                                               Time t, const Array& x) const {
+    Matrix LfmCovarianceParameterization::covariance(Time t, const Array& x) const {
         Matrix sigma = this->diffusion(t, x);
         Matrix result = sigma*transpose(sigma);
         return result;
     }
 
-    Disposable<Matrix> LfmCovarianceParameterization::integratedCovariance(
-                                               Time t, const Array& x) const {
+    Matrix LfmCovarianceParameterization::integratedCovariance(Time t, const Array& x) const {
         // this implementation is not intended for production.
         // because it is too slow and too inefficient.
         // This method is useful for testing and R&D.

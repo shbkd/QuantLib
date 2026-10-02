@@ -14,55 +14,78 @@ this_include_HEADERS = \
     basketoption.hpp \
     bmaswap.hpp \
     bond.hpp \
+    bondforward.hpp \
     callabilityschedule.hpp \
     capfloor.hpp \
     claim.hpp \
     cliquetoption.hpp \
+    complexchooseroption.hpp \
     compositeinstrument.hpp \
-    cpiswap.hpp \
+    compoundoption.hpp \
     cpicapfloor.hpp \
+    cpiswap.hpp \
     creditdefaultswap.hpp \
-	dividendbarrieroption.hpp \
+    crosscurrencyswap.hpp \
+    constnotionalcrosscurrencybasisswap.hpp \
+    constnotionalcrosscurrencyfixedvsfloatingswap.hpp \
+    constnotionalcrosscurrencyswap.hpp \
     dividendschedule.hpp \
-    dividendvanillaoption.hpp \
+    doublebarrieroption.hpp \
+    doublebarriertype.hpp \
+    equitytotalreturnswap.hpp \
     europeanoption.hpp \
-    fixedratebondforward.hpp \
+    fixedvsfloatingswap.hpp \
     floatfloatswap.hpp \
     floatfloatswaption.hpp \
     forward.hpp \
     forwardrateagreement.hpp \
     forwardvanillaoption.hpp \
     futures.hpp \
+    fxforward.hpp \
+    holderextensibleoption.hpp \
     impliedvolatility.hpp \
     inflationcapfloor.hpp \
     lookbackoption.hpp \
     makecapfloor.hpp \
     makecds.hpp \
     makecms.hpp \
+    makemultipleresetsswap.hpp \
     makeois.hpp \
     makeswaption.hpp \
     makevanillaswap.hpp \
     makeyoyinflationcapfloor.hpp \
+    margrabeoption.hpp \
     multiassetoption.hpp \
+    multipleresetsswap.hpp \
     nonstandardswap.hpp \
     nonstandardswaption.hpp \
     oneassetoption.hpp \
     overnightindexedswap.hpp \
+    overnightindexfuture.hpp \
+    partialtimebarrieroption.hpp \
     payoffs.hpp \
+    perpetualfutures.hpp \
     quantobarrieroption.hpp \
     quantoforwardvanillaoption.hpp \
     quantovanillaoption.hpp \
+    simplechooseroption.hpp \
+    simplifynotificationgraph.hpp \
+    softbarrieroption.hpp \
     stickyratchet.hpp \
     stock.hpp \
     swap.hpp \
     swaption.hpp \
+    twoassetbarrieroption.hpp \
+    twoassetcorrelationoption.hpp \
     vanillaoption.hpp \
-	vanillastorageoption.hpp \
-	vanillaswingoption.hpp \
+    vanillastorageoption.hpp \
     vanillaswap.hpp \
+    vanillaswingoption.hpp \
     varianceswap.hpp \
+    writerextensibleoption.hpp \
     yearonyearinflationswap.hpp \
-    zerocouponinflationswap.hpp
+    zerocouponinflationswap.hpp \
+    zerocouponswap.hpp
 
 cpp_files = \
     asianoption.cpp \
@@ -73,52 +96,74 @@ cpp_files = \
     basketoption.cpp \
     bmaswap.cpp \
     bond.cpp \
+    bondforward.cpp \
     capfloor.cpp \
     claim.cpp \
     cliquetoption.cpp \
+    complexchooseroption.cpp \
     compositeinstrument.cpp \
-    cpiswap.cpp \
+    compoundoption.cpp \
     cpicapfloor.cpp \
+    cpiswap.cpp \
     creditdefaultswap.cpp \
-	dividendbarrieroption.cpp \
-    dividendvanillaoption.cpp \
+    crosscurrencyswap.cpp \
+    constnotionalcrosscurrencybasisswap.cpp \
+    constnotionalcrosscurrencyfixedvsfloatingswap.cpp \
+    doublebarrieroption.cpp \
+    doublebarriertype.cpp \
+    equitytotalreturnswap.cpp \
     europeanoption.cpp \
-    fixedratebondforward.cpp \
+    fixedvsfloatingswap.cpp \
     floatfloatswap.cpp \
     floatfloatswaption.cpp \
     forward.cpp \
     forwardrateagreement.cpp \
     forwardvanillaoption.cpp \
     futures.cpp \
+    fxforward.cpp \
+    holderextensibleoption.cpp \
     impliedvolatility.cpp \
     inflationcapfloor.cpp \
     lookbackoption.cpp \
     makecapfloor.cpp \
     makecds.cpp \
     makecms.cpp \
+    makemultipleresetsswap.cpp \
     makeois.cpp \
     makeswaption.cpp \
     makevanillaswap.cpp \
     makeyoyinflationcapfloor.cpp \
+    margrabeoption.cpp \
     multiassetoption.cpp \
+    multipleresetsswap.cpp \
     nonstandardswap.cpp \
     nonstandardswaption.cpp \
     oneassetoption.cpp \
     overnightindexedswap.cpp \
+    overnightindexfuture.cpp \
+    partialtimebarrieroption.cpp \
     payoffs.cpp \
+    perpetualfutures.cpp \
     quantobarrieroption.cpp \
     quantoforwardvanillaoption.cpp \
     quantovanillaoption.cpp \
+    simplechooseroption.cpp \
+    simplifynotificationgraph.cpp \
+    softbarrieroption.cpp \
     stickyratchet.cpp \
     stock.cpp \
     swap.cpp \
     swaption.cpp \
+    twoassetbarrieroption.cpp \
+    twoassetcorrelationoption.cpp \
     vanillaoption.cpp \
     vanillaswap.cpp \
     vanillaswingoption.cpp \
     varianceswap.cpp \
+    writerextensibleoption.cpp \
     yearonyearinflationswap.cpp \
-    zerocouponinflationswap.cpp
+    zerocouponinflationswap.cpp \
+    zerocouponswap.cpp
 
 if UNITY_BUILD
 
@@ -129,7 +174,7 @@ unity.cpp: Makefile.am
 	echo "/* Add the files to be included into Makefile.am instead. */" >> $@
 	echo >> $@
 	for i in $(cpp_files); do \
-		echo "#include \"$$i\"" >> $@; \
+		echo "#include \"${subdir}/$$i\"" >> $@; \
 	done
 
 EXTRA_DIST = $(cpp_files)
@@ -146,14 +191,14 @@ libInstruments_la_LIBADD = \
 noinst_LTLIBRARIES = libInstruments.la
 
 all.hpp: Makefile.am
-	echo "/* This file is automatically generated; do not edit.     */" > $@
-	echo "/* Add the files to be included into Makefile.am instead. */" >> $@
-	echo >> $@
+	echo "/* This file is automatically generated; do not edit.     */" > ${srcdir}/$@
+	echo "/* Add the files to be included into Makefile.am instead. */" >> ${srcdir}/$@
+	echo >> ${srcdir}/$@
 	for i in $(filter-out all.hpp, $(this_include_HEADERS)); do \
-		echo "#include <${subdir}/$$i>" >> $@; \
+		echo "#include <${subdir}/$$i>" >> ${srcdir}/$@; \
 	done
-	echo >> $@
+	echo >> ${srcdir}/$@
 	subdirs='$(SUBDIRS)'; for i in $$subdirs; do \
-		echo "#include <${subdir}/$$i/all.hpp>" >> $@; \
+		echo "#include <${subdir}/$$i/all.hpp>" >> ${srcdir}/$@; \
 	done
 

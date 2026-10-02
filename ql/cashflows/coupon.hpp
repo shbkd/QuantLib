@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -50,11 +50,11 @@ namespace QuantLib {
                const Date& exCouponDate = Date());
         //! \name Event interface
         //@{
-        Date date() const { return paymentDate_; }
+        Date date() const override { return paymentDate_; }
         //@}
         //! \name CashFlow interface
         //@{
-        Date exCouponDate() const { return exCouponDate_; }
+        Date exCouponDate() const override { return exCouponDate_; }
         //@}
         //! \name Inspectors
         //@{
@@ -84,7 +84,7 @@ namespace QuantLib {
         //@}
         //! \name Visitability
         //@{
-        virtual void accept(AcyclicVisitor&);
+        void accept(AcyclicVisitor&) override;
         //@}
       protected:
         Date paymentDate_;
@@ -92,8 +92,11 @@ namespace QuantLib {
         Date accrualStartDate_,accrualEndDate_, refPeriodStart_,refPeriodEnd_;
         Date exCouponDate_;
         mutable Real accrualPeriod_;
+      private:
+        bool isCoupon() const override { return true; }
     };
 
+    ext::shared_ptr<Coupon> coupon_cast(const ext::shared_ptr<CashFlow>& cf);
 
     // inline definitions
 

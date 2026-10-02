@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -44,7 +44,8 @@ namespace QuantLib {
             the requested seniority.
         */
         virtual bool appliesToSeniority(Seniority) const = 0;
-        virtual ~RecoveryRateModel() {}
+        ~RecoveryRateModel() override = default;
+
       protected:
         /*! Returns Null<Real> if unable to produce a recovery for
             the requested seniority.
@@ -64,18 +65,19 @@ namespace QuantLib {
         explicit ConstantRecoveryModel(const Handle<RecoveryRateQuote>& quote);
         explicit ConstantRecoveryModel(Real recovery,
                                        Seniority sen = NoSeniority);
-        void update() { notifyObservers();}
-        bool appliesToSeniority(Seniority) const {return true;}
+        void update() override { notifyObservers(); }
+        bool appliesToSeniority(Seniority) const override { return true; }
+
       protected:
         /*! Notice the quote's value is returned without a
             check on a match of the seniorties of the
             quote and the request.
         */
-        Real recoveryValueImpl(const Date&,
-                               const DefaultProbKey&) const {
+        Real recoveryValueImpl(const Date&, const DefaultProbKey&) const override {
             // no match on requested seniority, all pass
             return quote_->value();
         }
+
       private:
         Handle<RecoveryRateQuote> quote_;
     };

@@ -12,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -44,11 +44,10 @@ namespace QuantLib {
     public:
         typedef std::list<ext::shared_ptr<StepCondition<Array> > > Conditions;
 
-        FdmStepConditionComposite(
-            const std::list<std::vector<Time> > & stoppingTimes,
-            const Conditions & conditions);
+        FdmStepConditionComposite(const std::list<std::vector<Time> >& stoppingTimes,
+                                  Conditions conditions);
 
-        void applyTo(Array& a, Time t) const;
+        void applyTo(Array& a, Time t) const override;
         const std::vector<Time>& stoppingTimes() const;
         const Conditions& conditions() const;
 

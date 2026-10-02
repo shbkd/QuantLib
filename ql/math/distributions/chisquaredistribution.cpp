@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -90,6 +90,18 @@ namespace QuantLib {
 
     }
 
+    Real NonCentralCumulativeChiSquareSankaranApprox::operator()(Real x) const {
+
+        const Real h = 1-2*(df_+ncp_)*(df_+3*ncp_)/(3*squared(df_+2*ncp_));
+        const Real p = (df_+2*ncp_)/squared(df_+ncp_);
+        const Real m = (h-1)*(1-3*h);
+
+        const Real u= (std::pow(x/(df_+ncp_), h) - (1 + h*p*(h-1-0.5*(2-h)*m*p)))/
+            (h*std::sqrt(2*p)*(1+0.5*m*p));
+
+        return CumulativeNormalDistribution()(u);
+    }
+
     InverseNonCentralCumulativeChiSquareDistribution::
       InverseNonCentralCumulativeChiSquareDistribution(Real df, Real ncp, 
                                              Size maxEvaluations, 
@@ -113,10 +125,9 @@ namespace QuantLib {
         // use a Brent solver for the rest
         Brent solver;
         solver.setMaxEvaluations(evaluations);
-        return solver.solve(compose(subtract<Real>(x),
-                                    nonCentralDist_),
+        return solver.solve([&](Real y) { return nonCentralDist_(y) - x; },
                             accuracy_, 0.75*upper, 
-                            (evaluations == maxEvaluations_)? 0.0: 0.5*upper,
+                            (evaluations == maxEvaluations_)? 0.0: Real(0.5*upper),
                             upper);
     }
 }

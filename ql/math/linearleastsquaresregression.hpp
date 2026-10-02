@@ -13,7 +13,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -28,17 +28,19 @@
 #define quantlib_linear_least_squares_regression_hpp
 
 #include <ql/math/generallinearleastsquares.hpp>
+#include <functional>
+#include <type_traits>
 
 namespace QuantLib {
 
     namespace details {
 
         template <class Container>
-        class LinearFct : public std::unary_function<Real, Container > {
+        class LinearFct {
           public:
             explicit LinearFct(Size i) : i_(i) {}
 
-            inline Real operator()(const Container& x) const {
+            Real operator()(const Container& x) const {
                 return x[i_];
             }
 
@@ -46,44 +48,29 @@ namespace QuantLib {
             const Size i_;
        };
 
-        // 1d implementation (arithmetic types)
-        template <class xContainer, bool>
+        template <class xContainer>
         class LinearFcts {
           public:
             typedef typename xContainer::value_type ArgumentType;
-            LinearFcts (const xContainer &x, Real intercept) {
+            LinearFcts(const xContainer &x, Real intercept) {
                 if (intercept != 0.0)
-                    v.push_back(constant<ArgumentType, Real>(intercept));
-                v.push_back(identity<ArgumentType>());
+                    v.push_back([=](const ArgumentType&){ return intercept; });
+                if constexpr (std::is_arithmetic_v<ArgumentType>) {
+                    v.push_back([](ArgumentType x){ return x; });
+                } else {
+                    Size m = x.begin()->size();
+                    for (Size i = 0; i < m; ++i)
+                        v.push_back(LinearFct<ArgumentType>(i));
+                }
             }
 
-            const std::vector< boost::function1<Real, ArgumentType> > & fcts() {
+            const std::vector< std::function<Real(ArgumentType)> > & fcts() {
                 return v;
             }
-
           private:
-            std::vector< boost::function1<Real, ArgumentType> > v;
+            std::vector< std::function<Real(ArgumentType)> > v;
         };
 
-        // multi-dimensional implementation (container types)
-        template <class xContainer>
-        class LinearFcts<xContainer, false>  {
-          public:
-            typedef typename xContainer::value_type ArgumentType;
-            LinearFcts (const xContainer &x, Real intercept) {
-                if (intercept != 0.0)
-                    v.push_back(constant<ArgumentType, Real>(intercept));
-                Size m = x.begin()->size();
-                for (Size i = 0; i < m; ++i)
-                    v.push_back(LinearFct<ArgumentType>(i));
-            }
-
-            const std::vector< boost::function1<Real, ArgumentType> > & fcts() {
-               return v;
-            }
-          private:
-            std::vector< boost::function1<Real, ArgumentType> > v;
-        };
     }
 
     class LinearRegression : public GeneralLinearLeastSquares {
@@ -103,9 +90,7 @@ namespace QuantLib {
         LinearRegression::LinearRegression(const xContainer& x, 
                                            const yContainer& y, Real intercept) 
     : GeneralLinearLeastSquares(x, y,
-          details::LinearFcts<xContainer, 
-              boost::is_arithmetic<typename xContainer::value_type>::value>
-                                                        (x, intercept).fcts()) {
+          details::LinearFcts<xContainer>(x, intercept).fcts()) {
     }
 
     template <class xContainer, class yContainer, class vContainer> inline
@@ -124,7 +109,7 @@ namespace QuantLib {
         LinearLeastSquaresRegression(
             const std::vector<ArgumentType> & x,
             const std::vector<Real> &         y,
-            const std::vector<boost::function1<Real, ArgumentType> > & v)
+            const std::vector<std::function<Real(ArgumentType)> > & v)
         : GeneralLinearLeastSquares(x, y, v) {
         }
     };

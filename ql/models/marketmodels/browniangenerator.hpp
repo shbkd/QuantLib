@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -29,8 +29,7 @@ namespace QuantLib {
 
     class BrownianGenerator {
       public:
-
-        virtual ~BrownianGenerator() {}
+        virtual ~BrownianGenerator() = default;
 
         virtual Real nextStep(std::vector<Real>&) = 0;
         virtual Real nextPath() = 0;
@@ -41,7 +40,7 @@ namespace QuantLib {
 
     class BrownianGeneratorFactory {
       public:
-        virtual ~BrownianGeneratorFactory() {}
+        virtual ~BrownianGeneratorFactory() = default;
 
         virtual ext::shared_ptr<BrownianGenerator> create(Size factors,
                                                             Size steps) const = 0;

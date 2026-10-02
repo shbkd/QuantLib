@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -19,16 +19,15 @@
 #ifndef quantlib_randomloss_latent_model_hpp
 #define quantlib_randomloss_latent_model_hpp
 
-#include <ql/math/solvers1d/brent.hpp>
 #include <ql/experimental/credit/basket.hpp>
-#include <ql/experimental/math/latentmodel.hpp>
-#include <ql/experimental/math/gaussiancopulapolicy.hpp>
-#include <ql/experimental/math/tcopulapolicy.hpp>
-
 #include <ql/experimental/credit/randomdefaultlatentmodel.hpp>
 #include <ql/experimental/credit/spotlosslatentmodel.hpp> 
-
+#include <ql/experimental/math/gaussiancopulapolicy.hpp>
+#include <ql/experimental/math/latentmodel.hpp>
+#include <ql/experimental/math/tcopulapolicy.hpp>
 #include <ql/math/randomnumbers/mt19937uniformrng.hpp>
+#include <ql/math/solvers1d/brent.hpp>
+#include <cmath>
 
 namespace QuantLib {
 
@@ -39,7 +38,7 @@ namespace QuantLib {
             simEvent(unsigned int n, unsigned int d, Real r) 
             : nameIdx(n), dayFromRef(d), 
                 // truncates the value:
-                compactRR(static_cast<unsigned int>(r/rrGranular+.5)) {}
+              compactRR(std::lround(r/rrGranular)) {}
             unsigned int nameIdx : 12; // can index up to 4095 names
             unsigned int dayFromRef : 12; // can index up to 4095 days = 11 yrs
         private:
@@ -78,7 +77,7 @@ namespace QuantLib {
         // for time inversion:
         Real accuracy_;
     public:
-        RandomLossLM(
+        explicit RandomLossLM(
             const ext::shared_ptr<SpotRecoveryLatentModel<copulaPolicy> >& 
                 copula,
             Size nSims = 0,
@@ -96,7 +95,7 @@ namespace QuantLib {
         // grant access to static polymorphism:
         /* While this works on g++, VC9 refuses to compile it.
         Not completely sure whos right; individually making friends of the 
-        calling members or writting explicitly the derived class T parameters 
+        calling members or writing explicitly the derived class T parameters 
         throws the same errors.
         The access is then open to the member fucntions.
         */
@@ -122,7 +121,7 @@ namespace QuantLib {
        Real getEventRecovery(const defaultSimEvent& evt) const {
             return evt.recovery();
         }
-    protected:
+
         Real latentVarValue(const std::vector<Real>& factorsSample, 
             Size iVar) const {
                 return copula_->latentVarValue(factorsSample, iVar);
@@ -132,18 +131,19 @@ namespace QuantLib {
         Real conditionalRecovery(Real latentVarSample, Size iName, 
             const Date& d) const;
     private:
-        void resetModel() {
-            /* Explore: might save recalculation if the basket is the same 
-            (some situations, like BC or control variates) in that case do not 
-            update, only reset the copula's basket.
-            */
-            copula_->resetBasket(this->basket_.currentLink());
+      void resetModel() override {
+          /* Explore: might save recalculation if the basket is the same
+          (some situations, like BC or control variates) in that case do not
+          update, only reset the copula's basket.
+          */
+          copula_->resetBasket(this->basket_.currentLink());
 
-            QL_REQUIRE(2 * this->basket_->size() == copula_->size(),
-                "Incompatible basket and model sizes.");
-            // invalidate current calculations if any and notify observers
-            LazyObject::update();
-        }
+          QL_REQUIRE(2 * this->basket_->size() == copula_->size(),
+                     "Incompatible basket and model sizes.");
+          // invalidate current calculations if any and notify observers
+          // NOLINTNEXTLINE(bugprone-parent-virtual-call)
+          LazyObject::update();
+      }
         // Default probabilities for each name at the time of the maximun 
         //   horizon date. Cached for perf.
         mutable std::vector<Probability> horizonDefaultPs_;

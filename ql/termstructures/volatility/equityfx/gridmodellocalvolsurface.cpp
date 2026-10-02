@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -23,9 +23,7 @@
 #include <ql/time/calendars/nullcalendar.hpp>
 #include <ql/termstructures/volatility/equityfx/fixedlocalvolsurface.hpp>
 #include <ql/termstructures/volatility/equityfx/gridmodellocalvolsurface.hpp>
-
-#include <boost/bind.hpp>
-
+#include <functional>
 #include <algorithm>
 
 namespace QuantLib {
@@ -58,7 +56,7 @@ namespace QuantLib {
             times_[i] = dayCounter.yearFraction(referenceDate_, dates[i]);
         }
 
-        generateArguments();
+        GridModelLocalVolSurface::generateArguments();
     }
 
     void GridModelLocalVolSurface::update() {
@@ -90,7 +88,7 @@ namespace QuantLib {
 
         std::transform(arguments_.begin(), arguments_.end(),
                        localVolMatrix->begin(),
-                       boost::bind(&Parameter::operator(), _1, 0.0));
+                       [](const Parameter& p) { return p(0.0); });
 
         localVol_ = ext::make_shared<FixedLocalVolSurface>(
                 referenceDate_,

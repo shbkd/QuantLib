@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -51,8 +51,8 @@ namespace QuantLib {
 
         //! \name Instrument interface
         //@{
-        bool isExpired() const;
-        void setupArguments(PricingEngine::arguments*) const;
+        bool isExpired() const override;
+        void setupArguments(PricingEngine::arguments*) const override;
         //@}
         //! \name Inspectors
         //@{
@@ -80,8 +80,8 @@ namespace QuantLib {
         bool knocksOut_;
 
         mutable Real riskyAnnuity_;
-        void setupExpired() const;
-        void fetchResults(const PricingEngine::results*) const;
+        void setupExpired() const override;
+        void fetchResults(const PricingEngine::results*) const override;
     };
 
 
@@ -89,18 +89,18 @@ namespace QuantLib {
     class CdsOption::arguments : public CreditDefaultSwap::arguments,
                                  public Option::arguments {
       public:
-        arguments() {}
+        arguments() = default;
 
         ext::shared_ptr<CreditDefaultSwap> swap;
         bool knocksOut;
-        void validate() const;
+        void validate() const override;
     };
 
     //! %Results from CDS-option calculation
     class CdsOption::results : public Option::results {
       public:
         Real riskyAnnuity;
-        void reset();
+        void reset() override;
     };
 
     //! base class for swaption engines

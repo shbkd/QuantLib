@@ -11,7 +11,7 @@ QuantLib is free software: you can redistribute it and/or modify it
 under the terms of the QuantLib license.  You should have received a
 copy of the license along with this program; if not, please email
 <quantlib-dev@lists.sf.net>. The license is also available online at
-<http://quantlib.org/license.shtml>.
+<https://www.quantlib.org/license.shtml>.
 
 This program is distributed in the hope that it will be useful, but WITHOUT
 ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -39,8 +39,7 @@ namespace QuantLib
 
     }
 
-    const std::vector<Real> VolatilityBumpInstrumentJacobian::derivativesVolatility(Size j) const
-    {
+    std::vector<Real> VolatilityBumpInstrumentJacobian::derivativesVolatility(Size j) const {
         QL_REQUIRE(j < swaptions_.size()+caps_.size(), "too high index passed to VolatilityBumpInstrumentJacobian::derivativesVolatility");
 
         if (computed_[j])
@@ -113,16 +112,13 @@ namespace QuantLib
 
 
      return derivatives_[initj];
-
     }
 
-     
-    const std::vector<Real> VolatilityBumpInstrumentJacobian::onePercentBump(Size j) const
-    {
+
+    std::vector<Real> VolatilityBumpInstrumentJacobian::onePercentBump(Size j) const {
         derivativesVolatility(j); 
     
         return onePercentBumps_[j];
-     
     }
 
     const Matrix& VolatilityBumpInstrumentJacobian::getAllOnePercentBumps() const
@@ -172,8 +168,8 @@ namespace QuantLib
         theBumps.resize(numberSteps);
        // recall that the bumps: We do the outermost vector by time step and inner one by which vega.
 
-        for (Size i=0; i < theBumps.size(); ++i)
-            theBumps[i].resize(numberRestrictedBumps);
+        for (auto& theBump : theBumps)
+            theBump.resize(numberRestrictedBumps);
 
         Matrix modelMatrix(numberRates, factors,0.0);
 

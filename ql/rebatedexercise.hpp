@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -40,17 +40,16 @@ namespace QuantLib {
         // in case of exercise the holder receives the rebate
         // (if positive) or pays it (if negative) on the rebate
         // settlement date
-        RebatedExercise(const Exercise &exercise, const Real rebate = 0.0,
-                        const Natural rebateSettlementDays = 0,
-                        const Calendar &rebatePaymentCalendar = NullCalendar(),
-                        const BusinessDayConvention rebatePaymentConvention =
-                            Following);
-        RebatedExercise(const Exercise &exercise,
-                        const std::vector<Real> &rebates,
-                        const Natural rebateSettlementDays = 0,
-                        const Calendar &rebatePaymentCalendar = NullCalendar(),
-                        const BusinessDayConvention rebatePaymentConvention =
-                            Following);
+        RebatedExercise(const Exercise& exercise,
+                        Real rebate = 0.0,
+                        Natural rebateSettlementDays = 0,
+                        Calendar rebatePaymentCalendar = NullCalendar(),
+                        BusinessDayConvention rebatePaymentConvention = Following);
+        RebatedExercise(const Exercise& exercise,
+                        const std::vector<Real>& rebates,
+                        Natural rebateSettlementDays = 0,
+                        Calendar rebatePaymentCalendar = NullCalendar(),
+                        BusinessDayConvention rebatePaymentConvention = Following);
         Real rebate(Size index) const;
         Date rebatePaymentDate(Size index) const;
         const std::vector<Real> &rebates() const { return rebates_; }

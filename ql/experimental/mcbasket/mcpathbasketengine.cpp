@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -18,15 +18,17 @@
 */
 
 #include <ql/experimental/mcbasket/mcpathbasketengine.hpp>
+#include <utility>
 
 namespace QuantLib {
 
     EuropeanPathMultiPathPricer::EuropeanPathMultiPathPricer(
-                                       ext::shared_ptr<PathPayoff> & payoff,
-                                       const std::vector<Size> & timePositions,
-                                       const std::vector<Handle<YieldTermStructure> > & forwardTermStructures,
-                                       const Array & discounts)
-    :  payoff_(payoff), timePositions_(timePositions), forwardTermStructures_(forwardTermStructures), discounts_(discounts) {}
+        ext::shared_ptr<PathPayoff>& payoff,
+        std::vector<Size> timePositions,
+        std::vector<Handle<YieldTermStructure> > forwardTermStructures,
+        Array discounts)
+    : payoff_(payoff), timePositions_(std::move(timePositions)),
+      forwardTermStructures_(std::move(forwardTermStructures)), discounts_(std::move(discounts)) {}
 
     Real EuropeanPathMultiPathPricer::operator()(const MultiPath& multiPath)
                                                                        const {

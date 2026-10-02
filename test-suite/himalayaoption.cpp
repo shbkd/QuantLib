@@ -10,14 +10,14 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "himalayaoption.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
 #include <ql/experimental/exoticoptions/himalayaoption.hpp>
 #include <ql/experimental/exoticoptions/mchimalayaengine.hpp>
@@ -28,7 +28,11 @@
 using namespace QuantLib;
 using namespace boost::unit_test_framework;
 
-void HimalayaOptionTest::testCached() {
+BOOST_FIXTURE_TEST_SUITE(QuantLibTests, TopLevelFixture)
+
+BOOST_AUTO_TEST_SUITE(HimalayaOptionTests)
+
+BOOST_AUTO_TEST_CASE(testCached) {
 
     BOOST_TEST_MESSAGE("Testing Himalaya option against cached values...");
 
@@ -36,6 +40,7 @@ void HimalayaOptionTest::testCached() {
 
     DayCounter dc = Actual360();
     std::vector<Date> fixingDates;
+    fixingDates.reserve(5);
     for (Size i=0; i<5; ++i)
         fixingDates.push_back(today+i*90);
 
@@ -101,7 +106,7 @@ void HimalayaOptionTest::testCached() {
                             .withSeed(seed));
 
     Real value = option.NPV();
-    Real storedValue = 6.60370398;
+    Real storedValue = 5.93632056;
     Real tolerance = 1.0e-8;
 
     if (std::fabs(value-storedValue) > tolerance)
@@ -125,10 +130,6 @@ void HimalayaOptionTest::testCached() {
                    << "    expected:         " << tolerance);
 }
 
+BOOST_AUTO_TEST_SUITE_END()
 
-test_suite* HimalayaOptionTest::suite() {
-    test_suite* suite = BOOST_TEST_SUITE("Himalaya-option tests");
-    suite->add(QUANTLIB_TEST_CASE(&HimalayaOptionTest::testCached));
-    return suite;
-}
-
+BOOST_AUTO_TEST_SUITE_END()

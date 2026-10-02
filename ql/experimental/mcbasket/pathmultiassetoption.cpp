@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -27,7 +27,7 @@ namespace QuantLib {
 
     PathMultiAssetOption::PathMultiAssetOption(
                             const ext::shared_ptr<PricingEngine>& engine) {
-        if (engine)
+        if (engine != nullptr)
             setPricingEngine(engine);
     }
 
@@ -41,10 +41,9 @@ namespace QuantLib {
 
     void PathMultiAssetOption::setupArguments(PricingEngine::arguments* args)
                                                                        const {
-        PathMultiAssetOption::arguments* arguments =
-            dynamic_cast<PathMultiAssetOption::arguments*>(args);
+        auto* arguments = dynamic_cast<PathMultiAssetOption::arguments*>(args);
 
-        QL_REQUIRE(arguments != 0, "wrong argument type");
+        QL_REQUIRE(arguments != nullptr, "wrong argument type");
 
         arguments->payoff            = pathPayoff();
         arguments->fixingDates       = fixingDates();
@@ -52,7 +51,7 @@ namespace QuantLib {
 
     void PathMultiAssetOption::arguments::validate() const {
         QL_REQUIRE(payoff,                 "no payoff given");
-        QL_REQUIRE(fixingDates.size() > 0, "no dates given");
+        QL_REQUIRE(!fixingDates.empty(), "no dates given");
     }
 }
 

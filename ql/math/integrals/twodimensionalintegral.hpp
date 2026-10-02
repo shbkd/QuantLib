@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -26,14 +26,7 @@
 
 #include <ql/math/integrals/integral.hpp>
 #include <ql/shared_ptr.hpp>
-#if defined(__GNUC__) && (((__GNUC__ == 4) && (__GNUC_MINOR__ >= 8)) || (__GNUC__ > 4))
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-local-typedefs"
-#endif
-#include <boost/bind.hpp>
-#if defined(__GNUC__) && (((__GNUC__ == 4) && (__GNUC_MINOR__ >= 8)) || (__GNUC__ > 4))
-#pragma GCC diagnostic pop
-#endif
+#include <functional>
 #include <utility>
 
 namespace QuantLib {
@@ -46,24 +39,21 @@ namespace QuantLib {
 
     class TwoDimensionalIntegral {
       public:
-        TwoDimensionalIntegral(const ext::shared_ptr<Integrator>& integratorX,
-                               const ext::shared_ptr<Integrator>& integratorY)
-        : integratorX_(integratorX),
-          integratorY_(integratorY) {
-        }
+        TwoDimensionalIntegral(ext::shared_ptr<Integrator> integratorX,
+                               ext::shared_ptr<Integrator> integratorY)
+        : integratorX_(std::move(integratorX)), integratorY_(std::move(integratorY)) {}
 
-        Real operator()(const boost::function<Real (Real, Real)>& f,
+        Real operator()(const std::function<Real (Real, Real)>& f,
                         const std::pair<Real, Real>& a,
                         const std::pair<Real, Real>& b) const {
-            return (*integratorX_)(
-                 boost::bind(&TwoDimensionalIntegral::g, this, f, _1,
-                             a.second, b.second), a.first, b.first);
+            return (*integratorX_)([&](Real x) { return g(f, x, a.second, b.second); },
+                                   a.first, b.first);
         }
 
       private:
-        Real g(const boost::function<Real (Real, Real)>& f,
+        Real g(const std::function<Real (Real, Real)>& f,
                Real x, Real a, Real b) const {
-            return (*integratorY_)(boost::bind(f, x, _1), a, b);
+            return (*integratorY_)([&](Real y) { return f(x, y); }, a, b);
         }
 
         const ext::shared_ptr<Integrator> integratorX_, integratorY_;

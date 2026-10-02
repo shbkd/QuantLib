@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -32,19 +32,18 @@ namespace QuantLib {
 
     class FdmAffineModelTermStructure : public YieldTermStructure {
       public:
-        FdmAffineModelTermStructure(
-            const Array& r,
-            const Calendar& cal,
-            const DayCounter& dayCounter,
-            const Date& referenceDate,
-            const Date& modelReferenceDate,
-            const ext::shared_ptr<AffineModel>& model);
+        FdmAffineModelTermStructure(Array r,
+                                    const Calendar& cal,
+                                    const DayCounter& dayCounter,
+                                    const Date& referenceDate,
+                                    const Date& modelReferenceDate,
+                                    ext::shared_ptr<AffineModel> model);
 
-        Date maxDate() const;
+        Date maxDate() const override;
         void setVariable(const Array& r);
 
       protected:
-        DiscountFactor discountImpl(Time) const;
+        DiscountFactor discountImpl(Time) const override;
 
       private:
         Array r_;

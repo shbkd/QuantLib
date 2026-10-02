@@ -13,7 +13,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -33,22 +33,18 @@
 #include <ql/math/optimization/simplex.hpp>
 #include <ql/math/optimization/constraint.hpp>
 
-#if !defined(__GNUC__) || __GNUC__ > 3 || __GNUC_MINOR__ > 4
-#define QL_ARRAY_EXPRESSIONS
-#endif
-
 namespace QuantLib {
 
     namespace {
     // Computes the size of the simplex
         Real computeSimplexSize (const std::vector<Array>& vertices) {
             Array center(vertices.front().size(),0);
-            for (Size i=0; i<vertices.size(); ++i)
-                center += vertices[i];
+            for (const auto& vertice : vertices)
+                center += vertice;
             center *=1/Real(vertices.size());
             Real result = 0;
-            for (Size i=0; i<vertices.size(); ++i) {
-                Array temp = vertices[i] - center;
+            for (const auto& vertice : vertices) {
+                Array temp = vertice - center;
                 result += Norm2(temp);
             }
             return result/Real(vertices.size());
@@ -64,13 +60,7 @@ namespace QuantLib {
             Size dimensions = values_.size() - 1;
             Real factor1 = (1.0 - factor)/dimensions;
             Real factor2 = factor1 - factor;
-            #if defined(QL_ARRAY_EXPRESSIONS)
             pTry = sum_*factor1 - vertices_[iHighest]*factor2;
-            #else
-            // composite expressions fail to compile with gcc 3.4 on windows
-            pTry = sum_*factor1;
-            pTry -= vertices_[iHighest]*factor2;
-            #endif
             factor *= 0.5;
         } while (!P.constraint().test(pTry) && std::fabs(factor) > QL_EPSILON);
         if (std::fabs(factor) <= QL_EPSILON) {
@@ -80,12 +70,7 @@ namespace QuantLib {
         Real vTry = P.value(pTry);
         if (vTry < values_[iHighest]) {
             values_[iHighest] = vTry;
-            #if defined(QL_ARRAY_EXPRESSIONS)
             sum_ += pTry - vertices_[iHighest];
-            #else
-            sum_ += pTry;
-            sum_ -= vertices_[iHighest];
-            #endif
             vertices_[iHighest] = pTry;
         }
         return vTry;
@@ -102,20 +87,24 @@ namespace QuantLib {
             = endCriteria.maxStationaryStateIterations();
         EndCriteria::Type ecType = EndCriteria::None;
         P.reset();
+
         Array x_ = P.currentValue();
+        if (!P.constraint().test(x_))
+            QL_FAIL("Initial guess " << x_ << " is not in the feasible region.");
+
         Integer iterationNumber_=0;
 
         // Initialize vertices of the simplex
-        Size n = x_.size(), i;
+        Size n = x_.size();
         vertices_ = std::vector<Array>(n+1, x_);
-        for (i=0; i<n; i++) {
+        for (Size i=0; i<n; ++i) {
             Array direction(n, 0.0);
             direction[i] = 1.0;
             P.constraint().update(vertices_[i+1], direction, lambda_);
         }
         // Initialize function values at the vertices of the simplex
         values_ = Array(n+1, 0.0);
-        for (i=0; i<=n; i++)
+        for (Size i=0; i<=n; ++i)
             values_[i] = P.value(vertices_[i]);
         // Loop looking for minimum
         do {
@@ -182,13 +171,8 @@ namespace QuantLib {
                     if (vTry >= vSave && std::fabs(factor) > QL_EPSILON) {
                         for (Size i=0; i<=n; i++) {
                             if (i!=iLowest) {
-                                #if defined(QL_ARRAY_EXPRESSIONS)
                                 vertices_[i] =
                                     0.5*(vertices_[i] + vertices_[iLowest]);
-                                #else
-                                vertices_[i] += vertices_[iLowest];
-                                vertices_[i] *= 0.5;
-                                #endif
                                 values_[i] = P.value(vertices_[i]);
                             }
                         }

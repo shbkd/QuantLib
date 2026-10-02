@@ -3,6 +3,7 @@
 /*
  Copyright (C) 2002, 2003, 2004 Ferdinando Ametrano
  Copyright (C) 2003 StatPro Italia srl
+ Copyright (C) 2026 Paolo D'Elia
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -11,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -26,6 +27,7 @@
 #define quantlib_black_variance_curve_hpp
 
 #include <ql/termstructures/volatility/equityfx/blackvoltermstructure.hpp>
+#include <ql/termstructures/volatility/equityfx/blackvoltimeextrapolation.hpp>
 #include <ql/math/interpolation.hpp>
 
 namespace QuantLib {
@@ -49,17 +51,18 @@ namespace QuantLib {
         BlackVarianceCurve(const Date& referenceDate,
                            const std::vector<Date>& dates,
                            const std::vector<Volatility>& blackVolCurve,
-                           const DayCounter& dayCounter,
-                           bool forceMonotoneVariance = true);
+                           DayCounter dayCounter,
+                           bool forceMonotoneVariance = true,
+                           BlackVolTimeExtrapolation::Type timeExtrapolationType = BlackVolTimeExtrapolation::FlatVolatility);
         //! \name TermStructure interface
         //@{
-        DayCounter dayCounter() const { return dayCounter_; }
-        Date maxDate() const;
+        DayCounter dayCounter() const override { return dayCounter_; }
+        Date maxDate() const override;
         //@}
         //! \name VolatilityTermStructure interface
         //@{
-        Real minStrike() const;
-        Real maxStrike() const;
+        Real minStrike() const override;
+        Real maxStrike() const override;
         //@}
         //! \name Modifiers
         //@{
@@ -67,22 +70,23 @@ namespace QuantLib {
         void setInterpolation(const Interpolator& i = Interpolator()) {
             varianceCurve_ = i.interpolate(times_.begin(), times_.end(),
                                            variances_.begin());
-            varianceCurve_.update();
             notifyObservers();
         }
         //@}
         //! \name Visitability
         //@{
-        virtual void accept(AcyclicVisitor&);
+        void accept(AcyclicVisitor&) override;
         //@}
       protected:
-        virtual Real blackVarianceImpl(Time t, Real) const;
+        Real blackVarianceImpl(Time t, Real) const override;
+
       private:
         DayCounter dayCounter_;
         Date maxDate_;
         std::vector<Time> times_;
         std::vector<Real> variances_;
         Interpolation varianceCurve_;
+        BlackVolTimeExtrapolation::Type timeExtrapolationType_;
     };
 
 
@@ -101,9 +105,8 @@ namespace QuantLib {
     }
 
     inline void BlackVarianceCurve::accept(AcyclicVisitor& v) {
-        Visitor<BlackVarianceCurve>* v1 =
-            dynamic_cast<Visitor<BlackVarianceCurve>*>(&v);
-        if (v1 != 0)
+        auto* v1 = dynamic_cast<Visitor<BlackVarianceCurve>*>(&v);
+        if (v1 != nullptr)
             v1->visit(*this);
         else
             BlackVarianceTermStructure::accept(v);

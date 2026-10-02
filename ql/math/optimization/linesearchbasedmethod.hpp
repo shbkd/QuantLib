@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -33,21 +33,20 @@ namespace QuantLib {
 
     class LineSearch;
 
+    //! Line search based method
     class LineSearchBasedMethod : public OptimizationMethod {
       public:
         explicit LineSearchBasedMethod(
-             const ext::shared_ptr<LineSearch>& lSearch =
-                                            ext::shared_ptr<LineSearch>());
-        virtual ~LineSearchBasedMethod() {}
+            ext::shared_ptr<LineSearch> lSearch = ext::shared_ptr<LineSearch>());
+        ~LineSearchBasedMethod() override = default;
 
-        virtual EndCriteria::Type minimize(Problem& P,
-                                           const EndCriteria& endCriteria);
+        EndCriteria::Type minimize(Problem& P, const EndCriteria& endCriteria) override;
+
       protected:
         //! computes the new search direction
-        virtual Disposable<Array>
-        getUpdatedDirection(const Problem &P,
-                            Real gold2,
-                            const Array& gradient) = 0;
+        virtual Array getUpdatedDirection(const Problem &P,
+                                          Real gold2,
+                                          const Array& gradient) = 0;
         //! line search
         ext::shared_ptr<LineSearch> lineSearch_;
     };

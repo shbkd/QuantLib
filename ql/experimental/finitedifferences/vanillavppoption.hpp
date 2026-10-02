@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -41,8 +41,8 @@ namespace QuantLib {
                          Size nStarts = Null<Size>(),
                          Size nRunningHours = Null<Size>());
 
-        bool isExpired() const;
-        void setupArguments(PricingEngine::arguments*) const;
+        bool isExpired() const override;
+        void setupArguments(PricingEngine::arguments*) const override;
 
       private:
         const Real heatRate_;
@@ -55,8 +55,8 @@ namespace QuantLib {
     class VanillaVPPOption::arguments
         : public virtual MultiAssetOption::arguments {
       public:
-        arguments() {}
-        void validate() const;
+        arguments() = default;
+        void validate() const override;
 
         Real heatRate;
         Real pMin, pMax;

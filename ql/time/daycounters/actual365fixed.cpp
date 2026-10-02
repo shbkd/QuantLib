@@ -2,6 +2,7 @@
 
 /*
  Copyright (C) 2000, 2001, 2002, 2003 RiskMap srl
+ Copyright (C) 2013 BGC Partners L.P.
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -10,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -18,6 +19,7 @@
 */
 
 #include <ql/time/daycounters/actual365fixed.hpp>
+#include <cmath>
 
 namespace QuantLib {
 
@@ -25,11 +27,11 @@ namespace QuantLib {
     Actual365Fixed::implementation(Actual365Fixed::Convention c) {
         switch (c) {
           case Standard:
-            return ext::shared_ptr<DayCounter::Impl>(new Impl);
+            return ext::make_shared<Impl>();
           case Canadian:
-            return ext::shared_ptr<DayCounter::Impl>(new CA_Impl);
+            return ext::make_shared<CA_Impl>();
           case NoLeap:
-            return ext::shared_ptr<DayCounter::Impl>(new NL_Impl);
+            return ext::make_shared<NL_Impl>();
           default:
             QL_FAIL("unknown Actual/365 (Fixed) convention");
         }
@@ -39,16 +41,25 @@ namespace QuantLib {
                                                const Date& d2,
                                                const Date& refPeriodStart,
                                                const Date& refPeriodEnd) const {
-        // Need the period to calculate frequency
-        QL_REQUIRE(refPeriodStart != Date(),"invalid refPeriodStart");
-        QL_REQUIRE(refPeriodEnd != Date(),"invalid refPeriodEnd");
+        if (d1 == d2)
+            return 0.0;
+
+        // We need the period to calculate the frequency
+        QL_REQUIRE(refPeriodStart != Date(), "invalid refPeriodStart");
+        QL_REQUIRE(refPeriodEnd != Date(), "invalid refPeriodEnd");
 
         Time dcs = daysBetween(d1,d2);
         Time dcc = daysBetween(refPeriodStart,refPeriodEnd);
-        Integer months = Integer(0.5+12*dcc/365);
-        Integer frequency = Integer( 12/months);
+        auto months = Integer(std::lround(12 * dcc / 365));
+        QL_REQUIRE(months != 0,
+                   "invalid reference period for Act/365 Canadian; "
+                   "must be longer than a month");
+        auto frequency = Integer(12 / months);
+        QL_REQUIRE(frequency != 0,
+                   "invalid reference period for Act/365 Canadian; "
+                   "must not be longer than a year");
 
-        if ( dcs < 365/frequency)
+        if (dcs < Integer(365/frequency))
             return dcs/365.0;
 
         return 1./frequency - (dcc-dcs)/365.0;

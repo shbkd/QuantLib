@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -41,18 +41,18 @@ namespace QuantLib {
                             Real displacement = 0.0);
         //! \name TermStructure interface
         //@{
-        DayCounter dayCounter() const;
-        Date maxDate() const;
+        DayCounter dayCounter() const override;
+        Date maxDate() const override;
         //@}
-        Real minStrike() const;
-        Real maxStrike() const;
-        VolatilityType volatilityType() const;
-        Real displacement() const;
+        Real minStrike() const override;
+        Real maxStrike() const override;
+        VolatilityType volatilityType() const override;
+        Real displacement() const override;
 
       protected:
-        ext::shared_ptr<SmileSection> smileSectionImpl(Time t) const;
-        Volatility volatilityImpl(Time t,
-                                  Rate) const;
+        ext::shared_ptr<SmileSection> smileSectionImpl(Time t) const override;
+        Volatility volatilityImpl(Time t, Rate) const override;
+
       private:
         BlackVarianceCurve blackCurve_;
         VolatilityType type_;
@@ -87,10 +87,7 @@ namespace QuantLib {
     CapletVarianceCurve::smileSectionImpl(Time t) const {
         // dummy strike
         Volatility atmVol = blackCurve_.blackVol(t, 0.05, true);
-        return ext::shared_ptr<SmileSection>(new
-            FlatSmileSection(t,
-                             atmVol,
-                             dayCounter()));
+        return ext::make_shared<FlatSmileSection>(t, atmVol, dayCounter());
     }
 
     inline

@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -19,30 +19,28 @@
 
 #include <ql/experimental/commodities/commodityindex.hpp>
 #include <ql/experimental/commodities/commoditypricinghelpers.hpp>
+#include <utility>
 
 namespace QuantLib {
 
-    CommodityIndex::CommodityIndex(
-                const std::string& indexName,
-                const CommodityType& commodityType,
-                const Currency& currency,
-                const UnitOfMeasure& unitOfMeasure,
-                const Calendar& calendar,
-                Real lotQuantity,
-                const ext::shared_ptr<CommodityCurve>& forwardCurve,
-                const ext::shared_ptr<ExchangeContracts>& exchangeContracts,
-                int nearbyOffset)
-    : name_(indexName), commodityType_(commodityType),
-      unitOfMeasure_(unitOfMeasure), currency_(currency), calendar_(calendar),
-      lotQuantity_(lotQuantity), forwardCurve_(forwardCurve),
-      forwardCurveUomConversionFactor_(1),
-      exchangeContracts_(exchangeContracts), nearbyOffset_(nearbyOffset) {
-        quotes_ = IndexManager::instance().getHistory(indexName);
-        IndexManager::instance().setHistory(indexName, quotes_);
+    CommodityIndex::CommodityIndex(std::string  indexName,
+                                   CommodityType commodityType,
+                                   Currency currency,
+                                   UnitOfMeasure unitOfMeasure,
+                                   Calendar calendar,
+                                   Real lotQuantity,
+                                   ext::shared_ptr<CommodityCurve> forwardCurve,
+                                   ext::shared_ptr<ExchangeContracts> exchangeContracts,
+                                   int nearbyOffset)
+    : name_(std::move(indexName)), commodityType_(std::move(commodityType)),
+      unitOfMeasure_(std::move(unitOfMeasure)), currency_(std::move(currency)),
+      calendar_(std::move(calendar)), lotQuantity_(lotQuantity),
+      forwardCurve_(std::move(forwardCurve)), exchangeContracts_(std::move(exchangeContracts)),
+      nearbyOffset_(nearbyOffset) {
         registerWith(Settings::instance().evaluationDate());
-        registerWith(IndexManager::instance().notifier(name()));
+        registerWith(notifier());
 
-        if (forwardCurve_ != 0)
+        if (forwardCurve_ != nullptr)
             // registerWith(forwardCurve_);
             forwardCurveUomConversionFactor_ =
                 CommodityPricingHelper::calculateUomConversionFactor(
@@ -55,7 +53,7 @@ namespace QuantLib {
         out << "[" << index.name_ << "] ("
             << index.currency_.code() << "/"
             << index.unitOfMeasure_.code() << ")";
-        if (index.forwardCurve_ != 0)
+        if (index.forwardCurve_ != nullptr)
             out << "; forward (" << (*index.forwardCurve_) << ")";
         return out;
     }

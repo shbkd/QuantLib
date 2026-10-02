@@ -1,8 +1,9 @@
 /* -*- mode: c++; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- */
 
 /*
- Copyright (C) 2004 Ferdinando Ametrano
  Copyright (C) 2000, 2001, 2002, 2003 RiskMap srl
+ Copyright (C) 2004 Ferdinando Ametrano
+ Copyright (C) 2013 BGC Partners L.P.
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -11,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -48,37 +49,32 @@ namespace QuantLib {
         : DayCounter(implementation(c)) {}
 
       private:
-        class Impl : public DayCounter::Impl {
+        class Impl final : public DayCounter::Impl {
           public:
-            std::string name() const { return std::string("Actual/365 (Fixed)"); }
-            Time yearFraction(const Date& d1,
-                              const Date& d2,
-                              const Date&,
-                              const Date&) const {
+            std::string name() const override { return std::string("Actual/365 (Fixed)"); }
+            Time
+            yearFraction(const Date& d1, const Date& d2, const Date&, const Date&) const override {
                 return daysBetween(d1,d2)/365.0;
             }
         };
-        class CA_Impl : public DayCounter::Impl {
+        class CA_Impl final : public DayCounter::Impl {
           public:
-            std::string name() const {
+            std::string name() const override {
                 return std::string("Actual/365 (Fixed) Canadian Bond");
             }
             Time yearFraction(const Date& d1,
                               const Date& d2,
                               const Date& refPeriodStart,
-                              const Date& refPeriodEnd) const;
+                              const Date& refPeriodEnd) const override;
         };
-        class NL_Impl : public DayCounter::Impl {
+        class NL_Impl final : public DayCounter::Impl {
           public:
-            std::string name() const {
-                return std::string("Actual/365 (No Leap)");
-            }
-            Date::serial_type dayCount(const Date& d1,
-                                       const Date& d2) const;
+            std::string name() const override { return std::string("Actual/365 (No Leap)"); }
+            Date::serial_type dayCount(const Date& d1, const Date& d2) const override;
             Time yearFraction(const Date& d1,
                               const Date& d2,
                               const Date& refPeriodStart,
-                              const Date& refPeriodEnd) const;
+                              const Date& refPeriodEnd) const override;
         };
         static ext::shared_ptr<DayCounter::Impl> implementation(Convention);
     };

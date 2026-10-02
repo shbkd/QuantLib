@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -19,18 +19,18 @@
 
 #include <ql/time/calendars/bespokecalendar.hpp>
 #include <sstream>
+#include <utility>
 
 namespace QuantLib {
 
-    BespokeCalendar::Impl::Impl(const std::string& name)
-    : name_(name) {}
+    BespokeCalendar::Impl::Impl(std::string name) : name_(std::move(name)) {}
 
     std::string BespokeCalendar::Impl::name() const {
         return name_;
     }
 
     bool BespokeCalendar::Impl::isWeekend(Weekday w) const {
-        return (weekend_.find(w) != weekend_.end());
+        return (weekend_mask_ & (1 << w)) != 0;
     }
 
     bool BespokeCalendar::Impl::isBusinessDay(const Date& date) const {
@@ -38,7 +38,7 @@ namespace QuantLib {
     }
 
     void BespokeCalendar::Impl::addWeekend(Weekday w) {
-        weekend_.insert(w);
+        weekend_mask_ |= (1 << w);
     }
 
 

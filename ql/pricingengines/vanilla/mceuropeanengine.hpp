@@ -12,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -62,15 +62,14 @@ namespace QuantLib {
              Size maxSamples,
              BigNatural seed);
       protected:
-        ext::shared_ptr<path_pricer_type> pathPricer() const;
+        ext::shared_ptr<path_pricer_type> pathPricer() const override;
     };
 
     //! Monte Carlo European engine factory
     template <class RNG = PseudoRandom, class S = Statistics>
     class MakeMCEuropeanEngine {
       public:
-        MakeMCEuropeanEngine(
-                    const ext::shared_ptr<GeneralizedBlackScholesProcess>&);
+        MakeMCEuropeanEngine(ext::shared_ptr<GeneralizedBlackScholesProcess>);
         // named parameters
         MakeMCEuropeanEngine& withSteps(Size steps);
         MakeMCEuropeanEngine& withStepsPerYear(Size steps);
@@ -84,11 +83,11 @@ namespace QuantLib {
         operator ext::shared_ptr<PricingEngine>() const;
       private:
         ext::shared_ptr<GeneralizedBlackScholesProcess> process_;
-        bool antithetic_;
+        bool antithetic_ = false;
         Size steps_, stepsPerYear_, samples_, maxSamples_;
         Real tolerance_;
-        bool brownianBridge_;
-        BigNatural seed_;
+        bool brownianBridge_ = false;
+        BigNatural seed_ = 0;
     };
 
     class EuropeanPathPricer : public PathPricer<Path> {
@@ -96,7 +95,8 @@ namespace QuantLib {
         EuropeanPathPricer(Option::Type type,
                            Real strike,
                            DiscountFactor discount);
-        Real operator()(const Path& path) const;
+        Real operator()(const Path& path) const override;
+
       private:
         PlainVanillaPayoff payoff_;
         DiscountFactor discount_;
@@ -144,22 +144,18 @@ namespace QuantLib {
                 this->process_);
         QL_REQUIRE(process, "Black-Scholes process required");
 
-        return ext::shared_ptr<
-                       typename MCEuropeanEngine<RNG,S>::path_pricer_type>(
-          new EuropeanPathPricer(
+        return ext::make_shared<EuropeanPathPricer>(
               payoff->optionType(),
               payoff->strike(),
-              process->riskFreeRate()->discount(this->timeGrid().back())));
+              process->riskFreeRate()->discount(this->timeGrid().back()));
     }
 
 
     template <class RNG, class S>
-    inline MakeMCEuropeanEngine<RNG,S>::MakeMCEuropeanEngine(
-             const ext::shared_ptr<GeneralizedBlackScholesProcess>& process)
-    : process_(process), antithetic_(false),
-      steps_(Null<Size>()), stepsPerYear_(Null<Size>()),
-      samples_(Null<Size>()), maxSamples_(Null<Size>()),
-      tolerance_(Null<Real>()), brownianBridge_(false), seed_(0) {}
+    inline MakeMCEuropeanEngine<RNG, S>::MakeMCEuropeanEngine(
+        ext::shared_ptr<GeneralizedBlackScholesProcess> process)
+    : process_(std::move(process)), steps_(Null<Size>()), stepsPerYear_(Null<Size>()),
+      samples_(Null<Size>()), maxSamples_(Null<Size>()), tolerance_(Null<Real>()) {}
 
     template <class RNG, class S>
     inline MakeMCEuropeanEngine<RNG,S>&
@@ -232,15 +228,14 @@ namespace QuantLib {
                    "number of steps not given");
         QL_REQUIRE(steps_ == Null<Size>() || stepsPerYear_ == Null<Size>(),
                    "number of steps overspecified");
-        return ext::shared_ptr<PricingEngine>(new
-            MCEuropeanEngine<RNG,S>(process_,
+        return ext::make_shared<MCEuropeanEngine<RNG,S>>(process_,
                                     steps_,
                                     stepsPerYear_,
                                     brownianBridge_,
                                     antithetic_,
                                     samples_, tolerance_,
                                     maxSamples_,
-                                    seed_));
+                                    seed_);
     }
 
 
@@ -254,7 +249,7 @@ namespace QuantLib {
     }
 
     inline Real EuropeanPathPricer::operator()(const Path& path) const {
-        QL_REQUIRE(path.length() > 0, "the path cannot be empty");
+        QL_REQUIRE(!path.empty(), "the path cannot be empty");
         return payoff_(path.back()) * discount_;
     }
 

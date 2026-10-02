@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -49,13 +49,13 @@ namespace QuantLib {
         Real lambda() const { return arguments_[7](0.0); }
 
       protected:
-        void generateArguments();
+        void generateArguments() override;
     };
 
 
     class BatesDetJumpModel : public BatesModel {
       public:
-        BatesDetJumpModel(
+        explicit BatesDetJumpModel(
             const ext::shared_ptr<BatesProcess> & process,
             Real kappaLambda = 1.0, Real thetaLambda = 0.1);
 
@@ -66,9 +66,9 @@ namespace QuantLib {
 
     class BatesDoubleExpModel : public HestonModel {
       public:
-        BatesDoubleExpModel(const ext::shared_ptr<HestonProcess> & process,
-                            Real lambda = 0.1,
-                            Real nuUp = 0.1, Real nuDown = 0.1, Real p = 0.5);
+        explicit BatesDoubleExpModel(
+            const ext::shared_ptr<HestonProcess> & process,
+            Real lambda = 0.1, Real nuUp = 0.1, Real nuDown = 0.1, Real p = 0.5);
 
         Real p()      const { return arguments_[5](0.0); }
         Real nuDown() const { return arguments_[6](0.0); }
@@ -79,7 +79,7 @@ namespace QuantLib {
 
     class BatesDoubleExpDetJumpModel : public BatesDoubleExpModel {
       public:
-        BatesDoubleExpDetJumpModel(
+        explicit BatesDoubleExpDetJumpModel(
             const ext::shared_ptr<HestonProcess> & process,
             Real lambda = 0.1, Real nuUp = 0.1,   Real nuDown = 0.1,
             Real p = 0.5, Real kappaLambda = 1.0, Real thetaLambda = 0.1);

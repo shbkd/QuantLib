@@ -12,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -45,6 +45,7 @@ namespace QuantLib {
                    StationaryFunctionValue,
                    StationaryFunctionAccuracy,
                    ZeroGradientNorm,
+                   FunctionEpsilonTooSmall,
                    Unknown};
 
         //! Initialization constructor
@@ -63,40 +64,39 @@ namespace QuantLib {
 
         /*! Test if the number of iterations is not too big 
             and if a minimum point is not reached */
-        bool operator()(const Size iteration,
+        bool operator()(Size iteration,
                         Size& statState,
-                        const bool positiveOptimization,
-                        const Real fold,
-                        const Real normgold,
-                        const Real fnew,
-                        const Real normgnew,
+                        bool positiveOptimization,
+                        Real fold,
+                        Real normgold,
+                        Real fnew,
+                        Real normgnew,
                         EndCriteria::Type& ecType) const;
 
         /*! Test if the number of iteration is below MaxIterations */
-        bool checkMaxIterations(const Size iteration,
-                                  EndCriteria::Type& ecType) const;
+        bool checkMaxIterations(Size iteration, EndCriteria::Type& ecType) const;
         /*! Test if the root variation is below rootEpsilon */
-        bool checkStationaryPoint(const Real xOld,
-                                  const Real xNew,
+        bool checkStationaryPoint(Real xOld,
+                                  Real xNew,
                                   Size& statStateIterations,
                                   EndCriteria::Type& ecType) const;
         /*! Test if the function variation is below functionEpsilon */
-        bool checkStationaryFunctionValue(const Real fxOld,
-                                          const Real fxNew,
+        bool checkStationaryFunctionValue(Real fxOld,
+                                          Real fxNew,
                                           Size& statStateIterations,
                                           EndCriteria::Type& ecType) const;
         /*! Test if the function value is below functionEpsilon */
-        bool checkStationaryFunctionAccuracy(const Real f,
-                                             const bool positiveOptimization,
+        bool checkStationaryFunctionAccuracy(Real f,
+                                             bool positiveOptimization,
                                              EndCriteria::Type& ecType) const;
         /*! Test if the gradient norm variation is below gradientNormEpsilon */
         //bool checkZerGradientNormValue(const Real gNormOld, 
         //                               const Real gNormNew,
         //                               EndCriteria::Type& ecType) const;
         /*! Test if the gradient norm value is below gradientNormEpsilon */
-        bool checkZeroGradientNorm(const Real gNorm,
-                                           EndCriteria::Type& ecType) const;
+        bool checkZeroGradientNorm(Real gNorm, EndCriteria::Type& ecType) const;
 
+        static bool succeeded(EndCriteria::Type ecType);
       protected:
         //! Maximum number of iterations
         Size maxIterations_;

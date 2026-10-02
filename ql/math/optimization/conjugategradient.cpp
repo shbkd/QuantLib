@@ -1,11 +1,11 @@
 /* -*- mode: c++; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- */
 
  /*
- Copyright (C) 2001, 2002, 2003 Nicolas Di Césaré
+ Copyright (C) 2001, 2002, 2003 Nicolas Di CÃ©sarÃ©
  Copyright (C) 2007 Ferdinando Ametrano
  Copyright (C) 2007 Marco Bianchetti
- Copyright (C) 2007 François du Vignaud
- Copyright (C) 2009 Frédéric Degraeve
+ Copyright (C) 2007 FranÃ§ois du Vignaud
+ Copyright (C) 2009 FrÃ©dÃ©ric Degraeve
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -14,7 +14,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -27,9 +27,9 @@
 
 namespace QuantLib {
 
-    Disposable<Array> ConjugateGradient::getUpdatedDirection(const Problem& P,
-                                                             Real gold2,
-                                                             const Array&) {
+    Array ConjugateGradient::getUpdatedDirection(const Problem& P,
+                                                 Real gold2,
+                                                 const Array&) {
         return -lineSearch_->lastGradient() +
             (P.gradientNormValue() / gold2) * lineSearch_->searchDirection();
     }

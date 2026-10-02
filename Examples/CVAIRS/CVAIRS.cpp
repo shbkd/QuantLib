@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -18,7 +18,7 @@
 */
 
 #include <ql/qldefines.hpp>
-#ifdef BOOST_MSVC
+#if !defined(BOOST_ALL_NO_LIB) && defined(BOOST_MSVC)
 #  include <ql/auto_link.hpp>
 #endif
 #include <ql/instruments/vanillaswap.hpp>
@@ -33,20 +33,11 @@
 #include <ql/time/daycounters/actualactual.hpp>
 #include <ql/time/daycounters/actual360.hpp>
 
-#include <boost/timer.hpp>
 #include <iostream>
 #include <iomanip>
 
 using namespace std;
 using namespace QuantLib;
-
-#if defined(QL_ENABLE_SESSIONS)
-namespace QuantLib {
-
-    Integer sessionId() { return 0; }
-
-}
-#endif
 
 /*
   This example reproduces Table 2 on page 11 of 
@@ -60,7 +51,6 @@ int main(int, char* []) {
 
     try {
 
-        boost::timer timer;
         std::cout << std::endl;
 
         Calendar calendar = TARGET();
@@ -70,17 +60,17 @@ int main(int, char* []) {
 
         Settings::instance().evaluationDate() = todaysDate;
 
-        ext::shared_ptr<IborIndex>  yieldIndx(new Euribor3M());
+        auto yieldIndx = ext::make_shared<Euribor3M>();
         Size tenorsSwapMkt[] = {5, 10, 15, 20, 25, 30};
         
         // rates ignoring counterparty risk:
         Rate ratesSwapmkt[] = {.03249, .04074, .04463, .04675, .04775, .04811};
 
-        vector<ext::shared_ptr<RateHelper> > swapHelpers;
+        vector<ext::shared_ptr<RateHelper>> swapHelpers;
+        swapHelpers.reserve(sizeof(tenorsSwapMkt)/sizeof(Size));
         for(Size i=0; i<sizeof(tenorsSwapMkt)/sizeof(Size); i++)
             swapHelpers.push_back(ext::make_shared<SwapRateHelper>(
-                Handle<Quote>(ext::shared_ptr<Quote>(
-                                   new SimpleQuote(ratesSwapmkt[i]))),
+                    makeQuoteHandle(ratesSwapmkt[i]),
                     tenorsSwapMkt[i] * Years,
                     TARGET(),
                     Quarterly,
@@ -88,17 +78,14 @@ int main(int, char* []) {
                     ActualActual(ActualActual::ISDA),
                     yieldIndx));
 
-        ext::shared_ptr<YieldTermStructure> swapTS(
-            new PiecewiseYieldCurve<Discount,LogLinear>(
-             2, TARGET(), swapHelpers, ActualActual(ActualActual::ISDA), 
-             1.0e-12));
+        auto swapTS = ext::make_shared<PiecewiseYieldCurve<Discount, LogLinear>>(
+             2, TARGET(), swapHelpers, ActualActual(ActualActual::ISDA));
         swapTS->enableExtrapolation();
 
-        ext::shared_ptr<PricingEngine> riskFreeEngine(
-            ext::make_shared<DiscountingSwapEngine>(
-                 Handle<YieldTermStructure>(swapTS)));
+        auto riskFreeEngine =  ext::make_shared<DiscountingSwapEngine>(
+                 Handle<YieldTermStructure>(swapTS));
 
-        std::vector<Handle<DefaultProbabilityTermStructure> >
+        std::vector<Handle<DefaultProbabilityTermStructure>>
             defaultIntensityTS;
         
         Size defaultTenors[] = {0, 12, 36, 60, 84, 120, 180, 240, 300, 
@@ -126,45 +113,29 @@ int main(int, char* []) {
             intesitiesVHigh.push_back(intensitiesHigh[i]);
         }
 
-        defaultIntensityTS.push_back(Handle<DefaultProbabilityTermStructure>(
-            ext::shared_ptr<DefaultProbabilityTermStructure>(
-                 new InterpolatedHazardRateCurve<BackwardFlat>(
-                   defaultTSDates, 
-                   intesitiesVLow,
-                   Actual360(),
-                   TARGET()))));
-        defaultIntensityTS.push_back(Handle<DefaultProbabilityTermStructure>(
-            ext::shared_ptr<DefaultProbabilityTermStructure>(
-                 new InterpolatedHazardRateCurve<BackwardFlat>(
-                   defaultTSDates,
-                   intesitiesVMedium,
-                   Actual360(),
-                   TARGET()))));
-        defaultIntensityTS.push_back(Handle<DefaultProbabilityTermStructure>(
-            ext::shared_ptr<DefaultProbabilityTermStructure>(
-                 new InterpolatedHazardRateCurve<BackwardFlat>(
-                   defaultTSDates, 
-                   intesitiesVHigh,
-                   Actual360(), 
-                   TARGET()))));
+        defaultIntensityTS.emplace_back(
+            ext::make_shared<InterpolatedHazardRateCurve<BackwardFlat>>(defaultTSDates, intesitiesVLow,
+                                                          Actual360(), TARGET()));
+        defaultIntensityTS.emplace_back(
+            ext::make_shared<InterpolatedHazardRateCurve<BackwardFlat>>(defaultTSDates, intesitiesVMedium,
+                                                          Actual360(), TARGET()));
+        defaultIntensityTS.emplace_back(
+            ext::make_shared<InterpolatedHazardRateCurve<BackwardFlat>>(defaultTSDates, intesitiesVHigh,
+                                                          Actual360(), TARGET()));
 
         Volatility blackVol = 0.15;   
-        ext::shared_ptr<PricingEngine> ctptySwapCvaLow = 
-            ext::make_shared<CounterpartyAdjSwapEngine>(
+        auto ctptySwapCvaLow = ext::make_shared<CounterpartyAdjSwapEngine>(
                  Handle<YieldTermStructure>(swapTS), 
                  blackVol,
                  defaultIntensityTS[0], 
-                 ctptyRRLow
-                 );
+                 ctptyRRLow);
 
-        ext::shared_ptr<PricingEngine> ctptySwapCvaMedium = 
-            ext::make_shared<CounterpartyAdjSwapEngine>(
+        auto ctptySwapCvaMedium = ext::make_shared<CounterpartyAdjSwapEngine>(
                  Handle<YieldTermStructure>(swapTS), 
                  blackVol, 
                  defaultIntensityTS[1],
                  ctptyRRMedium);
-        ext::shared_ptr<PricingEngine> ctptySwapCvaHigh = 
-            ext::make_shared<CounterpartyAdjSwapEngine>(
+        auto ctptySwapCvaHigh = ext::make_shared<CounterpartyAdjSwapEngine>(
                  Handle<YieldTermStructure>(swapTS), 
                  blackVol,
                  defaultIntensityTS[2],
@@ -183,17 +154,14 @@ int main(int, char* []) {
         DayCounter fixedLegDayCounter = ActualActual(ActualActual::ISDA);
         DayCounter floatingLegDayCounter = ActualActual(ActualActual::ISDA);
 
-        VanillaSwap::Type swapType = 
-            //VanillaSwap::Receiver ;
-            VanillaSwap::Payer;
-        ext::shared_ptr<IborIndex> yieldIndxS(
-             new Euribor3M(Handle<YieldTermStructure>(swapTS)));
+        Swap::Type swapType = Swap::Payer;
+        auto yieldIndxS = ext::make_shared<Euribor3M>(Handle<YieldTermStructure>(swapTS));
         std::vector<VanillaSwap> riskySwaps;
+        riskySwaps.reserve(sizeof(tenorsSwapMkt)/sizeof(Size));
         for(Size i=0; i<sizeof(tenorsSwapMkt)/sizeof(Size); i++) 
             riskySwaps.push_back(MakeVanillaSwap(tenorsSwapMkt[i]*Years,
-                yieldIndxS,
-                ratesSwapmkt[i], 
-                0*Days)
+                                                 yieldIndxS)
+            .withFixedRate(ratesSwapmkt[i])
             .withSettlementDays(2)
             .withFixedLegDayCount(fixedLegDayCounter)
             .withFixedLegTenor(Period(fixedLegFrequency))
@@ -241,19 +209,6 @@ int main(int, char* []) {
         }
 
         cout << endl;
-
-        Real seconds  = timer.elapsed();
-        Integer hours = Integer(seconds/3600);
-        seconds -= hours * 3600;
-        Integer minutes = Integer(seconds/60);
-        seconds -= minutes * 60;
-        cout << "Run completed in ";
-        if (hours > 0)
-            cout << hours << " h ";
-        if (hours > 0 || minutes > 0)
-            cout << minutes << " m ";
-        cout << fixed << setprecision(0)
-             << seconds << " s" << endl;
 
         return 0;
     } catch (exception& e) {

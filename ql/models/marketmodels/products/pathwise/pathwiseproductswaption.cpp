@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -20,7 +20,6 @@
 #include <ql/models/marketmodels/products/pathwise/pathwiseproductswaption.hpp>
 #include <ql/models/marketmodels/curvestate.hpp>
 #include <ql/models/marketmodels/utilities.hpp>
-#include <ql/auto_ptr.hpp>
 
 namespace QuantLib {
 
@@ -87,11 +86,10 @@ namespace QuantLib {
         return (currentIndex_ == strikes_.size());
     }
 
-    QL_UNIQUE_OR_AUTO_PTR<MarketModelPathwiseMultiProduct>
+    std::unique_ptr<MarketModelPathwiseMultiProduct>
     MarketModelPathwiseCoterminalSwaptionsDeflated::clone() const 
     {
-        return QL_UNIQUE_OR_AUTO_PTR<MarketModelPathwiseMultiProduct>(
-                   new MarketModelPathwiseCoterminalSwaptionsDeflated(*this));
+        return std::make_unique<MarketModelPathwiseCoterminalSwaptionsDeflated>(*this);
     }
 
     std::vector<Size> MarketModelPathwiseCoterminalSwaptionsDeflated::suggestedNumeraires() const
@@ -209,11 +207,10 @@ namespace QuantLib {
         return (currentIndex_ == strikes_.size());
     }
 
-    QL_UNIQUE_OR_AUTO_PTR<MarketModelPathwiseMultiProduct>
+    std::unique_ptr<MarketModelPathwiseMultiProduct>
     MarketModelPathwiseCoterminalSwaptionsNumericalDeflated::clone() const 
     {
-        return QL_UNIQUE_OR_AUTO_PTR<MarketModelPathwiseMultiProduct>(
-          new MarketModelPathwiseCoterminalSwaptionsNumericalDeflated(*this));
+        return std::make_unique<MarketModelPathwiseCoterminalSwaptionsNumericalDeflated>(*this);
     }
 
     std::vector<Size> MarketModelPathwiseCoterminalSwaptionsNumericalDeflated::suggestedNumeraires() const

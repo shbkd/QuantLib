@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -23,22 +23,20 @@
 */
 
 #include <ql/methods/finitedifferences/utilities/fdmquantohelper.hpp>
-#include <ql/termstructures/yieldtermstructure.hpp>
 #include <ql/termstructures/volatility/equityfx/blackvoltermstructure.hpp>
+#include <ql/termstructures/yieldtermstructure.hpp>
+#include <algorithm>
+#include <utility>
 
 namespace QuantLib {
 
-    FdmQuantoHelper::FdmQuantoHelper(
-        const ext::shared_ptr<YieldTermStructure> & rTS,
-        const ext::shared_ptr<YieldTermStructure> & fTS,
-        const ext::shared_ptr<BlackVolTermStructure> & fxVolTS,
-        Real equityFxCorrelation,
-        Real exchRateATMlevel)
-    : rTS_(rTS),
-      fTS_(fTS),
-      fxVolTS_(fxVolTS),
-      equityFxCorrelation_(equityFxCorrelation),
-      exchRateATMlevel_(exchRateATMlevel) {}
+    FdmQuantoHelper::FdmQuantoHelper(ext::shared_ptr<YieldTermStructure> rTS,
+                                     ext::shared_ptr<YieldTermStructure> fTS,
+                                     ext::shared_ptr<BlackVolTermStructure> fxVolTS,
+                                     Real equityFxCorrelation,
+                                     Real exchRateATMlevel)
+    : rTS_(std::move(rTS)), fTS_(std::move(fTS)), fxVolTS_(std::move(fxVolTS)),
+      equityFxCorrelation_(equityFxCorrelation), exchRateATMlevel_(exchRateATMlevel) {}
 
     Rate FdmQuantoHelper::quantoAdjustment(Volatility equityVol,
                                                  Time t1, Time t2) const {
@@ -50,7 +48,7 @@ namespace QuantLib {
         return rDomestic - rForeign + equityVol*fxVol*equityFxCorrelation_;
     }
 
-    Disposable<Array> FdmQuantoHelper::quantoAdjustment(
+    Array FdmQuantoHelper::quantoAdjustment(
         const Array& equityVol, Time t1, Time t2) const {
 
         const Rate rDomestic = rTS_->forwardRate(t1, t2, Continuous).rate();
@@ -59,10 +57,10 @@ namespace QuantLib {
             = fxVolTS_->blackForwardVol(t1, t2, exchRateATMlevel_);
 
         Array retVal(equityVol.size());
-        for (Size i=0; i < retVal.size(); ++i) {
-            retVal[i]
-                = rDomestic - rForeign + equityVol[i]*fxVol*equityFxCorrelation_;
-        }
+        std::transform(equityVol.begin(), equityVol.end(), retVal.begin(),
+                       [&](Volatility vol) {
+                           return rDomestic - rForeign + vol*fxVol*equityFxCorrelation_;
+                       });
         return retVal;
     }
 }

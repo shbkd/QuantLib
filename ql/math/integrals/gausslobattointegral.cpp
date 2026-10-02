@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -23,6 +23,7 @@
 */
 
 #include <ql/math/integrals/gausslobattointegral.hpp>
+#include <algorithm>
 
 namespace QuantLib {
 
@@ -42,7 +43,7 @@ namespace QuantLib {
     }
 
     Real GaussLobattoIntegral::integrate(
-                                     const boost::function<Real (Real)>& f, 
+                                     const std::function<Real (Real)>& f, 
                                      Real a, Real b) const {
 
         setNumberOfEvaluations(0);
@@ -53,7 +54,7 @@ namespace QuantLib {
     }
 
     Real GaussLobattoIntegral::calculateAbsTolerance(
-                                     const boost::function<Real (Real)>& f, 
+                                     const std::function<Real (Real)>& f, 
                                      Real a, Real b) const {
         
 
@@ -111,7 +112,7 @@ namespace QuantLib {
     }
     
     Real GaussLobattoIntegral::adaptivGaussLobattoStep(
-                                     const boost::function<Real (Real)>& f,
+                                     const std::function<Real (Real)>& f,
                                      Real a, Real b, Real fa, Real fb,
                                      Real acc) const {
         QL_REQUIRE(numberOfEvaluations() < maxEvaluations(),
@@ -137,8 +138,8 @@ namespace QuantLib {
                                        +432*(fmll+fmrr)+625*(fml+fmr)+672*fm);
         
         // avoid 80 bit logic on x86 cpu
-        volatile Real dist = acc + (integral1-integral2);
-        if(Real(dist)==acc || mll<=a || b<=mrr) {
+        const Real dist = acc + (integral1-integral2);
+        if(dist==acc || mll<=a || b<=mrr) {
             QL_REQUIRE(m>a && b>m,"Interval contains no more machine number");
             return integral1;
         }

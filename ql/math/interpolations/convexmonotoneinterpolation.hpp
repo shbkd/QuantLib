@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -47,6 +47,8 @@ namespace QuantLib {
         values (if required) is in place.
 
         \ingroup interpolations
+        \warning See the Interpolation class for information about the
+                 required lifetime of the underlying data.
     */
     template <class I1, class I2>
     class ConvexMonotoneInterpolation : public Interpolation {
@@ -57,8 +59,8 @@ namespace QuantLib {
                                     const I2& yBegin, Real quadraticity,
                                     Real monotonicity, bool forcePositive,
                                     bool flatFinalPeriod = false,
-                                    const helper_map& preExistingHelpers =
-                                                               helper_map()) {
+                                    const helper_map& preExistingHelpers = {},
+                                    bool update = true) {
             impl_ = ext::shared_ptr<Interpolation::Impl>(
                    new detail::ConvexMonotoneImpl<I1,I2>(xBegin,
                                                          xEnd,
@@ -68,18 +70,16 @@ namespace QuantLib {
                                                          forcePositive,
                                                          flatFinalPeriod,
                                                          preExistingHelpers));
-            impl_->update();
+            if (update)
+                impl_->update();
         }
 
-        ConvexMonotoneInterpolation(Interpolation& interp)
+        explicit ConvexMonotoneInterpolation(const Interpolation& interp)
         : Interpolation(interp) {}
 
         std::map<Real, ext::shared_ptr<detail::SectionHelper> >
         getExistingHelpers() {
-            ext::shared_ptr<detail::ConvexMonotoneImpl<I1,I2> > derived =
-                ext::dynamic_pointer_cast<detail::ConvexMonotoneImpl<I1,I2>,
-                                            Interpolation::Impl>(impl_);
-            return derived->getExistingHelpers();
+            return static_cast<detail::ConvexMonotoneImpl<I1,I2>&>(*impl_).getExistingHelpers();
         }
     };
 
@@ -91,20 +91,22 @@ namespace QuantLib {
         static const Size requiredPoints = 2;
         static const Size dataSizeAdjustment = 1;
 
-        explicit ConvexMonotone(Real quadraticity = 0.3,
-                                Real monotonicity = 0.7,
-                                bool forcePositive = true)
+        ConvexMonotone(Real quadraticity = 0.3,
+                       Real monotonicity = 0.7,
+                       bool forcePositive = true)
         : quadraticity_(quadraticity), monotonicity_(monotonicity),
           forcePositive_(forcePositive) {}
 
         template <class I1, class I2>
         Interpolation interpolate(const I1& xBegin, const I1& xEnd,
-                                  const I2& yBegin) const {
+                                  const I2& yBegin, bool update = true) const {
             return ConvexMonotoneInterpolation<I1,I2>(xBegin, xEnd, yBegin,
                                                       quadraticity_,
                                                       monotonicity_,
                                                       forcePositive_,
-                                                      false);
+                                                      false,
+                                                      {},
+                                                      update);
         }
 
         template <class I1, class I2>
@@ -161,7 +163,7 @@ namespace QuantLib {
 
         class SectionHelper {
           public:
-            virtual ~SectionHelper() {}
+            virtual ~SectionHelper() = default;
             virtual Real value(Real x) const = 0;
             virtual Real primitive(Real x) const = 0;
             virtual Real fNext() const = 0;
@@ -169,7 +171,7 @@ namespace QuantLib {
 
         //the first value in the y-vector is ignored.
         template <class I1, class I2>
-        class ConvexMonotoneImpl : public Interpolation::templateImpl<I1, I2> {
+        class ConvexMonotoneImpl final : public Interpolation::templateImpl<I1, I2> {
             typedef std::map<Real, ext::shared_ptr<SectionHelper> >
                                                                    helper_map;
           public:
@@ -207,14 +209,14 @@ namespace QuantLib {
                             "Too many existing helpers have been supplied");
             }
 
-            void update();
+            void update() override;
 
-            Real value(Real x) const;
-            Real primitive(Real x) const;
-            Real derivative(Real) const {
+            Real value(Real x) const override;
+            Real primitive(Real x) const override;
+            Real derivative(Real) const override {
                 QL_FAIL("Convex-monotone spline derivative not implemented");
             }
-            Real secondDerivative(Real) const {
+            Real secondDerivative(Real) const override {
                 QL_FAIL("Convex-monotone spline second derivative "
                         "not implemented");
             }
@@ -247,13 +249,13 @@ namespace QuantLib {
                 QL_REQUIRE(quadraticity < 1.0 && quadraticity > 0.0,
                            "Quadratic value must lie between 0 and 1"); }
 
-            Real value(Real x) const {
+            Real value(Real x) const override {
                 return( quadraticity_*quadraticHelper_->value(x) + (1.0-quadraticity_)*convMonoHelper_->value(x) );
             }
-            Real primitive(Real x) const {
+            Real primitive(Real x) const override {
                 return( quadraticity_*quadraticHelper_->primitive(x) + (1.0-quadraticity_)*convMonoHelper_->primitive(x) );
             }
-            Real fNext() const {
+            Real fNext() const override {
                 return( quadraticity_*quadraticHelper_->fNext() + (1.0-quadraticity_)*convMonoHelper_->fNext() );
             }
 
@@ -269,15 +271,10 @@ namespace QuantLib {
             : value_(value), prevPrimitive_(prevPrimitive), xPrev_(xPrev)
             {}
 
-            Real value(Real) const {
-                return value_;
-            }
-            Real primitive(Real x) const {
-                return prevPrimitive_ + (x-xPrev_)*value_;
-            }
-            Real fNext() const {
-                return value_;
-            }
+            Real value(Real) const override { return value_; }
+            Real primitive(Real x) const override { return prevPrimitive_ + (x - xPrev_) * value_; }
+            Real fNext() const override { return value_; }
+
           private:
             Real value_;
             Real prevPrimitive_;
@@ -295,7 +292,7 @@ namespace QuantLib {
               prevPrimitive_(prevPrimitive)
             {}
 
-            Real value(Real x) const {
+            Real value(Real x) const override {
                 Real xVal = (x-xPrev_)/xScaling_;
                 if (xVal <= eta2_) {
                     return( fAverage_ + gPrev_ );
@@ -304,7 +301,7 @@ namespace QuantLib {
                 }
             }
 
-            Real primitive(Real x) const {
+            Real primitive(Real x) const override {
                 Real xVal = (x-xPrev_)/xScaling_;
                 if (xVal <= eta2_) {
                     return( prevPrimitive_ + xScaling_*(fAverage_*xVal + gPrev_*xVal) );
@@ -313,9 +310,8 @@ namespace QuantLib {
                             (1.0/3.0*(xVal*xVal*xVal - eta2_*eta2_*eta2_) - eta2_*xVal*xVal + eta2_*eta2_*xVal) ) );
                 }
             }
-            Real fNext() const {
-                return(fAverage_+gNext_);
-            }
+            Real fNext() const override { return (fAverage_ + gNext_); }
+
           private:
             Real xPrev_, xScaling_, gPrev_, gNext_, fAverage_, eta2_, prevPrimitive_;
         };
@@ -330,7 +326,7 @@ namespace QuantLib {
                 gNext_(gNext), fAverage_(fAverage), eta3_(eta3), prevPrimitive_(prevPrimitive)
             {}
 
-            Real value(Real x) const {
+            Real value(Real x) const override {
                 Real xVal = (x-xPrev_)/xScaling_;
                 if (xVal <= eta3_) {
                     return( fAverage_ + gNext_ + (gPrev_-gNext_) / (eta3_*eta3_) * (eta3_-xVal)*(eta3_-xVal) );
@@ -339,7 +335,7 @@ namespace QuantLib {
                 }
             }
 
-            Real primitive(Real x) const {
+            Real primitive(Real x) const override {
                 Real xVal = (x-xPrev_)/xScaling_;
                 if (xVal <= eta3_) {
                     return( prevPrimitive_ + xScaling_ * (fAverage_*xVal + gNext_*xVal + (gPrev_-gNext_)/(eta3_*eta3_) *
@@ -349,9 +345,8 @@ namespace QuantLib {
                             (1.0/3.0 * eta3_*eta3_*eta3_)) );
                 }
             }
-            Real fNext() const {
-                return(fAverage_+gNext_);
-            }
+            Real fNext() const override { return (fAverage_ + gNext_); }
+
           private:
             Real xPrev_, xScaling_, gPrev_, gNext_, fAverage_, eta3_, prevPrimitive_;
         };
@@ -367,7 +362,7 @@ namespace QuantLib {
                 A_ = -0.5*(eta4_*gPrev_ + (1-eta4_)*gNext_);
             }
 
-            Real value(Real x) const {
+            Real value(Real x) const override {
                 Real xVal = (x-xPrev_)/xScaling_;
                 if (xVal <= eta4_) {
                     return(fAverage_ + A_ + (gPrev_-A_)*(eta4_-xVal)*(eta4_-xVal)/(eta4_*eta4_) );
@@ -376,7 +371,7 @@ namespace QuantLib {
                 }
             }
 
-            Real primitive(Real x) const {
+            Real primitive(Real x) const override {
                 Real xVal = (x-xPrev_)/xScaling_;
                 Real retVal;
                 if (xVal <= eta4_) {
@@ -389,9 +384,8 @@ namespace QuantLib {
                 }
                 return retVal;
             }
-            Real fNext() const {
-                return(fAverage_+gNext_);
-            }
+            Real fNext() const override { return (fAverage_ + gNext_); }
+
           protected:
             Real xPrev_, xScaling_, gPrev_, gNext_, fAverage_, eta4_, prevPrimitive_;
             Real A_;
@@ -399,13 +393,14 @@ namespace QuantLib {
 
         class ConvexMonotone4MinHelper : public ConvexMonotone4Helper {
           public:
-            ConvexMonotone4MinHelper(Real xPrev,  Real xNext,
-                                  Real gPrev, Real gNext,
-                                  Real fAverage, Real eta4,
-                                  Real prevPrimitive)
-            : ConvexMonotone4Helper(xPrev, xNext, gPrev, gNext,
-                                    fAverage, eta4, prevPrimitive),
-              splitRegion_(false) {
+            ConvexMonotone4MinHelper(Real xPrev,
+                                     Real xNext,
+                                     Real gPrev,
+                                     Real gNext,
+                                     Real fAverage,
+                                     Real eta4,
+                                     Real prevPrimitive)
+            : ConvexMonotone4Helper(xPrev, xNext, gPrev, gNext, fAverage, eta4, prevPrimitive) {
                 if ( A_+ fAverage_ <= 0.0 ) {
                     splitRegion_ = true;
                     Real fPrev = gPrev_+fAverage_;
@@ -424,7 +419,7 @@ namespace QuantLib {
                 }
             }
 
-            Real value(Real x) const {
+            Real value(Real x) const override {
                 if (!splitRegion_)
                     return ConvexMonotone4Helper::value(x);
 
@@ -440,7 +435,7 @@ namespace QuantLib {
                 }
             }
 
-            Real primitive(Real x) const {
+            Real primitive(Real x) const override {
                 if (!splitRegion_)
                     return ConvexMonotone4Helper::primitive(x);
 
@@ -459,8 +454,9 @@ namespace QuantLib {
                             (1.0/3.0*xVal*xVal*xVal - eta4_*xVal*xVal + eta4_*eta4_*xVal - 1.0/3.0*eta4_*eta4_*eta4_)) );
                 }
             }
+
           private:
-            bool splitRegion_;
+            bool splitRegion_ = false;
             Real xRatio_, x2_, x3_;
         };
 
@@ -472,15 +468,12 @@ namespace QuantLib {
             xPrev_(xPrev), fGrad_((fNext-fPrev)/(xNext-xPrev)),fNext_(fNext)
             {}
 
-            Real value(Real x) const {
-                return (fPrev_ + (x-xPrev_)*fGrad_);
-            }
-            Real primitive(Real x) const {
+            Real value(Real x) const override { return (fPrev_ + (x - xPrev_) * fGrad_); }
+            Real primitive(Real x) const override {
                 return (prevPrimitive_+(x-xPrev_)*(fPrev_+0.5*(x-xPrev_)*fGrad_));
             }
-            Real fNext()  const {
-                return fNext_;
-            }
+            Real fNext() const override { return fNext_; }
+
           private:
             Real fPrev_, prevPrimitive_, xPrev_, fGrad_, fNext_;
         };
@@ -500,19 +493,18 @@ namespace QuantLib {
                 xScaling_ = xNext_-xPrev_;
             }
 
-            Real value(Real x) const {
+            Real value(Real x) const override {
                 Real xVal = (x-xPrev_)/xScaling_;
                 return( a_*xVal*xVal + b_*xVal + c_ );
             }
 
-            Real primitive(Real x) const {
+            Real primitive(Real x) const override {
                 Real xVal = (x-xPrev_)/xScaling_;
                 return( prevPrimitive_ + xScaling_ * (a_/3*xVal*xVal + b_/2*xVal + c_) * xVal );
             }
 
-            Real fNext() const {
-                return fNext_;
-            }
+            Real fNext() const override { return fNext_; }
+
           private:
             Real xPrev_, xNext_, fPrev_, fNext_, fAverage_, prevPrimitive_;
             Real xScaling_, a_, b_, c_;
@@ -520,19 +512,15 @@ namespace QuantLib {
 
         class QuadraticMinHelper : public SectionHelper {
           public:
-            QuadraticMinHelper(Real xPrev, Real xNext,
-                               Real fPrev, Real fNext,
-                               Real fAverage,
-                               Real prevPrimitive)
-            : splitRegion_(false), x1_(xPrev), x4_(xNext),
-              primitive1_(prevPrimitive), fAverage_(fAverage),
+            QuadraticMinHelper(
+                Real xPrev, Real xNext, Real fPrev, Real fNext, Real fAverage, Real prevPrimitive)
+            : x1_(xPrev), x4_(xNext), primitive1_(prevPrimitive), fAverage_(fAverage),
               fPrev_(fPrev), fNext_(fNext) {
                 a_ = 3*fPrev_ + 3*fNext_ - 6*fAverage_;
                 b_ = -(4*fPrev_ + 2*fNext_ - 6*fAverage_);
                 c_ = fPrev_;
                 Real d = b_*b_-4*a_*c_;
                 xScaling_ = x4_-x1_;
-                xRatio_ = 1.0;
                 if (d > 0) {
                     Real aAv = 36;
                     Real bAv = -24*(fPrev_+fNext_);
@@ -557,7 +545,7 @@ namespace QuantLib {
                 }
             }
 
-            Real value(Real x) const {
+            Real value(Real x) const override {
                 Real xVal = (x - x1_) / (x4_-x1_);
                 if (splitRegion_) {
                     if (x <= x2_) {
@@ -572,7 +560,7 @@ namespace QuantLib {
                 return c_ + b_*xVal + a_*xVal*xVal;
             }
 
-            Real primitive(Real x) const {
+            Real primitive(Real x) const override {
                 Real xVal = (x - x1_) / (x4_-x1_);
                 if (splitRegion_) {
                     if (x < x2_) {
@@ -586,16 +574,14 @@ namespace QuantLib {
                 return primitive1_ + xScaling_ * (a_/3*xVal*xVal+ b_/2*xVal+c_)*xVal;
             }
 
-            Real fNext() const {
-                return fNext_;
-            }
+            Real fNext() const override { return fNext_; }
 
           private:
-            bool splitRegion_;
+            bool splitRegion_ = false;
             Real x1_, x2_, x3_, x4_;
             Real a_, b_, c_;
             Real primitive1_, primitive2_;
-            Real fAverage_, fPrev_, fNext_, xScaling_, xRatio_;
+            Real fAverage_, fPrev_, fNext_, xScaling_, xRatio_ = 1.0;
         };
 
         template <class I1, class I2>
@@ -619,8 +605,8 @@ namespace QuantLib {
             for (Size i=startPoint; i<length_-1; ++i) {
                 Real dxPrev = this->xBegin_[i] - this->xBegin_[i-1];
                 Real dx = this->xBegin_[i+1] - this->xBegin_[i];
-                f[i] = dxPrev/(dx+dxPrev) * this->yBegin_[i]
-                     + dx/(dx+dxPrev) * this->yBegin_[i+1];
+                f[i] = dx/(dx+dxPrev) * this->yBegin_[i]
+                     + dxPrev/(dx+dxPrev) * this->yBegin_[i+1];
             }
 
             if (startPoint > 1)

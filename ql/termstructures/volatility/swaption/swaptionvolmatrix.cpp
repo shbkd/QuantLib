@@ -2,7 +2,7 @@
 
 /*
  Copyright (C) 2006, 2008 Ferdinando Ametrano
- Copyright (C) 2006 François du Vignaud
+ Copyright (C) 2006 FranÃ§ois du Vignaud
  Copyright (C) 2006 Katiuscia Manzoni
  Copyright (C) 2000, 2001, 2002, 2003 RiskMap srl
  Copyright (C) 2015 Peter Caspers
@@ -14,7 +14,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -47,8 +47,8 @@ namespace QuantLib {
       volHandles_(vols), shiftValues_(shifts),
       volatilities_(vols.size(), vols.front().size()),
       shifts_(vols.size(), vols.front().size(), 0.0), volatilityType_(type) {
-        checkInputs(volatilities_.rows(), volatilities_.columns(),
-                    shifts.size(), shifts.size() == 0 ? 0 : shifts.front().size());
+        checkInputs(volatilities_.rows(), volatilities_.columns(), shifts.size(),
+                    shifts.empty() ? 0 : shifts.front().size());
         registerWithMarketData();
         if (flatExtrapolation) {
             interpolation_ =
@@ -85,8 +85,8 @@ namespace QuantLib {
       volHandles_(vols), shiftValues_(shifts),
       volatilities_(vols.size(), vols.front().size()),
       shifts_(vols.size(), vols.front().size(), 0.0), volatilityType_(type) {
-        checkInputs(volatilities_.rows(), volatilities_.columns(),
-                    shifts.size(), shifts.size() == 0 ? 0 : shifts.front().size());
+        checkInputs(volatilities_.rows(), volatilities_.columns(), shifts.size(),
+                    shifts.empty() ? 0 : shifts.front().size());
         registerWithMarketData();
         if (flatExtrapolation) {
             interpolation_ =
@@ -131,8 +131,8 @@ namespace QuantLib {
             volHandles_[i].resize(vols.columns());
             shiftValues_[i].resize(vols.columns());
             for (Size j=0; j<vols.columns(); ++j) {
-                volHandles_[i][j] = Handle<Quote>(ext::shared_ptr<Quote>(new
-                    SimpleQuote(vols[i][j])));
+                volHandles_[i][j] =
+                    Handle<Quote>(ext::make_shared<SimpleQuote>(vols[i][j]));
                 shiftValues_[i][j] = shifts.rows() > 0 ? shifts[i][j] : 0.0;
             }
         }
@@ -180,8 +180,8 @@ namespace QuantLib {
             volHandles_[i].resize(vols.columns());
             shiftValues_[i].resize(vols.columns());
             for (Size j=0; j<vols.columns(); ++j) {
-                volHandles_[i][j] = Handle<Quote>(ext::shared_ptr<Quote>(new
-                    SimpleQuote(vols[i][j])));
+                volHandles_[i][j] =
+                    Handle<Quote>(ext::make_shared<SimpleQuote>(vols[i][j]));
                 shiftValues_[i][j] = shifts.rows() > 0 ? shifts[i][j] : 0.0;
             }
         }
@@ -207,6 +207,8 @@ namespace QuantLib {
     // fixed reference date and fixed market data, option dates
     SwaptionVolatilityMatrix::SwaptionVolatilityMatrix(
                     const Date& today,
+                    const Calendar& calendar,
+                    BusinessDayConvention bdc,
                     const std::vector<Date>& optionDates,
                     const std::vector<Period>& swapT,
                     const Matrix& vols,
@@ -214,7 +216,7 @@ namespace QuantLib {
                     const bool flatExtrapolation,
                     const VolatilityType type,
                     const Matrix& shifts)
-    : SwaptionVolatilityDiscrete(optionDates, swapT, today, Calendar(), Following, dc),
+    : SwaptionVolatilityDiscrete(optionDates, swapT, today, calendar, bdc, dc),
       volHandles_(vols.rows()), shiftValues_(vols.rows()),
       volatilities_(vols.rows(), vols.columns()),
       shifts_(shifts.rows(),shifts.columns(),0.0), volatilityType_(type) {
@@ -227,8 +229,8 @@ namespace QuantLib {
             volHandles_[i].resize(vols.columns());
             shiftValues_[i].resize(vols.columns());
             for (Size j=0; j<vols.columns(); ++j) {
-                volHandles_[i][j] = Handle<Quote>(ext::shared_ptr<Quote>(new
-                    SimpleQuote(vols[i][j])));
+                volHandles_[i][j] =
+                    Handle<Quote>(ext::make_shared<SimpleQuote>(vols[i][j]));
                 shiftValues_[i][j] = shifts.rows() > 0 ? shifts[i][j] : 0.0;
             }
         }
@@ -297,7 +299,7 @@ namespace QuantLib {
         for (Size i=0; i<volatilities_.rows(); ++i) {
             for (Size j=0; j<volatilities_.columns(); ++j) {
                 volatilities_[i][j] = volHandles_[i][j]->value();
-                if(shiftValues_.size() > 0)
+                if (!shiftValues_.empty())
                     shifts_[i][j] = shiftValues_[i][j];
             }
         }
@@ -310,8 +312,8 @@ namespace QuantLib {
     //    Time swapLength = convertSwapTenor(swapTenor);
     //    // dummy strike
     //    Volatility atmVol = volatilityImpl(optionTime, swapLength, 0.05);
-    //    return ext::shared_ptr<SmileSection>(new
-    //        FlatSmileSection(d, atmVol, dayCounter(), referenceDate()));
+    //    return ext::make_shared<FlatSmileSection>(
+    //        d, atmVol, dayCounter(), referenceDate());
     //}
 
     ext::shared_ptr<SmileSection>
@@ -319,9 +321,9 @@ namespace QuantLib {
                                                Time swapLength) const {
         // dummy strike
         Volatility atmVol = volatilityImpl(optionTime, swapLength, 0.05);
-        return ext::shared_ptr<SmileSection>(new FlatSmileSection(
+        return ext::make_shared<FlatSmileSection>(
             optionTime, atmVol, dayCounter(), Null<Real>(), volatilityType(),
-            shift(optionTime, swapLength, true)));
+            shift(optionTime, swapLength, true));
     }
 
 }

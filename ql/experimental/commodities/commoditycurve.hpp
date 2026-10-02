@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -39,19 +39,19 @@ namespace QuantLib {
         friend class CommodityIndex;
       public:
         // constructor
-        CommodityCurve(const std::string& name,
-                       const CommodityType& commodityType,
-                       const Currency& currency,
-                       const UnitOfMeasure& unitOfMeasure,
+        CommodityCurve(std::string name,
+                       CommodityType commodityType,
+                       Currency currency,
+                       UnitOfMeasure unitOfMeasure,
                        const Calendar& calendar,
                        const std::vector<Date>& dates,
-                       const std::vector<Real>& prices,
+                       std::vector<Real> prices,
                        const DayCounter& dayCounter = Actual365Fixed());
 
-        CommodityCurve(const std::string& name,
-                       const CommodityType& commodityType,
-                       const Currency& currency,
-                       const UnitOfMeasure& unitOfMeasure,
+        CommodityCurve(std::string name,
+                       CommodityType commodityType,
+                       Currency currency,
+                       UnitOfMeasure unitOfMeasure,
                        const Calendar& calendar,
                        const DayCounter& dayCounter = Actual365Fixed());
 
@@ -61,7 +61,7 @@ namespace QuantLib {
         const CommodityType& commodityType() const;
         const UnitOfMeasure& unitOfMeasure() const;
         const Currency& currency() const;
-        Date maxDate() const;
+        Date maxDate() const override;
         const std::vector<Time>& times() const;
         const std::vector<Date>& dates() const;
         const std::vector<Real>& prices() const;
@@ -109,6 +109,18 @@ namespace QuantLib {
 
     inline bool operator==(const CommodityCurve& c1, const CommodityCurve& c2) {
         return c1.name() == c2.name();
+    }
+
+    inline const CommodityType& CommodityCurve::commodityType() const {
+        return commodityType_;
+    }
+
+    inline const UnitOfMeasure& CommodityCurve::unitOfMeasure() const {
+        return unitOfMeasure_;
+    }
+
+    inline const Currency& CommodityCurve::currency() const {
+        return currency_;
     }
 
     inline const std::string& CommodityCurve::name() const {
@@ -177,7 +189,7 @@ namespace QuantLib {
                 const ext::shared_ptr<ExchangeContracts>& exchangeContracts,
                 Integer nearbyOffset) const {
         QL_REQUIRE(nearbyOffset > 0, "nearby offset must be > 0");
-        ExchangeContracts::const_iterator ic =
+        auto ic =
             exchangeContracts->lower_bound(date);
         if (ic != exchangeContracts->end()) {
             for (int i = 0; i < nearbyOffset-1 && ic!=exchangeContracts->end(); ++i)
@@ -191,7 +203,7 @@ namespace QuantLib {
     }
 
     inline Real CommodityCurve::basisOfPriceImpl(Time t) const {
-        if (basisOfCurve_ != 0) {
+        if (basisOfCurve_ != nullptr) {
             Real basisCurvePriceValue = 0;
             try {
                 basisCurvePriceValue =

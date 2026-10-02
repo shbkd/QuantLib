@@ -10,112 +10,100 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "libormarketmodel.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
-
 #include <ql/indexes/ibor/euribor.hpp>
 #include <ql/instruments/capfloor.hpp>
-#include <ql/termstructures/yield/zerocurve.hpp>
-#include <ql/termstructures/volatility/optionlet/capletvariancecurve.hpp>
+#include <ql/instruments/vanillaswap.hpp>
+#include <ql/legacy/libormarketmodels/lfmcovarproxy.hpp>
+#include <ql/legacy/libormarketmodels/lfmhullwhiteparam.hpp>
+#include <ql/legacy/libormarketmodels/lfmswaptionengine.hpp>
+#include <ql/legacy/libormarketmodels/liborforwardmodel.hpp>
+#include <ql/legacy/libormarketmodels/lmexpcorrmodel.hpp>
+#include <ql/legacy/libormarketmodels/lmextlinexpvolmodel.hpp>
+#include <ql/legacy/libormarketmodels/lmfixedvolmodel.hpp>
+#include <ql/legacy/libormarketmodels/lmlinexpcorrmodel.hpp>
 #include <ql/math/optimization/levenbergmarquardt.hpp>
-
-#include <ql/math/statistics/generalstatistics.hpp>
 #include <ql/math/randomnumbers/rngtraits.hpp>
+#include <ql/math/statistics/generalstatistics.hpp>
 #include <ql/methods/montecarlo/multipathgenerator.hpp>
-
-#include <ql/pricingengines/swap/discountingswapengine.hpp>
-#include <ql/pricingengines/capfloor/blackcapfloorengine.hpp>
-#include <ql/pricingengines/capfloor/analyticcapfloorengine.hpp>
-
 #include <ql/models/shortrate/calibrationhelpers/caphelper.hpp>
 #include <ql/models/shortrate/calibrationhelpers/swaptionhelper.hpp>
-
-#include <ql/legacy/libormarketmodels/lfmcovarproxy.hpp>
-#include <ql/legacy/libormarketmodels/lmexpcorrmodel.hpp>
-#include <ql/legacy/libormarketmodels/lmlinexpcorrmodel.hpp>
-#include <ql/legacy/libormarketmodels/lmfixedvolmodel.hpp>
-#include <ql/legacy/libormarketmodels/lmextlinexpvolmodel.hpp>
-#include <ql/legacy/libormarketmodels/liborforwardmodel.hpp>
-#include <ql/legacy/libormarketmodels/lfmswaptionengine.hpp>
-#include <ql/legacy/libormarketmodels/lfmhullwhiteparam.hpp>
-
+#include <ql/pricingengines/capfloor/analyticcapfloorengine.hpp>
+#include <ql/pricingengines/capfloor/blackcapfloorengine.hpp>
+#include <ql/pricingengines/swap/discountingswapengine.hpp>
+#include <ql/quotes/simplequote.hpp>
+#include <ql/termstructures/volatility/optionlet/capletvariancecurve.hpp>
+#include <ql/termstructures/yield/zerocurve.hpp>
 #include <ql/time/daycounters/actual360.hpp>
 #include <ql/time/schedule.hpp>
-#include <ql/quotes/simplequote.hpp>
 
 using namespace QuantLib;
 using namespace boost::unit_test_framework;
 
-namespace {
+BOOST_FIXTURE_TEST_SUITE(QuantLibTests, TopLevelFixture)  // tests for deprecated classes
 
-    ext::shared_ptr<IborIndex> makeIndex(std::vector<Date> dates,
-                                           std::vector<Rate> rates) {
-        DayCounter dayCounter = Actual360();
+BOOST_AUTO_TEST_SUITE(LiborMarketModelTests)
 
-        RelinkableHandle<YieldTermStructure> termStructure;
+ext::shared_ptr<IborIndex> makeIndex(std::vector<Date> dates, const std::vector<Rate>& rates) {
+    DayCounter dayCounter = Actual360();
 
-        ext::shared_ptr<IborIndex> index(new Euribor6M(termStructure));
+    RelinkableHandle<YieldTermStructure> termStructure;
 
-        Date todaysDate =
-            index->fixingCalendar().adjust(Date(4,September,2005));
-        Settings::instance().evaluationDate() = todaysDate;
+    ext::shared_ptr<IborIndex> index(new Euribor6M(termStructure));
 
-        dates[0] = index->fixingCalendar().advance(todaysDate,
-                                                   index->fixingDays(), Days);
+    Date todaysDate =
+        index->fixingCalendar().adjust(Date(4,September,2005));
+    Settings::instance().evaluationDate() = todaysDate;
 
-        termStructure.linkTo(ext::shared_ptr<YieldTermStructure>(
+    dates[0] = index->fixingCalendar().advance(todaysDate,
+                                               index->fixingDays(), Days);
+
+    termStructure.linkTo(ext::shared_ptr<YieldTermStructure>(
                                     new ZeroCurve(dates, rates, dayCounter)));
 
-        return index;
-    }
-
-
-    ext::shared_ptr<IborIndex> makeIndex() {
-        std::vector<Date> dates;
-        std::vector<Rate> rates;
-        dates.push_back(Date(4,September,2005));
-        dates.push_back(Date(4,September,2018));
-        rates.push_back(0.039);
-        rates.push_back(0.041);
-
-        return makeIndex(dates, rates);
-    }
-
-
-    ext::shared_ptr<OptionletVolatilityStructure>
-    makeCapVolCurve(const Date& todaysDate) {
-        Volatility vols[] = {14.40, 17.15, 16.81, 16.64, 16.17,
-                             15.78, 15.40, 15.21, 14.86};
-
-        std::vector<Date> dates;
-        std::vector<Volatility> capletVols;
-        ext::shared_ptr<LiborForwardModelProcess> process(
-                               new LiborForwardModelProcess(10, makeIndex()));
-
-        for (Size i=0; i < 9; ++i) {
-            capletVols.push_back(vols[i]/100);
-            dates.push_back(process->fixingDates()[i+1]);
-        }
-
-        return ext::make_shared<CapletVarianceCurve>(
-                         todaysDate, dates,
-                                                 capletVols, Actual360());
-    }
-
+    return index;
 }
 
 
-void LiborMarketModelTest::testSimpleCovarianceModels() {
-    BOOST_TEST_MESSAGE("Testing simple covariance models...");
+ext::shared_ptr<IborIndex> makeIndex() {
+    std::vector<Date> dates = {{4,September,2005}, {4,September,2018}};
+    std::vector<Rate> rates = {0.039, 0.041};
 
-    SavedSettings backup;
+    return makeIndex(dates, rates);
+}
+
+
+ext::shared_ptr<OptionletVolatilityStructure>
+makeCapVolCurve(const Date& todaysDate) {
+    Volatility vols[] = {14.40, 17.15, 16.81, 16.64, 16.17,
+                         15.78, 15.40, 15.21, 14.86};
+
+    std::vector<Date> dates;
+    std::vector<Volatility> capletVols;
+    ext::shared_ptr<LiborForwardModelProcess> process(
+                               new LiborForwardModelProcess(10, makeIndex()));
+
+    for (Size i=0; i < 9; ++i) {
+        capletVols.push_back(vols[i]/100);
+        dates.push_back(process->fixingDates()[i+1]);
+    }
+
+    return ext::make_shared<CapletVarianceCurve>(
+                         todaysDate, dates,
+                         capletVols, Actual360());
+}
+
+
+BOOST_AUTO_TEST_CASE(testSimpleCovarianceModels) {
+    BOOST_TEST_MESSAGE("Testing simple covariance models...");
 
     const Size size = 10;
     const Real tolerance = 1e-14;
@@ -175,7 +163,7 @@ void LiborMarketModelTest::testSimpleCovarianceModels() {
 
         for (Size k=0; k<size; ++k) {
             Real expected = 0;
-            if (k>2*t) {
+            if (static_cast<Real>(k) > 2 * t) {
                 const Real T = fixingTimes[k];
                 expected=(a*(T-t)+d)*std::exp(-b*(T-t)) + c;
             }
@@ -188,18 +176,13 @@ void LiborMarketModelTest::testSimpleCovarianceModels() {
     }
 }
 
-
-void LiborMarketModelTest::testCapletPricing() {
+BOOST_AUTO_TEST_CASE(testCapletPricing) {
     BOOST_TEST_MESSAGE("Testing caplet pricing...");
 
-    SavedSettings backup;
+    bool usingAtParCoupons  = IborCoupon::Settings::instance().usingAtParCoupons();
 
     const Size size = 10;
-    #if defined(QL_USE_INDEXED_COUPON)
-    const Real tolerance = 1e-5;
-    #else
-    const Real tolerance = 1e-12;
-    #endif
+    Real tolerance = usingAtParCoupons ? 1e-12 : 1e-5;
 
     ext::shared_ptr<IborIndex> index = makeIndex();
     ext::shared_ptr<LiborForwardModelProcess> process(
@@ -228,13 +211,12 @@ void LiborMarketModelTest::testCapletPricing() {
     ext::shared_ptr<AnalyticCapFloorEngine> engine1(
                             new AnalyticCapFloorEngine(model, termStructure));
 
-    ext::shared_ptr<Cap> cap1(
-        new Cap(process->cashFlows(),
-                std::vector<Rate>(size, 0.04)));
-    cap1->setPricingEngine(engine1);
+    auto cap1 = Cap(process->cashFlows(),
+                    std::vector<Rate>(size, 0.04));
+    cap1.setPricingEngine(engine1);
 
     const Real expected = 0.015853935178;
-    const Real calculated = cap1->NPV();
+    const Real calculated = cap1.NPV();
 
     if (std::fabs(expected - calculated) > tolerance)
         BOOST_ERROR("Failed to reproduce npv"
@@ -242,10 +224,8 @@ void LiborMarketModelTest::testCapletPricing() {
                     << "\n    expected:   " << expected);
 }
 
-void LiborMarketModelTest::testCalibration() {
+BOOST_AUTO_TEST_CASE(testCalibration) {
     BOOST_TEST_MESSAGE("Testing calibration of a Libor forward model...");
-
-    SavedSettings backup;
 
     const Size size = 14;
     const Real tolerance = 8e-3;
@@ -288,7 +268,7 @@ void LiborMarketModelTest::testCalibration() {
     DayCounter dayCounter=index->forwardingTermStructure()->dayCounter();
 
     // set-up calibration helper
-    std::vector<ext::shared_ptr<CalibrationHelper> > calibrationHelper;
+    std::vector<ext::shared_ptr<CalibrationHelper> > calibrationHelpers;
 
     Size i;
     for (i=2; i < size; ++i) {
@@ -296,15 +276,15 @@ void LiborMarketModelTest::testCalibration() {
         Handle<Quote> capVol(
             ext::shared_ptr<Quote>(new SimpleQuote(capVols[i-2])));
 
-        ext::shared_ptr<CalibrationHelper> caphelper(
-            new CapHelper(maturity, capVol, index, Annual,
-                          index->dayCounter(), true, termStructure,
-                          CalibrationHelper::ImpliedVolError));
+        auto caphelper =
+            ext::make_shared<CapHelper>(maturity, capVol, index, Annual,
+                                        index->dayCounter(), true, termStructure,
+                                        BlackCalibrationHelper::ImpliedVolError);
 
         caphelper->setPricingEngine(ext::shared_ptr<PricingEngine>(
                            new AnalyticCapFloorEngine(model, termStructure)));
 
-        calibrationHelper.push_back(caphelper);
+        calibrationHelpers.push_back(caphelper);
 
         if (i<= size/2) {
             // add a few swaptions to test swaption calibration as well
@@ -314,29 +294,29 @@ void LiborMarketModelTest::testCalibration() {
                     ext::shared_ptr<Quote>(
                         new SimpleQuote(swaptionVols[swapVolIndex++])));
 
-                ext::shared_ptr<CalibrationHelper> swaptionHelper(
-                    new SwaptionHelper(maturity, len, swaptionVol, index,
-                                       index->tenor(), dayCounter,
-                                       index->dayCounter(),
-                                       termStructure,
-                                       CalibrationHelper::ImpliedVolError));
+                auto swaptionHelper =
+                    ext::make_shared<SwaptionHelper>(maturity, len, swaptionVol, index,
+                                                     index->tenor(), dayCounter,
+                                                     index->dayCounter(),
+                                                     termStructure,
+                                                     BlackCalibrationHelper::ImpliedVolError);
 
                 swaptionHelper->setPricingEngine(
                      ext::shared_ptr<PricingEngine>(
                                  new LfmSwaptionEngine(model,termStructure)));
 
-                calibrationHelper.push_back(swaptionHelper);
+                calibrationHelpers.push_back(swaptionHelper);
             }
         }
     }
 
     LevenbergMarquardt om(1e-6, 1e-6, 1e-6);
-    model->calibrate(calibrationHelper, om, EndCriteria(2000, 100, 1e-6, 1e-6, 1e-6));
+    model->calibrate(calibrationHelpers, om, EndCriteria(2000, 100, 1e-6, 1e-6, 1e-6));
 
     // measure the calibration error
     Real calculated = 0.0;
-    for (i=0; i<calibrationHelper.size(); ++i) {
-        Real diff = calibrationHelper[i]->calibrationError();
+    for (i=0; i<calibrationHelpers.size(); ++i) {
+        Real diff = calibrationHelpers[i]->calibrationError();
         calculated += diff*diff;
     }
 
@@ -346,25 +326,18 @@ void LiborMarketModelTest::testCalibration() {
                     << "\n    expected : smaller than  " << tolerance);
 }
 
-void LiborMarketModelTest::testSwaptionPricing() {
+BOOST_AUTO_TEST_CASE(testSwaptionPricing) {
     BOOST_TEST_MESSAGE("Testing forward swap and swaption pricing...");
 
-    SavedSettings backup;
+    bool usingAtParCoupons = IborCoupon::Settings::instance().usingAtParCoupons();
 
     const Size size  = 10;
     const Size steps = 8*size;
-    #if defined(QL_USE_INDEXED_COUPON)
-    const Real tolerance = 1e-6;
-    #else
-    const Real tolerance = 1e-12;
-    #endif
 
-    std::vector<Date> dates;
-    std::vector<Rate> rates;
-    dates.push_back(Date(4,September,2005));
-    dates.push_back(Date(4,September,2011));
-    rates.push_back(0.04);
-    rates.push_back(0.08);
+    Real tolerance = usingAtParCoupons ? 1e-12 : 1e-6;
+
+    std::vector<Date> dates = {{4,September,2005}, {4,September,2011}};
+    std::vector<Rate> rates = {0.04, 0.08};
 
     ext::shared_ptr<IborIndex> index = makeIndex(dates, rates);
 
@@ -412,9 +385,6 @@ void LiborMarketModelTest::testSwaptionPricing() {
 
     Date settlement  = index->forwardingTermStructure()->referenceDate();
 
-    ext::shared_ptr<SwaptionVolatilityMatrix> m =
-                liborModel->getSwaptionVolatilityMatrix();
-
     for (i=1; i < size; ++i) {
         for (Size j=1; j <= size-i; ++j) {
             Date fwdStart    = settlement + Period(6*i, Months);
@@ -425,7 +395,7 @@ void LiborMarketModelTest::testSwaptionPricing() {
 
             Rate swapRate  = 0.0404;
             ext::shared_ptr<VanillaSwap> forwardSwap(
-                new VanillaSwap(VanillaSwap::Receiver, 1.0,
+                new VanillaSwap(Swap::Receiver, 1.0,
                                 schedule, swapRate, dayCounter,
                                 schedule, index, 0.0, index->dayCounter()));
             forwardSwap->setPricingEngine(ext::shared_ptr<PricingEngine>(
@@ -442,7 +412,7 @@ void LiborMarketModelTest::testSwaptionPricing() {
 
             swapRate = forwardSwap->fairRate();
             forwardSwap = ext::make_shared<VanillaSwap>(
-                VanillaSwap::Receiver, 1.0,
+                                Swap::Receiver, 1.0,
                                 schedule, swapRate, dayCounter,
                                 schedule, index, 0.0, index->dayCounter());
             forwardSwap->setPricingEngine(ext::shared_ptr<PricingEngine>(
@@ -455,15 +425,13 @@ void LiborMarketModelTest::testSwaptionPricing() {
                 ext::shared_ptr<Exercise> exercise(
                     new EuropeanExercise(process->fixingDates()[i]));
 
-                ext::shared_ptr<Swaption> swaption(
-                    new Swaption(forwardSwap, exercise));
+                auto swaption = ext::make_shared<Swaption>(forwardSwap, exercise);
                 swaption->setPricingEngine(engine);
 
                 GeneralStatistics stat;
 
                 for (Size n=0; n<nrTrails; ++n) {
-                    sample_type path = (n%2) ? generator.antithetic()
-                                             : generator.next();
+                    sample_type path = (n % 2) != 0U ? generator.antithetic() : generator.next();
 
                     std::vector<Rate> rates(size);
                     for (Size k=0; k<process->size(); ++k) {
@@ -491,19 +459,6 @@ void LiborMarketModelTest::testSwaptionPricing() {
     }
 }
 
+BOOST_AUTO_TEST_SUITE_END()
 
-test_suite* LiborMarketModelTest::suite(SpeedLevel speed) {
-    test_suite* suite = BOOST_TEST_SUITE("Libor market model tests");
-
-    suite->add(QUANTLIB_TEST_CASE(
-                          &LiborMarketModelTest::testSimpleCovarianceModels));
-    suite->add(QUANTLIB_TEST_CASE(&LiborMarketModelTest::testCapletPricing));
-    suite->add(QUANTLIB_TEST_CASE(&LiborMarketModelTest::testSwaptionPricing));
-
-    if (speed == Slow) {
-        suite->add(QUANTLIB_TEST_CASE(&LiborMarketModelTest::testCalibration));
-    }
-
-    return suite;
-}
-
+BOOST_AUTO_TEST_SUITE_END()

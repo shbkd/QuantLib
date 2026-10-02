@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -26,7 +26,6 @@
 
 #include <ql/math/fastfouriertransform.hpp>
 #include <ql/math/array.hpp>
-#include <ql/math/functional.hpp>
 #include <complex>
 #include <vector>
 #include <algorithm>
@@ -49,7 +48,7 @@ namespace QuantLib {
             Array tmp(ft.size(), 0.0);
             std::complex<Real> z = std::complex<Real>();
             for (Size i=0; i<ft.size(); ++i) {
-                tmp[i] = std::norm<Real>(ft[i]);
+                tmp[i] = std::norm(ft[i]);
                 ft[i] = z;
             }
             fft.transform(tmp.begin(), tmp.end(), ft.begin());
@@ -65,8 +64,7 @@ namespace QuantLib {
             std::size_t n = 1;
             for (InputIterator it = begin; it != end; ++it, ++n)
                 mean = (mean*Real(n-1) + *it)/n;
-            std::transform(begin, end, out,
-                           subtract<Real>(mean));
+            std::transform(begin, end, out, [=](Real x) -> Real { return x - mean; });
             return mean;
         }
 

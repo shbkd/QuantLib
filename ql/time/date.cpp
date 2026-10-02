@@ -7,6 +7,8 @@
  Copyright (C) 2006 Katiuscia Manzoni
  Copyright (C) 2006 Toyin Akin
  Copyright (C) 2015 Klaus Spanderen
+ Copyright (C) 2020 Leonardo Arcari
+ Copyright (C) 2020 Kline s.r.l.
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -15,7 +17,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -25,17 +27,19 @@
 #include <ql/time/date.hpp>
 #include <ql/utilities/dataformatters.hpp>
 #include <ql/errors.hpp>
-#if defined(__GNUC__) && (((__GNUC__ == 4) && (__GNUC_MINOR__ >= 8)) || (__GNUC__ > 4))
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-local-typedefs"
-#endif
 #include <boost/date_time/gregorian/gregorian.hpp>
 #include <boost/date_time/posix_time/posix_time_types.hpp>
-#if defined(__GNUC__) && (((__GNUC__ == 4) && (__GNUC_MINOR__ >= 8)) || (__GNUC__ > 4))
-#pragma GCC diagnostic pop
-#endif
+#include <functional>
 #include <iomanip>
 #include <ctime>
+
+#ifdef QL_HIGH_RESOLUTION_DATE
+#if BOOST_VERSION < 106700
+#include <boost/functional/hash.hpp>
+#else
+#include <boost/container_hash/hash.hpp>
+#endif
+#endif
 
 #if defined(BOOST_NO_STDC_NAMESPACE)
     namespace std { using ::time; using ::time_t; using ::tm;
@@ -46,6 +50,36 @@
 using boost::posix_time::ptime;
 using boost::posix_time::time_duration;
 #endif
+
+namespace {
+
+    /* std::localtime returns a pointer into a shared static buffer, so it is
+       neither reentrant nor safe to call from more than one thread; MSVC also
+       flags it as deprecated.  Use the platform-specific reentrant variants
+       where they exist, letting Boost's own platform matrix decide: a few
+       platforms, MinGW among them, provide no localtime_r.  See
+       boost/date_time/compiler_config.hpp.
+    */
+    bool localTime(std::time_t t, std::tm& result) {
+#if defined(BOOST_MSVC)
+        // Microsoft's localtime_s is not the one from Annex K of the C
+        // standard: it takes the output buffer first and returns an error
+        // code instead of a pointer.
+        return localtime_s(&result, &t) == 0;
+#elif defined(BOOST_DATE_TIME_HAS_REENTRANT_STD_FUNCTIONS)
+        return localtime_r(&t, &result) != nullptr;
+#else
+        QL_DEPRECATED_DISABLE_WARNING
+        const std::tm* lt = std::localtime(&t);
+        QL_DEPRECATED_ENABLE_WARNING
+        if (lt == nullptr)
+            return false;
+        result = *lt;
+        return true;
+#endif
+    }
+
+}
 
 
 namespace QuantLib {
@@ -81,7 +115,7 @@ namespace QuantLib {
         bool leap = isLeap(year());
         while (d <= monthOffset(Month(m),leap))
             --m;
-        while (d > monthOffset(Month(m+1),leap))
+        while (d > monthOffset(Month(m+1),leap)) // NOLINT(misc-misplaced-widening-cast)
             ++m;
         return Month(m);
     }
@@ -159,7 +193,7 @@ namespace QuantLib {
             if (d > length)
                 d = length;
 
-            return Date(d, Month(m), y);
+            return {d, Month(m), y};
           }
           case Years: {
               Day d = date.dayOfMonth();
@@ -173,7 +207,7 @@ namespace QuantLib {
               if (d == 29 && m == February && !isLeap(y))
                   d = 28;
 
-              return Date(d,m,y);
+              return {d, m, y};
           }
           default:
             QL_FAIL("undefined time units");
@@ -483,6 +517,21 @@ namespace QuantLib {
                   }
                  }
                 break;
+              case Hours:
+                dt += boost::posix_time::hours(n);
+                break;
+              case Minutes:
+                  dt += boost::posix_time::minutes(n);
+                  break;
+              case Seconds:
+                dt += boost::posix_time::seconds(n);
+                break;
+              case Milliseconds:
+                dt += boost::posix_time::milliseconds(n);
+                break;
+              case Microseconds:
+                dt += boost::posix_time::microseconds(n);
+                break;
               default:
                 QL_FAIL("undefined time units");
            }
@@ -599,10 +648,10 @@ namespace QuantLib {
     }
 
     Date::serial_type Date::serialNumber() const {
-        const Date::serial_type n = (dateTime_.date()
-            - serialNumberDateReference()).days();
-        checkSerialNumber(n);
-
+        const Date::serial_type n =
+            (dateTime_.date() - serialNumberDateReference()).days();
+        if (n != 0)
+            checkSerialNumber(n);
         return n;
     }
 
@@ -770,11 +819,13 @@ namespace QuantLib {
         std::time_t t;
 
         if (std::time(&t) == std::time_t(-1)) // -1 means time() didn't work
-            return Date();
-        std::tm *lt = std::localtime(&t);
-        return Date(Day(lt->tm_mday),
-                        Month(lt->tm_mon+1),
-                        Year(lt->tm_year+1900));
+            return {};
+
+        std::tm lt{};
+        if (!localTime(t, lt)) // the conversion failed
+            return {};
+
+        return {Day(lt.tm_mday), Month(lt.tm_mon + 1), Year(lt.tm_year + 1900)};
     }
 
     Date Date::nextWeekday(const Date& d, Weekday dayOfWeek) {
@@ -790,7 +841,7 @@ namespace QuantLib {
                    "no more than 5 weekday in a given (month, year)");
         Weekday first = Date(1, m, y).weekday();
         Size skip = nth - (dayOfWeek>=first ? 1 : 0);
-        return Date((1 + dayOfWeek + skip*7) - first, m, y);
+        return {Day((1 + dayOfWeek + skip * 7) - first), m, y};
     }
 
     // month formatting
@@ -826,6 +877,16 @@ namespace QuantLib {
         }
     }
 
+    std::size_t hash_value(const Date& d) {
+#ifdef QL_HIGH_RESOLUTION_DATE
+        std::size_t seed = 0;
+        boost::hash_combine(seed, d.serialNumber());
+        boost::hash_combine(seed, d.dateTime().time_of_day().total_nanoseconds());
+        return seed;
+#else
+        return std::hash<Date::serial_type>()(d.serialNumber());
+#endif
+    }
 
     // date formatting
 
@@ -835,12 +896,12 @@ namespace QuantLib {
 
     namespace detail {
 
-        struct FormatResetter {
+        struct FormatResetter { // NOLINT(cppcoreguidelines-special-member-functions)
             // An instance of this object will have undefined behaviour
             // if the object out passed in the constructor is destroyed
             // before this instance
             struct nopunct : std::numpunct<char> {
-                std::string do_grouping() const {return "";}
+                std::string do_grouping() const override { return ""; }
             };
             explicit FormatResetter(std::ostream &out)
                 : out_(&out), flags_(out.flags()), filler_(out.fill()),

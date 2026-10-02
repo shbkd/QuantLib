@@ -12,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -35,7 +35,7 @@ namespace QuantLib {
       public:
         explicit Fdm1dMesher(Size size)
         : locations_(size), dplus_(size), dminus_(size) {}
-        virtual ~Fdm1dMesher() {}
+        virtual ~Fdm1dMesher() = default;
 
         Size size() const { return locations_.size(); }
         Real dplus(Size index) const {return dplus_[index];}

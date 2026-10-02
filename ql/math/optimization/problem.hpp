@@ -12,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -26,9 +26,10 @@
 #ifndef quantlib_optimization_problem_h
 #define quantlib_optimization_problem_h
 
-#include <ql/math/optimization/method.hpp>
 #include <ql/math/optimization/constraint.hpp>
 #include <ql/math/optimization/costfunction.hpp>
+#include <ql/math/optimization/method.hpp>
+#include <utility>
 
 namespace QuantLib {
 
@@ -41,11 +42,9 @@ namespace QuantLib {
     class Problem {
       public:
         //! default constructor
-        Problem(CostFunction& costFunction,
-                Constraint& constraint,
-                const Array& initialValue = Array())
+        Problem(CostFunction& costFunction, Constraint& constraint, Array initialValue = Array())
         : costFunction_(costFunction), constraint_(constraint),
-          currentValue_(initialValue) {
+          currentValue_(std::move(initialValue)) {
             QL_REQUIRE(!constraint.empty(), "empty constraint given");
         }
 
@@ -57,7 +56,7 @@ namespace QuantLib {
         Real value(const Array& x);
 
         //! call cost values computation and increment evaluation counter
-        Disposable<Array> values(const Array& x);
+        Array values(const Array& x);
 
         //! call cost function gradient computation and increment
         //  evaluation counter
@@ -74,8 +73,8 @@ namespace QuantLib {
         //! Cost function
         CostFunction& costFunction() const { return costFunction_; }
 
-        void setCurrentValue(const Array& currentValue) {
-            currentValue_=currentValue;
+        void setCurrentValue(Array currentValue) {
+            currentValue_ = std::move(currentValue);
         }
 
         //! current value of the local minimum
@@ -107,7 +106,7 @@ namespace QuantLib {
         Constraint& constraint_;
         //! current value of the local minimum
         Array currentValue_;
-        //! function and gradient norm values at the curentValue_ (i.e. the last step)
+        //! function and gradient norm values at the currentValue_ (i.e. the last step)
         Real functionValue_, squaredNorm_;
         //! number of evaluation of cost function and its gradient
         Integer functionEvaluation_, gradientEvaluation_;
@@ -119,7 +118,7 @@ namespace QuantLib {
         return costFunction_.value(x);
     }
 
-    inline Disposable<Array> Problem::values(const Array& x) {
+    inline Array Problem::values(const Array& x) {
         ++functionEvaluation_;
         return costFunction_.values(x);
     }

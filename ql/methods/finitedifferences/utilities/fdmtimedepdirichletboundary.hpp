@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -27,8 +27,7 @@
 
 #include <ql/methods/finitedifferences/boundarycondition.hpp>
 #include <ql/methods/finitedifferences/operators/fdmlinearop.hpp>
-
-#include <boost/function.hpp>
+#include <functional>
 
 namespace QuantLib {
 
@@ -42,26 +41,26 @@ namespace QuantLib {
         typedef FdmLinearOp::array_type array_type;
         typedef BoundaryCondition<FdmLinearOp>::Side Side;
 
-        FdmTimeDepDirichletBoundary(
-            const ext::shared_ptr<FdmMesher>& mesher,
-            const boost::function<Real (Real)>& valueOnBoundary,
-            Size direction, Side side);
+        FdmTimeDepDirichletBoundary(const ext::shared_ptr<FdmMesher>& mesher,
+                                    std::function<Real(Real)> valueOnBoundary,
+                                    Size direction,
+                                    Side side);
 
-        FdmTimeDepDirichletBoundary(
-            const ext::shared_ptr<FdmMesher>& mesher,
-            const boost::function<Disposable<Array> (Real)>& valueOnBoundary,
-            Size direction, Side side);
+        FdmTimeDepDirichletBoundary(const ext::shared_ptr<FdmMesher>& mesher,
+                                    std::function<Array(Real)> valueOnBoundary,
+                                    Size direction,
+                                    Side side);
 
-        void setTime(Time);
-        void applyBeforeApplying(operator_type&) const {}
-        void applyBeforeSolving(operator_type&, array_type&) const {}
-        void applyAfterApplying(array_type&) const;
-        void applyAfterSolving(array_type&) const;
+        void setTime(Time) override;
+        void applyBeforeApplying(operator_type&) const override {}
+        void applyBeforeSolving(operator_type&, array_type&) const override {}
+        void applyAfterApplying(array_type&) const override;
+        void applyAfterSolving(array_type&) const override;
 
       private:
         const std::vector<Size> indices_;
-        const boost::function<Real (Real)> valueOnBoundary_;
-        const boost::function<Disposable<Array>(Real)> valuesOnBoundary_;
+        const std::function<Real (Real)> valueOnBoundary_;
+        const std::function<Array(Real)> valuesOnBoundary_;
 
         Array values_;
     };

@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -37,15 +37,15 @@ namespace QuantLib {
     */
     class NullCalendar : public Calendar {
       private:
-        class Impl : public Calendar::Impl {
+        class Impl final : public Calendar::Impl {
           public:
-            std::string name() const { return "Null"; }
-            bool isWeekend(Weekday) const { return false; }
-            bool isBusinessDay(const Date&) const { return true; }
+            std::string name() const override { return "Null"; }
+            bool isWeekend(Weekday) const override { return false; }
+            bool isBusinessDay(const Date&) const override { return true; }
         };
       public:
         NullCalendar() {
-            impl_ = ext::shared_ptr<Calendar::Impl>(new NullCalendar::Impl);
+            impl_ = ext::make_shared<NullCalendar::Impl>();
         }
     };
 

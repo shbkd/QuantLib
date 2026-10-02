@@ -13,7 +13,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -30,6 +30,7 @@
 #include <ql/methods/montecarlo/multipath.hpp>
 #include <ql/methods/montecarlo/sample.hpp>
 #include <ql/stochasticprocess.hpp>
+#include <utility>
 
 namespace QuantLib {
 
@@ -68,13 +69,12 @@ namespace QuantLib {
     // template definitions
 
     template <class GSG>
-    MultiPathGenerator<GSG>::MultiPathGenerator(
-                   const ext::shared_ptr<StochasticProcess>& process,
-                   const TimeGrid& times,
-                   GSG generator,
-                   bool brownianBridge)
-    : brownianBridge_(brownianBridge), process_(process),
-      generator_(generator), next_(MultiPath(process->size(), times), 1.0) {
+    MultiPathGenerator<GSG>::MultiPathGenerator(const ext::shared_ptr<StochasticProcess>& process,
+                                                const TimeGrid& times,
+                                                GSG generator,
+                                                bool brownianBridge)
+    : brownianBridge_(brownianBridge), process_(process), generator_(std::move(generator)),
+      next_(MultiPath(process->size(), times), 1.0) {
 
         QL_REQUIRE(generator_.dimension() ==
                    process->factors()*(times.size()-1),
@@ -109,41 +109,40 @@ namespace QuantLib {
 
         } else {
 
-            typedef typename GSG::sample_type sequence_type;
-            const sequence_type& sequence_ =
+            const auto& sequence_ =
                 antithetic ? generator_.lastSequence()
                            : generator_.nextSequence();
 
-            Size m = process_->size();
-            Size n = process_->factors();
+            auto m = process_->size();
+            auto n = process_->factors();
 
-            MultiPath& path = next_.value;
+            auto& path = next_.value;
 
-            Array asset = process_->initialValues();
-            for (Size j=0; j<m; j++)
+            auto asset = process_->initialValues();
+            for (auto j=0U; j<m; j++)
                 path[j].front() = asset[j];
 
             Array temp(n);
             next_.weight = sequence_.weight;
 
-            const TimeGrid& timeGrid = path[0].timeGrid();
+            const auto& timeGrid = path[0].timeGrid();
             Time t, dt;
-            for (Size i = 1; i < path.pathSize(); i++) {
-                Size offset = (i-1)*n;
+            for (auto i = 1U; i < path.pathSize(); i++) {
+                auto offset = (i-1)*n;
                 t = timeGrid[i-1];
                 dt = timeGrid.dt(i-1);
                 if (antithetic)
                     std::transform(sequence_.value.begin()+offset,
                                    sequence_.value.begin()+offset+n,
                                    temp.begin(),
-                                   std::negate<Real>());
+                                   std::negate<>());
                 else
                     std::copy(sequence_.value.begin()+offset,
                               sequence_.value.begin()+offset+n,
                               temp.begin());
 
                 asset = process_->evolve(t, asset, dt, temp);
-                for (Size j=0; j<m; j++)
+                for (auto j=0U; j<m; j++)
                     path[j][i] = asset[j];
             }
             return next_;

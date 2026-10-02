@@ -11,21 +11,22 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "convertiblebonds.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
-#include <ql/experimental/convertiblebonds/convertiblebond.hpp>
-#include <ql/experimental/convertiblebonds/binomialconvertibleengine.hpp>
+#include <ql/instruments/bonds/convertiblebonds.hpp>
 #include <ql/instruments/bonds/zerocouponbond.hpp>
 #include <ql/instruments/bonds/fixedratebond.hpp>
 #include <ql/instruments/bonds/floatingratebond.hpp>
 #include <ql/instruments/vanillaoption.hpp>
+#include <ql/pricingengines/bond/binomialconvertibleengine.hpp>
+#include <ql/pricingengines/bond/discretizedconvertible.hpp>
 #include <ql/pricingengines/vanilla/binomialengine.hpp>
 #include <ql/time/calendars/target.hpp>
 #include <ql/time/calendars/unitedstates.hpp>
@@ -40,74 +41,72 @@
 #include <ql/utilities/dataformatters.hpp>
 #include <ql/cashflows/couponpricer.hpp>
 #include <ql/cashflows/cashflows.hpp>
+#include <ql/cashflows/simplecashflow.hpp>
 #include <ql/pricingengines/bond/discountingbondengine.hpp>
 
 using namespace QuantLib;
 using namespace boost::unit_test_framework;
 
-namespace {
+BOOST_FIXTURE_TEST_SUITE(QuantLibTests, TopLevelFixture)
 
-    struct CommonVars {
-        // global data
-        Date today, issueDate, maturityDate;
-        Calendar calendar;
-        DayCounter dayCounter;
-        Frequency frequency;
-        Natural settlementDays;
+BOOST_AUTO_TEST_SUITE(ConvertibleBondTests)
 
-        RelinkableHandle<Quote> underlying;
-        RelinkableHandle<YieldTermStructure> dividendYield, riskFreeRate;
-        RelinkableHandle<BlackVolTermStructure> volatility;
-        ext::shared_ptr<BlackScholesMertonProcess> process;
+struct CommonVars {
+    // global data
+    Date today, issueDate, maturityDate;
+    Calendar calendar;
+    DayCounter dayCounter;
+    Frequency frequency;
+    Natural settlementDays, fixingDays;
 
-        RelinkableHandle<Quote> creditSpread;
+    RelinkableHandle<Quote> underlying;
+    RelinkableHandle<YieldTermStructure> dividendYield, riskFreeRate;
+    RelinkableHandle<BlackVolTermStructure> volatility;
+    ext::shared_ptr<BlackScholesMertonProcess> process;
 
-        CallabilitySchedule no_callability;
-        DividendSchedule no_dividends;
+    RelinkableHandle<Quote> creditSpread;
 
-        Real faceAmount, redemption, conversionRatio;
+    CallabilitySchedule no_callability;
 
-        // cleanup
-        SavedSettings backup;
+    Real faceAmount, redemption, conversionRatio;
 
-        // setup
-        CommonVars() {
-            calendar = TARGET();
+    // setup
+    CommonVars() {
+        calendar = TARGET();
 
-            today = calendar.adjust(Date::todaysDate());
-            Settings::instance().evaluationDate() = today;
+        today = Settings::instance().evaluationDate();
 
-            dayCounter = Actual360();
-            frequency = Annual;
-            settlementDays = 3;
+        dayCounter = Actual360();
+        frequency = Annual;
+        settlementDays = 3;
 
-            issueDate = calendar.advance(today,2,Days);
-            maturityDate = calendar.advance(issueDate, 10, Years);
-            // reset to avoid inconsistencies as the schedule is backwards
-            issueDate = calendar.advance(maturityDate, -10, Years);
+        fixingDays = 2;
+        issueDate = calendar.advance(today, fixingDays, Days);
+        maturityDate = calendar.advance(issueDate, 10, Years);
+        // reset to avoid inconsistencies as the schedule is backwards
+        issueDate = calendar.advance(maturityDate, -10, Years);
+        fixingDays = calendar.businessDaysBetween(today, issueDate);
 
-            underlying.linkTo(ext::make_shared<SimpleQuote>(50.0));
-            dividendYield.linkTo(flatRate(today, 0.02, dayCounter));
-            riskFreeRate.linkTo(flatRate(today, 0.05, dayCounter));
-            volatility.linkTo(flatVol(today, 0.15, dayCounter));
+        underlying.linkTo(ext::make_shared<SimpleQuote>(50.0));
+        dividendYield.linkTo(flatRate(today, 0.02, dayCounter));
+        riskFreeRate.linkTo(flatRate(today, 0.05, dayCounter));
+        volatility.linkTo(flatVol(today, 0.15, dayCounter));
 
-            process = ext::make_shared<BlackScholesMertonProcess>(
+        process = ext::make_shared<BlackScholesMertonProcess>(
                     underlying, dividendYield, riskFreeRate, volatility);
 
-            creditSpread.linkTo(ext::make_shared<SimpleQuote>(0.005));
+        creditSpread.linkTo(ext::make_shared<SimpleQuote>(0.005));
 
-            // it fails with 1000000
-            // faceAmount = 1000000.0;
-            faceAmount = 100.0;
-            redemption = 100.0;
-            conversionRatio = redemption/underlying->value();
-        }
-    };
-
-}
+        // it fails with 1000000
+        // faceAmount = 1000000.0;
+        faceAmount = 100.0;
+        redemption = 100.0;
+        conversionRatio = redemption/underlying->value();
+    }
+};
 
 
-void ConvertibleBondTest::testBond() {
+BOOST_AUTO_TEST_CASE(testBond) {
 
     /* when deeply out-of-the-money, the value of the convertible bond
        should equal that of the underlying plain-vanilla bond. */
@@ -127,12 +126,13 @@ void ConvertibleBondTest::testBond() {
 
     Size timeSteps = 1001;
     ext::shared_ptr<PricingEngine> engine =
-        ext::make_shared<BinomialConvertibleEngine<CoxRossRubinstein> >(
-            vars.process, timeSteps);
+        ext::make_shared<BinomialConvertibleEngine<CoxRossRubinstein> >(vars.process,
+            timeSteps, 
+            vars.creditSpread);
 
     Handle<YieldTermStructure> discountCurve(
          ext::make_shared<ForwardSpreadedTermStructure>(vars.riskFreeRate,
-                                                          vars.creditSpread));
+                                                        vars.creditSpread));
 
     // zero-coupon
 
@@ -144,16 +144,14 @@ void ConvertibleBondTest::testBond() {
                       .backwards();
 
     ConvertibleZeroCouponBond euZero(euExercise, vars.conversionRatio,
-                                     vars.no_dividends, vars.no_callability,
-                                     vars.creditSpread,
+                                     vars.no_callability,
                                      vars.issueDate, vars.settlementDays,
                                      vars.dayCounter, schedule,
                                      vars.redemption);
     euZero.setPricingEngine(engine);
 
     ConvertibleZeroCouponBond amZero(amExercise, vars.conversionRatio,
-                                     vars.no_dividends, vars.no_callability,
-                                     vars.creditSpread,
+                                     vars.no_callability,
                                      vars.issueDate, vars.settlementDays,
                                      vars.dayCounter, schedule,
                                      vars.redemption);
@@ -196,16 +194,14 @@ void ConvertibleBondTest::testBond() {
                              .backwards();
 
     ConvertibleFixedCouponBond euFixed(euExercise, vars.conversionRatio,
-                                       vars.no_dividends, vars.no_callability,
-                                       vars.creditSpread,
+                                       vars.no_callability,
                                        vars.issueDate, vars.settlementDays,
                                        coupons, vars.dayCounter,
                                        schedule, vars.redemption);
     euFixed.setPricingEngine(engine);
 
     ConvertibleFixedCouponBond amFixed(amExercise, vars.conversionRatio,
-                                       vars.no_dividends, vars.no_callability,
-                                       vars.creditSpread,
+                                       vars.no_callability,
                                        vars.issueDate, vars.settlementDays,
                                        coupons, vars.dayCounter,
                                        schedule, vars.redemption);
@@ -239,24 +235,21 @@ void ConvertibleBondTest::testBond() {
 
     ext::shared_ptr<IborIndex> index =
         ext::make_shared<Euribor1Y>(discountCurve);
-    Natural fixingDays = 2;
     std::vector<Real> gearings(1, 1.0);
     std::vector<Rate> spreads;
 
     ConvertibleFloatingRateBond euFloating(euExercise, vars.conversionRatio,
-                                           vars.no_dividends, vars.no_callability,
-                                           vars.creditSpread,
+                                           vars.no_callability,
                                            vars.issueDate, vars.settlementDays,
-                                           index, fixingDays, spreads,
+                                           index, vars.fixingDays, spreads,
                                            vars.dayCounter, schedule,
                                            vars.redemption);
     euFloating.setPricingEngine(engine);
 
     ConvertibleFloatingRateBond amFloating(amExercise, vars.conversionRatio,
-                                           vars.no_dividends, vars.no_callability,
-                                           vars.creditSpread,
+                                           vars.no_callability,
                                            vars.issueDate, vars.settlementDays,
-                                           index, fixingDays, spreads,
+                                           index, vars.fixingDays, spreads,
                                            vars.dayCounter, schedule,
                                            vars.redemption);
     amFloating.setPricingEngine(engine);
@@ -271,7 +264,7 @@ void ConvertibleBondTest::testBond() {
                            DateGeneration::Backward, false);
 
     FloatingRateBond floating(vars.settlementDays, vars.faceAmount, floatSchedule,
-                              index, vars.dayCounter, Following, fixingDays,
+                              index, vars.dayCounter, Following, vars.fixingDays,
                               gearings, spreads,
                               std::vector<Rate>(), std::vector<Rate>(),
                               false,
@@ -299,7 +292,7 @@ void ConvertibleBondTest::testBond() {
     }
 }
 
-void ConvertibleBondTest::testOption() {
+BOOST_AUTO_TEST_CASE(testOption) {
 
     /* a zero-coupon convertible bond with no credit spread is
        equivalent to a call option. */
@@ -317,10 +310,10 @@ void ConvertibleBondTest::testOption() {
     Size timeSteps = 2001;
     ext::shared_ptr<PricingEngine> engine =
         ext::make_shared<BinomialConvertibleEngine<CoxRossRubinstein> >(
-                                                     vars.process, timeSteps);
+            vars.process, timeSteps, vars.creditSpread);
     ext::shared_ptr<PricingEngine> vanillaEngine =
         ext::make_shared<BinomialVanillaEngine<CoxRossRubinstein> >(
-                                                     vars.process, timeSteps);
+            vars.process, timeSteps);
 
     vars.creditSpread.linkTo(ext::make_shared<SimpleQuote>(0.0));
 
@@ -335,8 +328,7 @@ void ConvertibleBondTest::testOption() {
                                       .backwards();
 
     ConvertibleZeroCouponBond euZero(euExercise, vars.conversionRatio,
-                                     vars.no_dividends, vars.no_callability,
-                                     vars.creditSpread,
+                                     vars.no_callability,
                                      vars.issueDate, vars.settlementDays,
                                      vars.dayCounter, schedule,
                                      vars.redemption);
@@ -360,12 +352,44 @@ void ConvertibleBondTest::testOption() {
     }
 }
 
-void ConvertibleBondTest::testRegression() {
+BOOST_AUTO_TEST_CASE(testDividendsSpanningSettlementDate) {
+    BOOST_TEST_MESSAGE(
+        "Testing convertible bond dividend values spanning the settlement date...");
+
+    Settings::instance().evaluationDate() = Date(15, January, 2024);
+    CommonVars vars;
+
+    ConvertibleBond::arguments args;
+    args.exercise = ext::make_shared<EuropeanExercise>(vars.maturityDate);
+    args.conversionRatio = vars.conversionRatio;
+    args.cashflows.push_back(
+        ext::make_shared<SimpleCashFlow>(vars.redemption, vars.maturityDate));
+    args.issueDate = vars.issueDate;
+    args.settlementDate =
+        vars.calendar.advance(vars.today, vars.settlementDays, Days);
+    args.settlementDays = vars.settlementDays;
+    args.redemption = vars.redemption;
+
+    const Date beforeSettlement = vars.calendar.advance(vars.today, 1, Days);
+    const Date afterSettlement = vars.calendar.advance(args.settlementDate, 1, Years);
+    const Real futureAmount = 10.0;
+    const DividendSchedule dividends = {
+        ext::make_shared<FixedDividend>(1.0, beforeSettlement),
+        ext::make_shared<FixedDividend>(futureAmount, afterSettlement)};
+
+    DiscretizedConvertible convertible(args, vars.process, dividends,
+                                       vars.creditSpread);
+
+    const Real expected =
+        futureAmount * vars.riskFreeRate->discount(afterSettlement);
+    BOOST_CHECK_EQUAL(convertible.dividendValues().size(), 1);
+    BOOST_CHECK_CLOSE(convertible.dividendValues()[0], expected, 1.0e-12);
+}
+
+BOOST_AUTO_TEST_CASE(testRegression) {
 
     BOOST_TEST_MESSAGE(
        "Testing fixed-coupon convertible bond in known regression case...");
-
-    SavedSettings backup;
 
     Date today = Date(23, December, 2008);
     Date tomorrow = today + 1;
@@ -416,7 +440,7 @@ void ConvertibleBondTest::testRegression() {
 
     Date issueDate(23, July, 2008);
     Date maturityDate(1, August, 2013);
-    Calendar calendar = UnitedStates();
+    Calendar calendar = UnitedStates(UnitedStates::GovernmentBond);
     Schedule schedule = MakeSchedule().from(issueDate)
                                       .to(maturityDate)
                                       .withTenor(6*Months)
@@ -433,13 +457,12 @@ void ConvertibleBondTest::testRegression() {
     Real redemption = 100.0;
 
     ConvertibleFixedCouponBond bond(exercise, conversionRatio,
-                                    no_dividends, no_callability,
-                                    spread, issueDate, settlementDays,
+                                    no_callability,
+                                    issueDate, settlementDays,
                                     coupons, dayCounter,
                                     schedule, redemption);
-    bond.setPricingEngine(
-        ext::make_shared<BinomialConvertibleEngine<CoxRossRubinstein> >(
-                                                              process, 600));
+    bond.setPricingEngine(ext::make_shared<BinomialConvertibleEngine<CoxRossRubinstein> >(
+        process, 600, spread, no_dividends));
 
     try {
         Real x = bond.NPV();  // should throw; if not, an INF was not detected.
@@ -453,13 +476,6 @@ void ConvertibleBondTest::testRegression() {
     }
 }
 
+BOOST_AUTO_TEST_SUITE_END()
 
-test_suite* ConvertibleBondTest::suite() {
-    test_suite* suite = BOOST_TEST_SUITE("Convertible bond tests");
-
-    suite->add(QUANTLIB_TEST_CASE(&ConvertibleBondTest::testBond));
-    suite->add(QUANTLIB_TEST_CASE(&ConvertibleBondTest::testOption));
-    suite->add(QUANTLIB_TEST_CASE(&ConvertibleBondTest::testRegression));
-
-    return suite;
-}
+BOOST_AUTO_TEST_SUITE_END()

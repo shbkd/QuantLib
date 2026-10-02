@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -22,7 +22,6 @@
 */
 
 #include <ql/processes/batesprocess.hpp>
-
 #include <ql/methods/finitedifferences/solvers/fdmbatessolver.hpp>
 #include <ql/pricingengines/vanilla/fdbatesvanillaengine.hpp>
 #include <ql/pricingengines/vanilla/fdhestonvanillaengine.hpp>
@@ -35,19 +34,34 @@ namespace QuantLib {
             Size vGrid, Size dampingSteps,
             const FdmSchemeDesc& schemeDesc)
     : GenericModelEngine<BatesModel,
-                         DividendVanillaOption::arguments,
-                         DividendVanillaOption::results>(model),
-       tGrid_(tGrid), xGrid_(xGrid),
-       vGrid_(vGrid), dampingSteps_(dampingSteps),
-       schemeDesc_(schemeDesc) {
-    }
+                         VanillaOption::arguments,
+                         VanillaOption::results>(model),
+      tGrid_(tGrid), xGrid_(xGrid),
+      vGrid_(vGrid), dampingSteps_(dampingSteps),
+      schemeDesc_(schemeDesc) {}
+
+    FdBatesVanillaEngine::FdBatesVanillaEngine(
+            const ext::shared_ptr<BatesModel>& model,
+            DividendSchedule dividends,
+            Size tGrid, Size xGrid, 
+            Size vGrid, Size dampingSteps,
+            const FdmSchemeDesc& schemeDesc)
+    : GenericModelEngine<BatesModel,
+                         VanillaOption::arguments,
+                         VanillaOption::results>(model),
+      dividends_(std::move(dividends)),
+      tGrid_(tGrid), xGrid_(xGrid),
+      vGrid_(vGrid), dampingSteps_(dampingSteps),
+      schemeDesc_(schemeDesc) {}
 
     void FdBatesVanillaEngine::calculate() const {
+
         FdHestonVanillaEngine helperEngine(model_.currentLink(),
+                                           dividends_,
                                            tGrid_, xGrid_, vGrid_,
                                            dampingSteps_, schemeDesc_);
 
-        *dynamic_cast<DividendVanillaOption::arguments*>(
+        *dynamic_cast<VanillaOption::arguments*>(
                                helperEngine.getArguments()) = arguments_;
 
         FdmSolverDesc solverDesc = helperEngine.getSolverDesc(2.0);
@@ -55,9 +69,8 @@ namespace QuantLib {
         const ext::shared_ptr<BatesProcess> process =
                 ext::dynamic_pointer_cast<BatesProcess>(model_->process());
 
-        ext::shared_ptr<FdmBatesSolver> solver(
-            new FdmBatesSolver(Handle<BatesProcess>(process),
-                               solverDesc, schemeDesc_));
+        auto solver = ext::make_shared<FdmBatesSolver>(Handle<BatesProcess>(process),
+                               solverDesc, schemeDesc_);
 
         const Real v0   = process->v0();
         const Real spot = process->s0()->value();

@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -39,16 +39,16 @@ namespace QuantLib {
     */
     class BespokeCalendar : public Calendar {
       private:
-        class Impl : public Calendar::Impl {
+        class Impl final : public Calendar::Impl {
           public:
-            explicit Impl(const std::string& name = "");
-            std::string name() const;
-            bool isWeekend(Weekday) const;
-            bool isBusinessDay(const Date&) const;
+            explicit Impl(std::string name = "");
+            std::string name() const override;
+            bool isWeekend(Weekday) const override;
+            bool isBusinessDay(const Date&) const override;
             void addWeekend(Weekday);
           private:
-            std::set<Weekday> weekend_;
             std::string name_;
+            unsigned int weekend_mask_ = 0;
         };
         ext::shared_ptr<BespokeCalendar::Impl> bespokeImpl_;
       public:
@@ -56,7 +56,7 @@ namespace QuantLib {
                      name (or different bespoke calendars created with
                      no name) will compare as equal.
         */
-        BespokeCalendar(const std::string& name = "");
+        explicit BespokeCalendar(const std::string& name = "");
         //! marks the passed day as part of the weekend
         void addWeekend(Weekday);
     };

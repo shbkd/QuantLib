@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -26,21 +26,10 @@
 
 #include <ql/qldefines.hpp>
 
-#if BOOST_VERSION >= 105600
-
-#include <boost/core/null_deleter.hpp>
-namespace QuantLib {
-using boost::null_deleter;
-}
-
-#else
-
 namespace QuantLib {
 struct null_deleter {
-    template <typename T> void operator()(T *) const {}
+    template <typename T> void operator()(T *) const noexcept {}
 };
 }
-
-#endif
 
 #endif

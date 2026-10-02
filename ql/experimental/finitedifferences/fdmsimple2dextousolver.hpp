@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -25,26 +25,26 @@
 #ifndef quantlib_fdm_2d_ext_ou_solver_hpp
 #define quantlib_fdm_2d_ext_ou_solver_hpp
 
-#include <ql/handle.hpp>
-#include <ql/patterns/lazyobject.hpp>
-#include <ql/termstructures/yieldtermstructure.hpp>
+#include <ql/experimental/finitedifferences/fdmextendedornsteinuhlenbeckop.hpp>
 #include <ql/experimental/processes/extendedornsteinuhlenbeckprocess.hpp>
-#include <ql/methods/finitedifferences/solvers/fdmsolverdesc.hpp>
+#include <ql/handle.hpp>
 #include <ql/methods/finitedifferences/solvers/fdm2dimsolver.hpp>
 #include <ql/methods/finitedifferences/solvers/fdmbackwardsolver.hpp>
-#include <ql/experimental/finitedifferences/fdmextendedornsteinuhlenbeckop.hpp>
+#include <ql/methods/finitedifferences/solvers/fdmsolverdesc.hpp>
+#include <ql/patterns/lazyobject.hpp>
+#include <ql/termstructures/yieldtermstructure.hpp>
+#include <utility>
 
 namespace QuantLib {
 
     class FdmSimple2dExtOUSolver : public LazyObject {
       public:
-        FdmSimple2dExtOUSolver(
-            const Handle<ExtendedOrnsteinUhlenbeckProcess>& process,
-            const ext::shared_ptr<YieldTermStructure>& rTS,
-            const FdmSolverDesc& solverDesc,
-            const FdmSchemeDesc& schemeDesc  = FdmSchemeDesc::Hundsdorfer())
-        : process_(process), rTS_(rTS),
-          solverDesc_(solverDesc), schemeDesc_(schemeDesc) {
+        FdmSimple2dExtOUSolver(const Handle<ExtendedOrnsteinUhlenbeckProcess>& process,
+                               ext::shared_ptr<YieldTermStructure> rTS,
+                               FdmSolverDesc solverDesc,
+                               const FdmSchemeDesc& schemeDesc = FdmSchemeDesc::Hundsdorfer())
+        : process_(process), rTS_(std::move(rTS)), solverDesc_(std::move(solverDesc)),
+          schemeDesc_(schemeDesc) {
             registerWith(process);
         }
 
@@ -54,9 +54,9 @@ namespace QuantLib {
         }
 
       protected:
-        void performCalculations() const {
+        void performCalculations() const override {
             ext::shared_ptr<FdmLinearOpComposite>op(
-                new FdmExtendedOrnsteinUhlenbackOp(
+                new FdmExtendedOrnsteinUhlenbeckOp(
                                 solverDesc_.mesher, process_.currentLink(),
                                 rTS_, solverDesc_.bcSet));
 

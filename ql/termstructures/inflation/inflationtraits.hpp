@@ -12,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -26,15 +26,17 @@
 #ifndef ql_inflation_bootstrap_traits_hpp
 #define ql_inflation_bootstrap_traits_hpp
 
+#include <ql/math/array.hpp>
 #include <ql/termstructures/inflation/interpolatedzeroinflationcurve.hpp>
 #include <ql/termstructures/inflation/interpolatedyoyinflationcurve.hpp>
 #include <ql/termstructures/bootstraphelper.hpp>
+#include <utility>
 
 namespace QuantLib {
 
     namespace detail {
-        const Rate avgInflation = 0.02;
-        const Rate maxInflation = 0.5;
+        constexpr double avgInflation = 0.02;
+        constexpr double maxInflation = 0.5;
     }
 
     //! Bootstrap traits to use for PiecewiseZeroInflationCurve
@@ -44,16 +46,12 @@ namespace QuantLib {
 
         // start of curve data
         static Date initialDate(const ZeroInflationTermStructure* t) {
-            if (t->indexIsInterpolated()) {
-                return t->referenceDate() - t->observationLag();
-            } else {
-                return inflationPeriod(t->referenceDate() - t->observationLag(),
-                                       t->frequency()).first;
-            }
+            return t->baseDate();
         }
         // value at reference date
-        static Rate initialValue(const ZeroInflationTermStructure* t) {
-            return t->baseRate();
+        static Rate initialValue(const ZeroInflationTermStructure*) {
+            // this will be overwritten during bootstrap
+            return detail::avgInflation;
         }
 
         // guesses
@@ -66,35 +64,41 @@ namespace QuantLib {
             if (validData) // previous iteration value
                 return c->data()[i];
 
-            if (i==1) // first pillar
-                return detail::avgInflation;
-
-            // could/should extrapolate
             return detail::avgInflation;
+        }
+
+        // guess for the whole curve and whether it needs to be transformed
+        template <class C>
+        static std::pair<Array, bool> globalGuess(const C* c, bool validData)
+        {
+            if (validData)
+                return {Array(c->data().begin() + 1, c->data().end()), true};
+
+            return {Array(c->times().size() - 1, detail::avgInflation), true};
         }
 
         // constraints
         template <class C>
-        static Rate minValueAfter(Size i,
+        static Rate minValueAfter(Size,
                                   const C* c,
                                   bool validData,
                                   Size) // firstAliveHelper
         {
             if (validData) {
                 Rate r = *(std::min_element(c->data().begin(), c->data().end()));
-                return r<0.0 ? r*2.0 : r/2.0;
+                return r<0.0 ? Real(r*2.0) : r/2.0;
             }
             return -detail::maxInflation;
         }
         template <class C>
-        static Rate maxValueAfter(Size i,
+        static Rate maxValueAfter(Size,
                                   const C* c,
                                   bool validData,
                                   Size) // firstAliveHelper
         {
             if (validData) {
                 Rate r = *(std::max_element(c->data().begin(), c->data().end()));
-                return r<0.0 ? r/2.0 : r*2.0;
+                return r<0.0 ? Real(r/2.0) : r*2.0;
             }
             // no constraints.
             // We choose as max a value very unlikely to be exceeded.
@@ -106,13 +110,14 @@ namespace QuantLib {
                                 Rate level,
                                 Size i) {
             data[i] = level;
+            if (i==1)
+                data[0] = level; // the first point is updated as well
         }
         // upper bound for convergence loop
-        // calibration is trivial, should be immediate
-        static Size maxIterations() { return 5; }
+        static Size maxIterations() { return 40; }
     };
 
-    //! Bootstrap traits to use for PiecewiseZeroInflationCurve
+    //! Bootstrap traits to use for PiecewiseYoYInflationCurve
     class YoYInflationTraits {
       public:
         // helper class
@@ -120,13 +125,9 @@ namespace QuantLib {
 
         // start of curve data
         static Date initialDate(const YoYInflationTermStructure* t) {
-            if (t->indexIsInterpolated()) {
-                return t->referenceDate() - t->observationLag();
-            } else {
-                return inflationPeriod(t->referenceDate() - t->observationLag(),
-                                       t->frequency()).first;
-            }
+            return t->baseDate();
         }
+
         // value at reference date
         static Rate initialValue(const YoYInflationTermStructure* t) {
             return t->baseRate();
@@ -142,35 +143,41 @@ namespace QuantLib {
             if (validData) // previous iteration value
                 return c->data()[i];
 
-            if (i==1) // first pillar
-                return detail::avgInflation;
-        
-            // could/should extrapolate
             return detail::avgInflation;
+        }
+
+        // guess for the whole curve and whether it needs to be transformed
+        template <class C>
+        static std::pair<Array, bool> globalGuess(const C* c, bool validData)
+        {
+            if (validData)
+                return {Array(c->data().begin() + 1, c->data().end()), true};
+
+            return {Array(c->times().size() - 1, detail::avgInflation), true};
         }
 
         // constraints
         template <class C>
-        static Rate minValueAfter(Size i,
+        static Rate minValueAfter(Size,
                                   const C* c,
                                   bool validData,
                                   Size) // firstAliveHelper
         {
             if (validData) {
                 Rate r = *(std::min_element(c->data().begin(), c->data().end()));
-                return r<0.0 ? r*2.0 : r/2.0;
+                return r<0.0 ? Real(r*2.0) : r/2.0;
             }
             return -detail::maxInflation;
         }
         template <class C>
-        static Rate maxValueAfter(Size i,
+        static Rate maxValueAfter(Size,
                                   const C* c,
                                   bool validData,
                                   Size) // firstAliveHelper
         {
             if (validData) {
                 Rate r = *(std::max_element(c->data().begin(), c->data().end()));
-                return r<0.0 ? r/2.0 : r*2.0;
+                return r<0.0 ? Real(r/2.0) : r*2.0;
             }
             // no constraints.
             // We choose as max a value very unlikely to be exceeded.

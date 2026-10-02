@@ -12,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -32,7 +32,7 @@
 
 namespace QuantLib {
 
-    //! Cms-rate coupon with digital digital call/put option
+    //! Cms-rate coupon with digital call/put option
     class DigitalCmsCoupon : public DigitalCoupon {
       public:
         DigitalCmsCoupon(
@@ -45,12 +45,12 @@ namespace QuantLib {
             Position::Type putPosition = Position::Long,
             bool isPutATMIncluded = false,
             Rate putDigitalPayoff = Null<Rate>(),
-            const ext::shared_ptr<DigitalReplication> &replication =
-                ext::shared_ptr<DigitalReplication>(new DigitalReplication));
+            const ext::shared_ptr<DigitalReplication>& replication = {},
+            bool nakedOption = false);
 
         //! \name Visitability
         //@{
-        virtual void accept(AcyclicVisitor&);
+        void accept(AcyclicVisitor&) override;
         //@}
     };
 
@@ -58,8 +58,7 @@ namespace QuantLib {
     //! helper class building a sequence of digital ibor-rate coupons
     class DigitalCmsLeg {
       public:
-        DigitalCmsLeg(const Schedule& schedule,
-                      const ext::shared_ptr<SwapIndex>& index);
+        DigitalCmsLeg(Schedule schedule, ext::shared_ptr<SwapIndex> index);
         DigitalCmsLeg& withNotionals(Real notional);
         DigitalCmsLeg& withNotionals(const std::vector<Real>& notionals);
         DigitalCmsLeg& withPaymentDayCounter(const DayCounter&);
@@ -83,27 +82,28 @@ namespace QuantLib {
         DigitalCmsLeg& withPutATM(bool flag = true);
         DigitalCmsLeg& withPutPayoffs(Rate payoff);
         DigitalCmsLeg& withPutPayoffs(const std::vector<Rate>& payoffs);
-        DigitalCmsLeg& withReplication(
-            const ext::shared_ptr<DigitalReplication> &replication =
-                ext::shared_ptr<DigitalReplication>(new DigitalReplication));
+        DigitalCmsLeg& withReplication(const ext::shared_ptr<DigitalReplication>&);
+        DigitalCmsLeg& withNakedOption(bool nakedOption = true);
+
         operator Leg() const;
       private:
         Schedule schedule_;
         ext::shared_ptr<SwapIndex> index_;
         std::vector<Real> notionals_;
         DayCounter paymentDayCounter_;
-        BusinessDayConvention paymentAdjustment_;
+        BusinessDayConvention paymentAdjustment_ = Following;
         std::vector<Natural> fixingDays_;
         std::vector<Real> gearings_;
         std::vector<Spread> spreads_;
-        bool inArrears_;
+        bool inArrears_ = false;
         std::vector<Rate> callStrikes_, callPayoffs_;
-        Position::Type longCallOption_;
-        bool callATM_;
+        Position::Type longCallOption_ = Position::Long;
+        bool callATM_ = false;
         std::vector<Rate> putStrikes_, putPayoffs_;
-        Position::Type longPutOption_;
-        bool putATM_;
+        Position::Type longPutOption_ = Position::Long;
+        bool putATM_ = false;
         ext::shared_ptr<DigitalReplication> replication_;
+        bool nakedOption_;
     };
 
 }

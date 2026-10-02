@@ -10,14 +10,14 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "interestrates.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
 #include <ql/interestrate.hpp>
 #include <ql/math/rounding.hpp>
@@ -29,23 +29,22 @@
 using namespace QuantLib;
 using namespace boost::unit_test_framework;
 
-namespace {
+BOOST_FIXTURE_TEST_SUITE(QuantLibTests, TopLevelFixture)
 
-    struct InterestRateData {
-        Rate r;
-        Compounding comp;
-        Frequency freq;
-        Time t;
-        Compounding comp2;
-        Frequency freq2;
-        Rate expected;
-        Size precision;
-    };
+BOOST_AUTO_TEST_SUITE(InterestRateTests)
 
-}
+struct InterestRateData {
+    Rate r;
+    Compounding comp;
+    Frequency freq;
+    Time t;
+    Compounding comp2;
+    Frequency freq2;
+    Rate expected;
+    Size precision;
+};
 
-
-void InterestRateTest::testConversions() {
+BOOST_AUTO_TEST_CASE(testConversions) {
     BOOST_TEST_MESSAGE("Testing interest-rate conversions...");
 
     InterestRateData cases[] = {
@@ -68,25 +67,6 @@ void InterestRateTest::testConversions() {
         {0.0800,     Simple,           Annual,  1.0/6, Compounded,         Bimonthly, 0.0800, 4},
         {0.0900, Compounded,          Monthly, 1.0/12,     Simple,            Annual, 0.0900, 4},
         {0.1000,     Simple,           Annual, 1.0/12, Compounded,           Monthly, 0.1000, 4},
-
-        {0.0300, SimpleThenCompounded,       Semiannual,   0.25,               Simple,            Annual, 0.0300, 4},
-        {0.0300, SimpleThenCompounded,       Semiannual,   0.25,               Simple,        Semiannual, 0.0300, 4},
-        {0.0300, SimpleThenCompounded,       Semiannual,   0.25,               Simple,         Quarterly, 0.0300, 4},
-        {0.0300, SimpleThenCompounded,       Semiannual,   0.50,               Simple,            Annual, 0.0300, 4},
-        {0.0300, SimpleThenCompounded,       Semiannual,   0.50,               Simple,        Semiannual, 0.0300, 4},
-        {0.0300, SimpleThenCompounded,       Semiannual,   0.75,           Compounded,        Semiannual, 0.0300, 4},
-
-        {0.0400,               Simple,       Semiannual,   0.25, SimpleThenCompounded,         Quarterly, 0.0400, 4},
-        {0.0400,               Simple,       Semiannual,   0.25, SimpleThenCompounded,        Semiannual, 0.0400, 4},
-        {0.0400,               Simple,       Semiannual,   0.25, SimpleThenCompounded,            Annual, 0.0400, 4},
-
-        {0.0400,           Compounded,        Quarterly,   0.50, SimpleThenCompounded,         Quarterly, 0.0400, 4},
-        {0.0400,               Simple,       Semiannual,   0.50, SimpleThenCompounded,        Semiannual, 0.0400, 4},
-        {0.0400,               Simple,       Semiannual,   0.50, SimpleThenCompounded,            Annual, 0.0400, 4},
-
-        {0.0400,           Compounded,        Quarterly,   0.75, SimpleThenCompounded,         Quarterly, 0.0400, 4},
-        {0.0400,           Compounded,       Semiannual,   0.75, SimpleThenCompounded,        Semiannual, 0.0400, 4},
-        {0.0400,               Simple,       Semiannual,   0.75, SimpleThenCompounded,            Annual, 0.0400, 4}
     };
 
     Rounding roundingPrecision;
@@ -97,11 +77,10 @@ void InterestRateTest::testConversions() {
     DiscountFactor disc;
 
 
-    for (Size i=0; i<LENGTH(cases); i++) {
-        ir = InterestRate(cases[i].r, Actual360(),
-                          cases[i].comp, cases[i].freq);
-        d2 = d1+Integer(360*cases[i].t+0.5)*Days;
-        roundingPrecision = Rounding(cases[i].precision);
+    for (auto& i : cases) {
+        ir = InterestRate(i.r, Actual360(), i.comp, i.freq);
+        d2 = d1 + timeToDays(i.t);
+        roundingPrecision = Rounding(i.precision);
 
         // check that the compound factor is the inverse of the discount factor
         compoundf = ir.compoundFactor(d1, d2);
@@ -154,23 +133,17 @@ void InterestRateTest::testConversions() {
 
         // check that the equivalent InterestRate with *different*
         // compounding, and frequency is the *expected* InterestRate
-        ir3 = ir.equivalentRate(ir.dayCounter(),
-                                cases[i].comp2, cases[i].freq2,
-                                d1, d2);
-        expectedIR = InterestRate(cases[i].expected, ir.dayCounter(),
-                                  cases[i].comp2, cases[i].freq2);
+        ir3 = ir.equivalentRate(ir.dayCounter(), i.comp2, i.freq2, d1, d2);
+        expectedIR = InterestRate(i.expected, ir.dayCounter(), i.comp2, i.freq2);
         r3 = roundingPrecision(ir3.rate());
         error = std::fabs(r3-expectedIR.rate());
         if (error>1.0e-17)
-            BOOST_FAIL(std::setprecision(cases[i].precision+1)
+            BOOST_FAIL(std::setprecision(i.precision + 1)
                        << "\n               original interest rate: " << ir
                        << "\n  calculated equivalent interest rate: " << ir3
-                       << "\n            truncated equivalent rate: "
-                       << io::rate(r3)
-                       << "\n    expected equivalent interest rate: "
-                       << expectedIR
-                       << "\n                           rate error: "
-                       << error);
+                       << "\n            truncated equivalent rate: " << io::rate(r3)
+                       << "\n    expected equivalent interest rate: " << expectedIR
+                       << "\n                           rate error: " << error);
         if (ir3.dayCounter()!=expectedIR.dayCounter())
             BOOST_FAIL("\n day counter error"
                        << "\n    original interest rate: " << ir3
@@ -186,23 +159,29 @@ void InterestRateTest::testConversions() {
 
         // check that the equivalent rate with *different*
         // compounding, and frequency is the *expected* rate
-        r3 = ir.equivalentRate(ir.dayCounter(),
-                               cases[i].comp2, cases[i].freq2,
-                               d1, d2);
+        r3 = ir.equivalentRate(ir.dayCounter(), i.comp2, i.freq2, d1, d2);
         r3 = roundingPrecision(r3);
-        error = std::fabs(r3-cases[i].expected);
+        error = std::fabs(r3 - i.expected);
         if (error>1.0e-17)
-            BOOST_FAIL(std::setprecision(cases[i].precision-2)
+            BOOST_FAIL(std::setprecision(i.precision - 2)
                        << "\n  calculated equivalent rate: " << io::rate(r3)
-                       << "\n    expected equivalent rate: "
-                       << io::rate(cases[i].expected)
+                       << "\n    expected equivalent rate: " << io::rate(i.expected)
                        << "\n                       error: " << error);
+    }
+
+    // check that SimpleThenCompounded and CompoundedThenSimple don't work
+
+    ir = InterestRate(0.03, Actual360(), SimpleThenCompounded, Semiannual);
+    ir2 = InterestRate(0.03, Actual360(), CompoundedThenSimple, Semiannual);
+
+    for (const auto& i: {ir, ir2}) {
+        BOOST_CHECK_EXCEPTION(i.discountFactor(1.0), Error, ExpectedErrorMessage("not supported"));
+        BOOST_CHECK_EXCEPTION(i.discountFactorFirstDerivative(1.0), Error, ExpectedErrorMessage("not supported"));
+        BOOST_CHECK_EXCEPTION(i.discountFactorSecondDerivative(1.0), Error, ExpectedErrorMessage("not supported"));
+        BOOST_CHECK_EXCEPTION(i.equivalentRate(i.dayCounter(), Simple, Annual, d1, d2), Error, ExpectedErrorMessage("not supported"));
     }
 }
 
-test_suite* InterestRateTest::suite() {
-    test_suite* suite = BOOST_TEST_SUITE("Interest Rate tests");
-    suite->add(QUANTLIB_TEST_CASE(&InterestRateTest::testConversions));
-    return suite;
-}
+BOOST_AUTO_TEST_SUITE_END()
 
+BOOST_AUTO_TEST_SUITE_END()

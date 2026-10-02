@@ -2,6 +2,7 @@
 
 /*
  Copyright (C) 2003 RiskMap srl
+ Copyright (C) 2020 Piotr Siejda
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -10,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -53,7 +54,7 @@ namespace QuantLib {
     */
     class JointCalendar : public Calendar {
       private:
-        class Impl : public Calendar::Impl {
+        class Impl final : public Calendar::Impl {
           public:
             Impl(const Calendar&, const Calendar&,
                  JointCalendarRule);
@@ -62,9 +63,11 @@ namespace QuantLib {
             Impl(const Calendar&, const Calendar&,
                  const Calendar&, const Calendar&,
                  JointCalendarRule);
-            std::string name() const;
-            bool isWeekend(Weekday) const;
-            bool isBusinessDay(const Date&) const;
+            Impl(std::vector<Calendar>, JointCalendarRule);
+            std::string name() const override;
+            bool isWeekend(Weekday) const override;
+            bool isBusinessDay(const Date&) const override;
+
           private:
             JointCalendarRule rule_;
             std::vector<Calendar> calendars_;
@@ -78,9 +81,12 @@ namespace QuantLib {
         JointCalendar(const Calendar&, const Calendar&,
                       const Calendar&, const Calendar&,
                       JointCalendarRule = JoinHolidays);
+        explicit JointCalendar(const std::vector<Calendar>&,
+                               JointCalendarRule = JoinHolidays);
     };
 
 }
+
 
 
 #endif

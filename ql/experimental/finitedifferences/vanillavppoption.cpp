@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -31,9 +31,9 @@ namespace QuantLib {
 
         class IdenticalPayoff : public Payoff {
           public:
-            std::string name() const { return "IdenticalPayoff"; }
-            std::string description() const { return name(); }
-            Real operator()(Real price) const { return price; }
+            std::string name() const override { return "IdenticalPayoff"; }
+            std::string description() const override { return name(); }
+            Real operator()(Real price) const override { return price; }
         };
     }
 
@@ -70,9 +70,8 @@ namespace QuantLib {
 
         MultiAssetOption::setupArguments(args);
 
-        VanillaVPPOption::arguments* arguments =
-            dynamic_cast<VanillaVPPOption::arguments*>(args);
-        QL_REQUIRE(arguments != 0, "wrong argument type");
+        auto* arguments = dynamic_cast<VanillaVPPOption::arguments*>(args);
+        QL_REQUIRE(arguments != nullptr, "wrong argument type");
 
         arguments->heatRate       = heatRate_;
         arguments->pMin           = pMin_;

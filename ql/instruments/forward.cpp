@@ -10,31 +10,32 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
+#include <ql/event.hpp>
 #include <ql/instruments/forward.hpp>
 #include <ql/termstructures/yieldtermstructure.hpp>
-#include <ql/event.hpp>
+#include <utility>
 
 namespace QuantLib {
 
-    Forward::Forward(const DayCounter& dayCounter,
-                     const Calendar& calendar,
+    Forward::Forward(DayCounter dayCounter,
+                     Calendar calendar,
                      BusinessDayConvention businessDayConvention,
                      Natural settlementDays,
-                     const ext::shared_ptr<Payoff>& payoff,
+                     ext::shared_ptr<Payoff> payoff,
                      const Date& valueDate,
                      const Date& maturityDate,
-                     const Handle<YieldTermStructure>& discountCurve)
-    : dayCounter_(dayCounter), calendar_(calendar),
-      businessDayConvention_(businessDayConvention),
-      settlementDays_(settlementDays), payoff_(payoff), valueDate_(valueDate),
-      maturityDate_(maturityDate), discountCurve_(discountCurve) {
+                     Handle<YieldTermStructure> discountCurve)
+    : dayCounter_(std::move(dayCounter)), calendar_(std::move(calendar)),
+      businessDayConvention_(businessDayConvention), settlementDays_(settlementDays),
+      payoff_(std::move(payoff)), valueDate_(valueDate), maturityDate_(maturityDate),
+      discountCurve_(std::move(discountCurve)) {
 
         maturityDate_ = calendar_.adjust(maturityDate_,
                                          businessDayConvention_);
@@ -68,7 +69,7 @@ namespace QuantLib {
                                        Real forwardValue,
                                        Date settlementDate,
                                        Compounding comp,
-                                       DayCounter dayCounter) {
+                                       const DayCounter& dayCounter) {
 
         Time t = dayCounter.yearFraction(settlementDate,maturityDate_) ;
         Real compoundingFactor = forwardValue/

@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -57,7 +57,22 @@ namespace QuantLib {
     // inline definitions
 
     inline bool close(Real x, Real y) {
-        return close(x,y,42);
+        // we're duplicating the code here instead of calling close(x,y,42)
+        // for optimization; this allows us to make tolerance constexpr
+        // and shave a few more cycles.
+
+        // Deals with +infinity and -infinity representations etc.
+        if (x == y)
+            return true;
+
+        Real diff = std::fabs(x-y);
+        constexpr double tolerance = 42 * QL_EPSILON;
+
+        if (x == 0.0 || y == 0.0)
+            return diff < (tolerance * tolerance);
+
+        return diff <= tolerance*std::fabs(x) &&
+               diff <= tolerance*std::fabs(y);
     }
 
     inline bool close(Real x, Real y, Size n) {
@@ -67,7 +82,7 @@ namespace QuantLib {
 
         Real diff = std::fabs(x-y), tolerance = n * QL_EPSILON;
 
-        if (x * y == 0.0) // x or y = 0.0
+        if (x == 0.0 || y == 0.0)
             return diff < (tolerance * tolerance);
 
         return diff <= tolerance*std::fabs(x) &&
@@ -75,7 +90,20 @@ namespace QuantLib {
     }
 
     inline bool close_enough(Real x, Real y) {
-        return close_enough(x,y,42);
+        // see close() for a note on duplication
+
+        // Deals with +infinity and -infinity representations etc.
+        if (x == y)
+            return true;
+
+        Real diff = std::fabs(x-y);
+        constexpr double tolerance = 42 * QL_EPSILON;
+
+        if (x == 0.0 || y == 0.0) // x or y = 0.0
+            return diff < (tolerance * tolerance);
+
+        return diff <= tolerance*std::fabs(x) ||
+               diff <= tolerance*std::fabs(y);
     }
 
     inline bool close_enough(Real x, Real y, Size n) {
@@ -85,7 +113,7 @@ namespace QuantLib {
 
         Real diff = std::fabs(x-y), tolerance = n * QL_EPSILON;
 
-        if (x * y == 0.0) // x or y = 0.0
+        if (x == 0.0 || y == 0.0)
             return diff < (tolerance * tolerance);
 
         return diff <= tolerance*std::fabs(x) ||
@@ -104,10 +132,7 @@ namespace QuantLib {
     /* partial specialization for shared pointers, forwarding to their
        pointees. */
     template <class T>
-    struct earlier_than<ext::shared_ptr<T> >
-        : std::binary_function<ext::shared_ptr<T>,
-                               ext::shared_ptr<T>,
-                               bool> {
+    struct earlier_than<ext::shared_ptr<T> > {
         bool operator()(const ext::shared_ptr<T>& x,
                         const ext::shared_ptr<T>& y) const {
             return earlier_than<T>()(*x,*y);

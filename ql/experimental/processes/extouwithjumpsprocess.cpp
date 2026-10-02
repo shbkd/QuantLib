@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -21,19 +21,23 @@
     \brief Ornstein Uhlenbeck process plus exp jumps (Kluge Model)
 */
 
-#include <ql/experimental/processes/extouwithjumpsprocess.hpp>
 #include <ql/experimental/processes/extendedornsteinuhlenbeckprocess.hpp>
+#include <ql/experimental/processes/extouwithjumpsprocess.hpp>
+#include <utility>
 
 namespace QuantLib {
 
     ExtOUWithJumpsProcess::ExtOUWithJumpsProcess(
-            const ext::shared_ptr<ExtendedOrnsteinUhlenbeckProcess>& process,
-            Real Y0, Real beta, Real jumpIntensity, Real eta)
-    : Y0_(Y0), 
-      beta_(beta), 
-      jumpIntensity_(jumpIntensity), eta_(eta),
-      ouProcess_(process) { }
-            
+        ext::shared_ptr<ExtendedOrnsteinUhlenbeckProcess> process,
+        Real Y0,
+        Real beta,
+        Real jumpIntensity,
+        Real eta)
+    : Y0_(Y0), beta_(beta), jumpIntensity_(jumpIntensity), eta_(eta),
+      ouProcess_(std::move(process)) {
+        QL_REQUIRE(ouProcess_, "null Ornstein/Uhlenbeck process");
+    }
+
     Size ExtOUWithJumpsProcess::size() const {
         return 2;
     }    
@@ -54,31 +58,28 @@ namespace QuantLib {
         return eta_;
     }
 
-    Disposable<Array> ExtOUWithJumpsProcess::initialValues() const {
-        Array retVal(2);
-        retVal[0] = ouProcess_->x0();
-        retVal[1] = Y0_;
-        
-        return retVal;
+    Array ExtOUWithJumpsProcess::initialValues() const {
+        return  {
+            ouProcess_->x0(),
+            Y0_
+        };
     }
     
-    Disposable<Array> ExtOUWithJumpsProcess::drift(Time t, const Array& x) const {
-        Array retVal(2);
-        retVal[0] = ouProcess_->drift(t, x[0]);
-        retVal[1] = -beta_*x[1];
-        
-        return retVal;
+    Array ExtOUWithJumpsProcess::drift(Time t, const Array& x) const {
+        return {
+            ouProcess_->drift(t, x[0]),
+            -beta_*x[1]
+        };
     }
 
-    Disposable<Matrix> 
-    ExtOUWithJumpsProcess::diffusion(Time t, const Array& x) const {
+    Matrix ExtOUWithJumpsProcess::diffusion(Time t, const Array& x) const {
         Matrix retVal(2, 2, 0.0);    
         retVal[0][0] = ouProcess_->diffusion(t, x[0]);
         
         return retVal;
     }
 
-    Disposable<Array> ExtOUWithJumpsProcess::evolve(
+    Array ExtOUWithJumpsProcess::evolve(
         Time t0, const Array& x0, Time dt, const Array& dw) const {
         
         Array retVal(2);

@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -137,7 +137,7 @@ namespace QuantLib {
         };
 
         // values of 2^{-24}*x[i]. w_[0] is special.
-        const Real w_[128] = {
+        const double w_[128] = {
             2.213171867573477E-007, 1.623158840564778E-008,
             2.162882274558596E-008, 2.542424120326624E-008,
             2.845751269184242E-008, 3.103351823837397E-008,

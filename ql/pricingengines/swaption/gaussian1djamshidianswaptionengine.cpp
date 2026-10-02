@@ -3,6 +3,7 @@
 /*
  Copyright (C) 2001, 2002, 2003 Sadruddin Rejeb
  Copyright (C) 2013 Peter Caspers
+ Copyright (C) 2026 Kyrylo Protsenko
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -11,28 +12,31 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include <ql/pricingengines/swaption/gaussian1djamshidianswaptionengine.hpp>
 #include <ql/math/solvers1d/brent.hpp>
+#include <ql/pricingengines/swaption/gaussian1djamshidianswaptionengine.hpp>
+#include <utility>
 
 namespace QuantLib {
 
     class Gaussian1dJamshidianSwaptionEngine::rStarFinder {
       public:
-        rStarFinder(const ext::shared_ptr<Gaussian1dModel> &model,
-                    Real nominal, const Date &maturityDate,
-                    const Date &valueDate,
-                    const std::vector<Date> &fixedPayDates,
-                    const std::vector<Real> &amounts, const Size startIndex)
-            : strike_(nominal), maturityDate_(maturityDate),
-              valueDate_(valueDate), startIndex_(startIndex),
-              times_(fixedPayDates), amounts_(amounts), model_(model) {}
+        rStarFinder(const ext::shared_ptr<Gaussian1dModel>& model,
+                    Real nominal,
+                    const Date& maturityDate,
+                    const Date& valueDate,
+                    std::vector<Date> fixedPayDates,
+                    const std::vector<Real>& amounts,
+                    const Size startIndex)
+        : strike_(nominal), maturityDate_(maturityDate), valueDate_(valueDate),
+          startIndex_(startIndex), times_(std::move(fixedPayDates)), amounts_(amounts),
+          model_(model) {}
 
         Real operator()(Rate y) const {
             Real value = strike_;
@@ -56,8 +60,9 @@ namespace QuantLib {
 
     void Gaussian1dJamshidianSwaptionEngine::calculate() const {
 
-        QL_REQUIRE(arguments_.settlementType == Settlement::Physical,
-                   "cash-settled swaptions not priced by Jamshidian engine");
+        QL_REQUIRE(arguments_.settlementMethod != Settlement::ParYieldCurve,
+                   "cash settled (ParYieldCurve) swaptions not priced with "
+                   "Gaussian1dJamshidianSwaptionEngine");
 
         QL_REQUIRE(arguments_.exercise->type() == Exercise::European,
                    "cannot use the Jamshidian decomposition "
@@ -67,14 +72,14 @@ namespace QuantLib {
                    "non zero spread (" << arguments_.swap->spread()
                                        << ") not allowed"); // PC
 
+        QL_REQUIRE(arguments_.nominal != Null<Real>(),
+                   "non-constant nominals are not supported yet");
+
         Date referenceDate;
         DayCounter dayCounter;
 
         referenceDate = model_->termStructure()->referenceDate();
         dayCounter = model_->termStructure()->dayCounter();
-
-        std::vector<Real> amounts(arguments_.fixedCoupons);
-        amounts.back() += arguments_.nominal;
 
         Size startIndex = std::upper_bound(arguments_.fixedResetDates.begin(),
                                            arguments_.fixedResetDates.end(),
@@ -82,10 +87,57 @@ namespace QuantLib {
                           arguments_.fixedResetDates.begin();
         // only consider coupons with start date >= exercise dates
 
-        rStarFinder finder(*model_, arguments_.nominal,
+        // handle SOFR with a payment lag
+        std::vector<Real> amounts(arguments_.fixedCoupons);
+        std::vector<Date> payDates(arguments_.fixedPayDates);
+        Date floatingAccrualEnd =
+            arguments_.swap->floatingSchedule().dates().back();
+        amounts.push_back(arguments_.nominal);
+        payDates.push_back(floatingAccrualEnd);
+
+        Real parNominal = arguments_.nominal;
+        {
+            Handle<YieldTermStructure> curve = model_->termStructure();
+            const std::vector<Date>& floatDates =
+                arguments_.swap->floatingSchedule().dates();
+            DiscountFactor dfValue =
+                curve->discount(arguments_.fixedResetDates[startIndex]);
+            for (Size j = 0; j + 1 < floatDates.size() &&
+                             j < arguments_.floatingPayDates.size(); ++j) {
+                if (floatDates[j] < arguments_.fixedResetDates[startIndex])
+                    continue;
+                Date accrualEnd = floatDates[j + 1];
+                if (arguments_.floatingPayDates[j] > accrualEnd) {
+                    DiscountFactor dfStart = curve->discount(floatDates[j]);
+                    DiscountFactor dfEnd = curve->discount(accrualEnd);
+                    DiscountFactor dfPay =
+                        curve->discount(arguments_.floatingPayDates[j]);
+                    /* Without a lag, the NPV is
+
+                           N * (dfStart/dfEnd - 1) * dfEnd = N * (dfStart - dfEnd)
+
+                       With a lag, it is
+
+                           N * (dfStart/dfEnd - 1) * dfPay = N * (dfStart - dfEnd) * (dfPay/dfEnd)
+
+                       Jamshidian cannot discount coupons to separate dates, so
+                       the difference between the two, i.e.,
+
+                           N * (dfStart - dfEnd) * (1 - dfPay/dfEnd)
+
+                       is frozen at time zero - no payment-delay convexity - and
+                       folded into the notional at the value date.
+                    */
+                    parNominal -= arguments_.nominal * (dfStart - dfEnd) *
+                                  (1.0 - dfPay / dfEnd) / dfValue;
+                }
+            }
+        }
+
+        rStarFinder finder(*model_, parNominal,
                            arguments_.exercise->date(0),
                            arguments_.fixedResetDates[startIndex],
-                           arguments_.fixedPayDates, amounts, startIndex);
+                           payDates, amounts, startIndex);
         Brent s1d;
         Rate minStrike = -8.0;
         Rate maxStrike = 8.0;
@@ -96,22 +148,20 @@ namespace QuantLib {
                                maxStrike); // this is actually yStar
 
         Option::Type w =
-            arguments_.type == VanillaSwap::Payer ? Option::Put : Option::Call;
-        Size size = arguments_.fixedCoupons.size();
+            arguments_.type == Swap::Payer ? Option::Put : Option::Call;
+        Size size = amounts.size();
 
         Real value = 0.0;
         for (Size i = startIndex; i < size; i++) {
-            // Real fixedPayTime =
-            // dayCounter.yearFraction(referenceDate,arguments_.fixedPayDates[i]);
             Real strike =
-                model_->zerobond(arguments_.fixedPayDates[i],
+                model_->zerobond(payDates[i],
                                  arguments_.exercise->date(0), rStar) /
                 model_->zerobond(arguments_.fixedResetDates[startIndex],
                                  arguments_.exercise->date(0), rStar);
             Real dboValue =
                 model_->zerobondOption(w, arguments_.exercise->date(0),
                                        arguments_.fixedResetDates[startIndex],
-                                       arguments_.fixedPayDates[i], strike);
+                                       payDates[i], strike);
             value += amounts[i] * dboValue;
         }
         results_.value = value;

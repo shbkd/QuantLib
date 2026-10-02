@@ -10,27 +10,30 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "instruments.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
-#include <ql/instruments/stock.hpp>
 #include <ql/instruments/compositeinstrument.hpp>
 #include <ql/instruments/europeanoption.hpp>
+#include <ql/instruments/stock.hpp>
 #include <ql/pricingengines/vanilla/analyticeuropeanengine.hpp>
 #include <ql/quotes/simplequote.hpp>
 #include <ql/time/daycounters/actual360.hpp>
 
 using namespace QuantLib;
-using namespace boost::unit_test_framework;
-using ext::shared_ptr;
+using namespace boost::unit_test;
 
-void InstrumentTest::testObservable() {
+BOOST_FIXTURE_TEST_SUITE(QuantLibTests, QuantLib::TopLevelFixture)
+
+BOOST_AUTO_TEST_SUITE(InstrumentTests)
+
+BOOST_AUTO_TEST_CASE(testObservable) {
 
     BOOST_TEST_MESSAGE("Testing observability of instruments...");
 
@@ -40,12 +43,12 @@ void InstrumentTest::testObservable() {
 
     Flag f;
     f.registerWith(s);
-    
+
     s->NPV();
     me1->setValue(3.14);
     if (!f.isUp())
         BOOST_FAIL("Observer was not notified of instrument change");
-    
+
     s->NPV();
     f.lower();
     ext::shared_ptr<SimpleQuote> me2(new SimpleQuote(0.0));
@@ -65,34 +68,30 @@ void InstrumentTest::testObservable() {
         BOOST_FAIL("Observer was not notified of instrument change");
 }
 
-
-void InstrumentTest::testCompositeWhenShiftingDates() {
-
+BOOST_AUTO_TEST_CASE(testCompositeWhenShiftingDates) {
     BOOST_TEST_MESSAGE(
         "Testing reaction of composite instrument to date changes...");
-
-    SavedSettings backup;
 
     Date today = Date::todaysDate();
     DayCounter dc = Actual360();
 
-    shared_ptr<StrikedTypePayoff> payoff(
-                                 new PlainVanillaPayoff(Option::Call, 100.0));
-    shared_ptr<Exercise> exercise(new EuropeanExercise(today+30));
+    ext::shared_ptr<StrikedTypePayoff> payoff(
+        new PlainVanillaPayoff(Option::Call, 100.0));
+    ext::shared_ptr<Exercise> exercise(new EuropeanExercise(today+30));
 
-    shared_ptr<Instrument> option(new EuropeanOption(payoff, exercise));
+    ext::shared_ptr<Instrument> option(new EuropeanOption(payoff, exercise));
 
-    shared_ptr<SimpleQuote> spot(new SimpleQuote(100.0));
-    shared_ptr<YieldTermStructure> qTS = flatRate(0.0, dc);
-    shared_ptr<YieldTermStructure> rTS = flatRate(0.01, dc);
-    shared_ptr<BlackVolTermStructure> volTS = flatVol(0.1, dc);
+    ext::shared_ptr<SimpleQuote> spot(new SimpleQuote(100.0));
+    ext::shared_ptr<YieldTermStructure> qTS = flatRate(0.0, dc);
+    ext::shared_ptr<YieldTermStructure> rTS = flatRate(0.01, dc);
+    ext::shared_ptr<BlackVolTermStructure> volTS = flatVol(0.1, dc);
 
-    shared_ptr<BlackScholesMertonProcess> process(
+    ext::shared_ptr<BlackScholesMertonProcess> process(
         new BlackScholesMertonProcess(Handle<Quote>(spot),
                                       Handle<YieldTermStructure>(qTS),
                                       Handle<YieldTermStructure>(rTS),
                                       Handle<BlackVolTermStructure>(volTS)));
-    shared_ptr<PricingEngine> engine(new AnalyticEuropeanEngine(process));
+    ext::shared_ptr<PricingEngine> engine(new AnalyticEuropeanEngine(process));
 
     option->setPricingEngine(engine);
 
@@ -114,11 +113,6 @@ void InstrumentTest::testCompositeWhenShiftingDates() {
         BOOST_FAIL("Composite didn't recalculate");
 }
 
-test_suite* InstrumentTest::suite() {
-    test_suite* suite = BOOST_TEST_SUITE("Instrument tests");
-    suite->add(QUANTLIB_TEST_CASE(&InstrumentTest::testObservable));
-    suite->add(QUANTLIB_TEST_CASE(
-                            &InstrumentTest::testCompositeWhenShiftingDates));
-    return suite;
-}
+BOOST_AUTO_TEST_SUITE_END()
 
+BOOST_AUTO_TEST_SUITE_END()

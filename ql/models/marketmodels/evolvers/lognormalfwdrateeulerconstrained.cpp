@@ -11,7 +11,7 @@ QuantLib is free software: you can redistribute it and/or modify it
 under the terms of the QuantLib license.  You should have received a
 copy of the license along with this program; if not, please email
 <quantlib-dev@lists.sf.net>. The license is also available online at
-<http://quantlib.org/license.shtml>.
+<https://www.quantlib.org/license.shtml>.
 
 This program is distributed in the hope that it will be useful, but WITHOUT
 ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -58,17 +58,14 @@ namespace QuantLib {
         fixedDrifts_.reserve(steps);
         for (Size j=0; j<steps; ++j) {
             const Matrix& A = marketModel_->pseudoRoot(j);
-            calculators_.push_back(LMMDriftCalculator(A,
-                displacements_,
-                marketModel->evolution().rateTaus(),
-                numeraires[j],
-                alive_[j]));
+            calculators_.emplace_back(A, displacements_, marketModel->evolution().rateTaus(),
+                                      numeraires[j], alive_[j]);
             std::vector<Real> fixed(numberOfRates_);
             std::vector<Real> variances(numberOfRates_);
             for (Size k=0; k<numberOfRates_; ++k) {
                 Real variance =
                     std::inner_product(A.row_begin(k), A.row_end(k),
-                    A.row_begin(k), 0.0);
+                    A.row_begin(k), Real(0.0));
                 variances[k] = variance;
                 fixed[k] = -0.5*variance;
             }
@@ -179,7 +176,7 @@ namespace QuantLib {
             logForwards_[i] += drifts1_[i] + fixedDrift[i];
             logForwards_[i] +=
                 std::inner_product(A.row_begin(i), A.row_end(i),
-                brownians_.begin(), 0.0);
+                brownians_.begin(), Real(0.0));
         }
 
         // check constraint active

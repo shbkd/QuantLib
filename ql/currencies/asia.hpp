@@ -2,6 +2,7 @@
 
 /*
  Copyright (C) 2004, 2005 StatPro Italia srl
+ Copyright (C) 2016 Quaternion Risk Management Ltd
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -10,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -28,11 +29,6 @@
 #define quantlib_asian_currencies_hpp
 
 #include <ql/currency.hpp>
-
-#if defined(QL_PATCH_MSVC)
-#pragma warning(push)
-#pragma warning(disable:4819)
-#endif
 
 namespace QuantLib {
 
@@ -156,6 +152,11 @@ namespace QuantLib {
       public:
         KWDCurrency();
     };
+ 
+    class KZTCurrency : public Currency {
+      public:
+       KZTCurrency();
+    };
 
     //! Malaysian Ringgit
     /*! The ISO three-letter code is MYR; the numeric code is 458.
@@ -245,10 +246,96 @@ namespace QuantLib {
         VNDCurrency();
     };
 
-}
+    //! Qatari riyal
+    /*! The ISO three-letter code is QAR; the numeric code is 634.
+     It is divided into 100 diram.
+     \ingroup currencies
+    */
+    class QARCurrency : public Currency {
+      public:
+        QARCurrency();
+    };
 
-#if defined(QL_PATCH_MSVC)
-#pragma warning(pop)
-#endif
+    //! Bahraini dinar
+    /*! The ISO three-letter code is BHD; the numeric code is 048.
+     It is divided into 1000 fils.
+     \ingroup currencies
+    */
+    class BHDCurrency : public Currency {
+      public:
+        BHDCurrency();
+    };
+
+    //! Omani rial
+    /*! The ISO three-letter code is OMR; the numeric code is 512.
+     It is divided into 1000 baisa.
+     \ingroup currencies
+     */
+    class OMRCurrency : public Currency {
+      public:
+        OMRCurrency();
+    };
+
+    //! Jordanian dinar
+    /*! The ISO three-letter code is JOD; the numeric code is 400.
+     It is divided into 100 qirshes.
+     \ingroup currencies
+     */
+    class JODCurrency : public Currency {
+      public:
+        JODCurrency();
+    };
+
+    //! United Arab Emirates dirham
+    /*! The ISO three-letter code is AED; the numeric code is 784.
+     It is divided into 100 fils.
+     \ingroup currencies
+     */
+    class AEDCurrency : public Currency {
+      public:
+        AEDCurrency();
+    };
+
+    //! Philippine peso
+    /*! The ISO three-letter code is PHP; the numeric code is 608.
+     It is divided into 100 centavo.
+     \ingroup currencies
+     */
+    class PHPCurrency : public Currency {
+      public:
+        PHPCurrency();
+    };
+
+    //! Chinese yuan (Hong Kong)
+    /*! The ISO three-letter code is CNH; there is no numeric code.
+     It is divided in 100 fen.
+     \ingroup currencies
+    */
+    class CNHCurrency : public Currency {
+      public:
+        CNHCurrency();
+    };
+
+    //! Sri Lankan rupee
+    /*! The ISO three-letter code is LKR; there numeric code is 144.
+     It is divided into 100 cents.
+     \ingroup currencies
+    */
+    class LKRCurrency : public Currency {
+      public:
+        LKRCurrency();
+    };
+
+    //! Uzbekistani Som
+    /*! The ISO three-letter code is UZS; the numeric code is 860.
+     It is divided into 100 tiyin.
+     \ingroup currencies
+    */
+    class UZSCurrency : public Currency {
+      public:
+        UZSCurrency();
+    };
+
+}
 
 #endif

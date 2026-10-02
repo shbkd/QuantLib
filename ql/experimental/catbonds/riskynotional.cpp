@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -24,7 +24,7 @@ namespace QuantLib
     NotionalPath::NotionalPath()
     {
         Rate previous = 1.0;//full notional at the beginning
-        notionalRate_.push_back(std::pair<Date, Real>(Date(), previous));
+        notionalRate_.emplace_back(Date(), previous);
     }
 
     Rate NotionalPath::notionalRate(const Date& date) const
@@ -40,7 +40,7 @@ namespace QuantLib
     }
 
     void NotionalPath::addReduction(const Date &date, Rate newRate) {
-        notionalRate_.push_back(std::pair<Date, Real>(date, newRate));
+        notionalRate_.emplace_back(date, newRate);
     }
 
     Real NotionalPath::loss() {
@@ -50,9 +50,9 @@ namespace QuantLib
     void DigitalNotionalRisk::updatePath(const std::vector<std::pair<Date, Real> >  &events, 
                                          NotionalPath &path) const {
         path.reset();
-        for(size_t i=0; i<events.size(); ++i) {
-            if(events[i].second>=threshold_) {
-                path.addReduction(paymentOffset_->paymentDate(events[i].first), Rate(0.0));
+        for (const auto& event : events) {
+            if (event.second >= threshold_) {
+                path.addReduction(paymentOffset_->paymentDate(event.first), Rate(0.0));
             }
         }
     }

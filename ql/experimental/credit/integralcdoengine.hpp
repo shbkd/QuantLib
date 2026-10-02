@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -27,6 +27,7 @@
 #ifndef QL_PATCH_SOLARIS
 
 #include <ql/experimental/credit/syntheticcdo.hpp>
+#    include <utility>
 
 namespace QuantLib {
 
@@ -34,13 +35,14 @@ namespace QuantLib {
 
     class IntegralCDOEngine : public SyntheticCDO::engine {
     public:
-        IntegralCDOEngine(const Handle<YieldTermStructure>& discountCurve, 
-                          Period stepSize = 3*Months) 
-        : stepSize_(stepSize), discountCurve_(discountCurve) {}
-        void calculate() const;
+      explicit IntegralCDOEngine(Handle<YieldTermStructure> discountCurve,
+                                 Period stepSize = 3 * Months)
+      : stepSize_(stepSize), discountCurve_(std::move(discountCurve)) {}
+      void calculate() const override;
+
     protected:
-        Period stepSize_;
-        Handle<YieldTermStructure> discountCurve_;
+      Period stepSize_;
+      Handle<YieldTermStructure> discountCurve_;
     };
 
 }

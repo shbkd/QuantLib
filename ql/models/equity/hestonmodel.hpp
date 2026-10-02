@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -59,15 +59,15 @@ namespace QuantLib {
 
         class FellerConstraint;
       protected:
-        void generateArguments();
+        void generateArguments() override;
         ext::shared_ptr<HestonProcess> process_;
     };
 
     class HestonModel::FellerConstraint : public Constraint {
       private:
-        class Impl : public Constraint::Impl {
+        class Impl final : public Constraint::Impl {
           public:
-            bool test(const Array& params) const {
+            bool test(const Array& params) const override {
                 const Real theta = params[0];
                 const Real kappa = params[1];
                 const Real sigma = params[2];

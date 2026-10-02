@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -22,7 +22,7 @@
 */
 
 #include <ql/qldefines.hpp>
-#ifdef BOOST_MSVC
+#if !defined(BOOST_ALL_NO_LIB) && defined(BOOST_MSVC)
 #  include <ql/auto_link.hpp>
 #endif
 #include <ql/experimental/callablebonds/callablebond.hpp>
@@ -36,17 +36,9 @@
 #include <cmath>
 #include <iomanip>
 #include <iostream>
-#include <boost/timer.hpp>
 
 using namespace std;
 using namespace QuantLib;
-
-#if defined(QL_ENABLE_SESSIONS)
-namespace QuantLib {
-    Integer sessionId() { return 0; }
-}
-#endif
-
 
 ext::shared_ptr<YieldTermStructure>
     flatRate(const Date& today,
@@ -54,12 +46,11 @@ ext::shared_ptr<YieldTermStructure>
              const DayCounter& dc,
              const Compounding& compounding,
              const Frequency& frequency) {
-    return ext::shared_ptr<YieldTermStructure>(
-                                       new FlatForward(today,
-                                                       Handle<Quote>(forward),
-                                                       dc,
-                                                       compounding,
-                                                       frequency));
+    return ext::make_shared<FlatForward>(today,
+                                         Handle<Quote>(forward),
+                                         dc,
+                                         compounding,
+                                         frequency);
 }
 
 
@@ -70,7 +61,7 @@ ext::shared_ptr<YieldTermStructure>
              const Compounding &compounding,
              const Frequency &frequency) {
     return flatRate(today,
-            ext::shared_ptr<Quote>(new SimpleQuote(forward)),
+            ext::make_shared<SimpleQuote>(forward),
             dc,
             compounding,
             frequency);
@@ -81,7 +72,6 @@ int main(int, char* [])
 {
     try {
 
-        boost::timer timer;
 
         Date today = Date(16,October,2007);
         Settings::instance().evaluationDate() = today;
@@ -125,11 +115,10 @@ int main(int, char* [])
         for (Size i=0; i< numberOfCallDates; i++) {
             Calendar nullCalendar = NullCalendar();
 
-            Callability::Price myPrice(callPrice,
-                                       Callability::Price::Clean);
+            Bond::Price myPrice(callPrice, Bond::Price::Clean);
             callSchedule.push_back(
                 ext::make_shared<Callability>(
-                    myPrice,
+                                    myPrice,
                                     Callability::Call,
                                     callDate ));
             callDate = nullCalendar.advance(callDate, 3, Months);
@@ -172,11 +161,9 @@ int main(int, char* [])
 
         Real sigma = QL_EPSILON; // core dumps if zero on Cygwin
 
-        ext::shared_ptr<ShortRateModel> hw0(
-                       new HullWhite(termStructure,reversionParameter,sigma));
+        auto hw0 = ext::make_shared<HullWhite>(termStructure,reversionParameter,sigma);
 
-        ext::shared_ptr<PricingEngine> engine0(
-                      new TreeCallableFixedRateBondEngine(hw0,gridIntervals));
+        auto engine0 = ext::make_shared<TreeCallableFixedRateBondEngine>(hw0,gridIntervals);
 
         CallableFixedRateBond callableBond(settlementDays, faceAmount, sch,
                                            vector<Rate>(1, coupon),
@@ -209,11 +196,9 @@ int main(int, char* [])
 
         cout << "sigma/vol (%) = " << 100.*sigma << endl;
 
-        ext::shared_ptr<ShortRateModel> hw1(
-                       new HullWhite(termStructure,reversionParameter,sigma));
+        auto hw1 = ext::make_shared<HullWhite>(termStructure,reversionParameter,sigma);
 
-        ext::shared_ptr<PricingEngine> engine1(
-                      new TreeCallableFixedRateBondEngine(hw1,gridIntervals));
+        auto engine1 = ext::make_shared<TreeCallableFixedRateBondEngine>(hw1,gridIntervals);
 
         callableBond.setPricingEngine(engine1);
 
@@ -235,11 +220,9 @@ int main(int, char* [])
 
         sigma = .03;
 
-        ext::shared_ptr<ShortRateModel> hw2(
-                     new HullWhite(termStructure, reversionParameter, sigma));
+        auto hw2 = ext::make_shared<HullWhite>(termStructure, reversionParameter, sigma);
 
-        ext::shared_ptr<PricingEngine> engine2(
-                      new TreeCallableFixedRateBondEngine(hw2,gridIntervals));
+        auto engine2 = ext::make_shared<TreeCallableFixedRateBondEngine>(hw2,gridIntervals);
 
         callableBond.setPricingEngine(engine2);
 
@@ -265,11 +248,9 @@ int main(int, char* [])
 
         sigma = .06;
 
-        ext::shared_ptr<ShortRateModel> hw3(
-                     new HullWhite(termStructure, reversionParameter, sigma));
+        auto hw3 = ext::make_shared<HullWhite>(termStructure, reversionParameter, sigma);
 
-        ext::shared_ptr<PricingEngine> engine3(
-                      new TreeCallableFixedRateBondEngine(hw3,gridIntervals));
+        auto engine3 = ext::make_shared<TreeCallableFixedRateBondEngine>(hw3,gridIntervals);
 
         callableBond.setPricingEngine(engine3);
 
@@ -295,11 +276,9 @@ int main(int, char* [])
 
         sigma = .12;
 
-        ext::shared_ptr<ShortRateModel> hw4(
-                     new HullWhite(termStructure, reversionParameter, sigma));
+        auto hw4 = ext::make_shared<HullWhite>(termStructure, reversionParameter, sigma);
 
-        ext::shared_ptr<PricingEngine> engine4(
-                      new TreeCallableFixedRateBondEngine(hw4,gridIntervals));
+        auto engine4 = ext::make_shared<TreeCallableFixedRateBondEngine>(hw4,gridIntervals);
 
         callableBond.setPricingEngine(engine4);
 
@@ -320,19 +299,6 @@ int main(int, char* [])
         cout << "77.31 / 10.65"
              << endl
              << endl;
-
-        double seconds = timer.elapsed();
-        Integer hours = int(seconds/3600);
-        seconds -= hours * 3600;
-        Integer minutes = int(seconds/60);
-        seconds -= minutes * 60;
-        cout << " \nRun completed in ";
-        if (hours > 0)
-            cout << hours << " h ";
-        if (hours > 0 || minutes > 0)
-            cout << minutes << " m ";
-        cout << fixed << setprecision(0)
-             << seconds << " s\n" << endl;
 
         return 0;
 

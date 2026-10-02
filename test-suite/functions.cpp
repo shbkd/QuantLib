@@ -3,7 +3,7 @@
 /*
  Copyright (C) 2003 Ferdinando Ametrano
  Copyright (C) 2014 Klaus Spanderen
- Copyright (C) 2015 Johannes Goettker-Schnetmann
+ Copyright (C) 2015 Johannes Göttker-Schnetmann
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -12,25 +12,31 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "functions.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
+#include <ql/math/comparison.hpp>
 #include <ql/math/factorial.hpp>
 #include <ql/math/distributions/gammadistribution.hpp>
 #include <ql/math/modifiedbessel.hpp>
+#include <ql/math/expm1.hpp>
 
 using namespace QuantLib;
 using namespace boost::unit_test_framework;
 
 using std::exp;
 
-void FunctionsTest::testFactorial() {
+BOOST_FIXTURE_TEST_SUITE(QuantLibTests, TopLevelFixture)
+
+BOOST_AUTO_TEST_SUITE(FunctionsTests)
+
+BOOST_AUTO_TEST_CASE(testFactorial) {
 
     BOOST_TEST_MESSAGE("Testing factorial numbers...");
 
@@ -52,7 +58,7 @@ void FunctionsTest::testFactorial() {
     }
 }
 
-void FunctionsTest::testGammaFunction() {
+BOOST_AUTO_TEST_CASE(testGammaFunction) {
 
     BOOST_TEST_MESSAGE("Testing Gamma function...");
 
@@ -77,7 +83,7 @@ void FunctionsTest::testGammaFunction() {
     }
 }
 
-void FunctionsTest::testGammaValues() {
+BOOST_AUTO_TEST_CASE(testGammaValues) {
 
     BOOST_TEST_MESSAGE("Testing Gamma values...");
 
@@ -95,11 +101,11 @@ void FunctionsTest::testGammaValues() {
             {-21.5, 1.318444918321553e-20, 1e6}
     };
 
-    for (Size i=0; i < LENGTH(tasks); ++i) {
-        const Real x = tasks[i][0];
-        const Real expected = tasks[i][1];
+    for (auto& task : tasks) {
+        const Real x = task[0];
+        const Real expected = task[1];
         const Real calculated = GammaFunction().value(x);
-        const Real tol = tasks[i][2] * QL_EPSILON*std::fabs(expected);
+        const Real tol = task[2] * QL_EPSILON * std::fabs(expected);
 
         if (std::fabs(calculated - expected) > tol) {
             BOOST_ERROR("GammaFunction(" << x << ")\n"
@@ -112,7 +118,31 @@ void FunctionsTest::testGammaValues() {
     }
 }
 
-void FunctionsTest::testModifiedBesselFunctions() {
+BOOST_AUTO_TEST_CASE(testCumulativeGammaDistribution) {
+    BOOST_TEST_MESSAGE("Testing cumulative gamma distribution...");
+
+    CumulativeGammaDistribution exponential(1.0);
+    BOOST_CHECK_EQUAL(exponential(-1.0), 0.0);
+    BOOST_CHECK_EQUAL(exponential(0.0), 0.0);
+    BOOST_CHECK_CLOSE(exponential(0.5), 1.0 - std::exp(-0.5), 1.0e-5);
+    BOOST_CHECK_CLOSE(exponential(2.0), 1.0 - std::exp(-2.0), 1.0e-5);
+
+    CumulativeGammaDistribution shapeTwo(2.0);
+    BOOST_CHECK_CLOSE(shapeTwo(1.0), 1.0 - 2.0 * std::exp(-1.0), 1.0e-5);
+    BOOST_CHECK_CLOSE(shapeTwo(4.0), 1.0 - 5.0 * std::exp(-4.0), 1.0e-5);
+
+    BOOST_CHECK_EXCEPTION(
+        CumulativeGammaDistribution(0.0), Error,
+        ExpectedErrorMessage("invalid parameter for gamma distribution"));
+    BOOST_CHECK_EXCEPTION(
+        CumulativeGammaDistribution(-1.0), Error,
+        ExpectedErrorMessage("invalid parameter for gamma distribution"));
+    BOOST_CHECK_EXCEPTION(
+        GammaFunction().logValue(0.0), Error,
+        ExpectedErrorMessage("positive argument required"));
+}
+
+BOOST_AUTO_TEST_CASE(testModifiedBesselFunctions) {
     BOOST_TEST_MESSAGE("Testing modified Bessel function of first and second kind...");
 
     /* reference values are computed with R and the additional package Bessel
@@ -129,13 +159,14 @@ void FunctionsTest::testModifiedBesselFunctions() {
         {-10.0001, 1.1, 13857.7715614282552, 69288858.9474423379}
     };
 
-    for (Size i=0; i < LENGTH(r); ++i) {
-        const Real nu = r[i][0];
-        const Real x  = r[i][1];
-        const Real expected_i = r[i][2];
-        const Real expected_k = r[i][3];
+    for (auto& i : r) {
+        const Real nu = i[0];
+        const Real x = i[1];
+        const Real expected_i = i[2];
+        const Real expected_k = i[3];
         const Real tol_i = 5e4 * QL_EPSILON*std::fabs(expected_i);
-        const Real tol_k = 5e4 * QL_EPSILON*std::fabs(expected_k);
+        const Real tol_k = 5e4 * QL_EPSILON
+                           * std::max(std::fabs(expected_k), std::fabs(expected_i));
 
         const Real calculated_i = modifiedBesselFunction_i(nu, x);
         const Real calculated_k = modifiedBesselFunction_k(nu, x);
@@ -143,18 +174,24 @@ void FunctionsTest::testModifiedBesselFunctions() {
         if (std::fabs(expected_i - calculated_i) > tol_i) {
             BOOST_ERROR("failed to reproduce modified Bessel "
                        << "function of first kind"
+                       << std::setprecision(16) << std::scientific
                        << "\n order     : " << nu
                        << "\n argument  : " << x
                        << "\n calculated: " << calculated_i
-                       << "\n expected  : " << expected_i);
+                       << "\n expected  : " << expected_i
+                       << "\n difference: " << std::fabs(expected_i - calculated_i)
+                       << "\n tolerance : " << tol_i);
         }
         if (std::fabs(expected_k - calculated_k) > tol_k) {
             BOOST_ERROR("failed to reproduce modified Bessel "
                        << "function of second kind"
+                       << std::setprecision(16) << std::scientific
                        << "\n order     : " << nu
                        << "\n argument  : " << x
                        << "\n calculated: " << calculated_k
-                       << "\n expected  : " << expected_k);
+                       << "\n expected  : " << expected_k
+                       << "\n difference: " << std::fabs(expected_k - calculated_k)
+                       << "\n tolerance : " << tol_k);
         }
     }
 
@@ -193,13 +230,11 @@ void FunctionsTest::testModifiedBesselFunctions() {
                         -4.480795479964915e-05, -3.489034389148745e-08}
     };
 
-    for (Size i=0; i < LENGTH(c); ++i) {
-        const Real nu = c[i][0];
-        const std::complex<Real> z  = std::complex<Real>(c[i][1], c[i][2]);
-        const std::complex<Real> expected_i
-            = std::complex<Real>(c[i][3],c[i][4]);
-        const std::complex<Real> expected_k
-            = std::complex<Real>(c[i][5],c[i][6]);
+    for (auto& i : c) {
+        const Real nu = i[0];
+        const std::complex<Real> z = std::complex<Real>(i[1], i[2]);
+        const std::complex<Real> expected_i = std::complex<Real>(i[3], i[4]);
+        const std::complex<Real> expected_k = std::complex<Real>(i[5], i[6]);
 
         const Real tol_i = 5e4*QL_EPSILON*std::abs(expected_i);
         const Real tol_k = 1e6*QL_EPSILON*std::abs(expected_k);
@@ -228,95 +263,165 @@ void FunctionsTest::testModifiedBesselFunctions() {
     }
 }
 
-void FunctionsTest::testWeightedModifiedBesselFunctions() {
-    BOOST_TEST_MESSAGE("Testing weighted modified Bessel functions...");
-    Real nu = -5.0;
-    while (nu <= 5.0) {
-        Real x = 0.1;
-        while (x <= 15.0) {
-            const Real calculated_i = 
-                modifiedBesselFunction_i_exponentiallyWeighted(nu, x);
-            const Real expected_i = 
-                modifiedBesselFunction_i(nu, x) * exp(-x);
-            const Real calculated_k = 
-                modifiedBesselFunction_k_exponentiallyWeighted(nu, x);
-            const Real expected_k = 
-                M_PI_2 * (modifiedBesselFunction_i(-nu,x) -
-                          modifiedBesselFunction_i(nu,x)) * exp(-x) / std::sin(M_PI*nu);
-            const Real tol_i = 1e3 * QL_EPSILON *
-                std::fabs(expected_i) * std::max(exp(x), 1.0);
-            const Real tol_k = std::max(QL_EPSILON, 
-                1e3 * QL_EPSILON *
-                std::fabs(expected_k) * std::max(exp(x), 1.0));
-            if (std::abs(expected_i - calculated_i) > tol_i) {
-                BOOST_ERROR("failed to verify exponentially weighted"
-                            << "modified Bessel function of first kind"
-                            << "\n order      : " << nu << "\n argument   : "
-                            << x << "\n calculated  : " << calculated_i
-                            << "\n expected   : " << expected_i);
-            }
-            if (std::abs(expected_k - calculated_k) > tol_k) {
-                BOOST_ERROR("failed to verify exponentially weighted"
-                            << "modified Bessel function of second kind"
-                            << "\n order      : " << nu << "\n argument   : "
-                            << x << "\n calculated  : " << calculated_k
-                            << "\n expected   : " << expected_k);
-            }
-            x += 0.5;
+BOOST_AUTO_TEST_CASE(testModifiedBesselFunctionsRegressionCases) {
+    BOOST_TEST_MESSAGE(
+        "Testing modified Bessel functions at integer order and large argument...");
+
+    // Every reference point in testModifiedBesselFunctions sits outside the
+    // two regimes below: the orders there are all non-integer and the largest
+    // argument is 2. Reference values from boost::math::cyl_bessel_i/k.
+    Real r[][4] = {
+        // integer order: the I_(-nu) - I_nu quotient is 0/0 here
+        { 0, 2, 2.279585302336067, 0.1138938727495334 },
+        { 1, 2, 1.590636854637329, 0.1398658818165224 },
+        { 2, 2, 0.6889484476987382, 0.2537597545660559 },
+        { 5, 2, 0.009825679323131702, 9.431049100596468 },
+        // large argument: the same quotient used to collapse to exactly zero
+        { 0.5, 13, 48951.57328321644, 7.857058697340969e-07 },
+        { 0.5, 14, 128223.8446632749, 2.785307663176792e-07 },
+        { 2.3, 20, 38035457.61215977, 6.531642087006757e-10 },
+        { 1.2, 30, 762821352844.8658, 2.183426121339329e-14 }
+    };
+
+    for (auto& i : r) {
+        const Real nu = i[0];
+        const Real x = i[1];
+        const Real expected_i = i[2];
+        const Real expected_k = i[3];
+
+        // Unlike the check above this scales the second-kind tolerance by the
+        // second-kind value: out here I is many orders of magnitude larger
+        // than K, so a bound taken from max(I, K) would accept anything.
+        const Real tol_i = 5e4 * QL_EPSILON * std::fabs(expected_i);
+        const Real tol_k = 5e4 * QL_EPSILON * std::fabs(expected_k);
+
+        const Real calculated_i = modifiedBesselFunction_i(nu, x);
+        const Real calculated_k = modifiedBesselFunction_k(nu, x);
+
+        if (std::fabs(expected_i - calculated_i) > tol_i) {
+            BOOST_ERROR("failed to reproduce modified Bessel "
+                        << "function of first kind"
+                        << "\n order      : " << nu
+                        << "\n argument   : " << x
+                        << "\n calculated : " << calculated_i
+                        << "\n expected   : " << expected_i);
         }
-        nu += 0.5;
-    }
-    nu = -5.0;
-    while (nu <= 5.0) {
-        Real x = -5.0;
-        while (x <= 5.0) {
-            Real y = -5.0;
-            while (y <= 5.0) {
-                const std::complex<Real> z(x, y);
-                const std::complex<Real> calculated_i =
-                    modifiedBesselFunction_i_exponentiallyWeighted(nu, z);
-                const std::complex<Real> expected_i =
-                    modifiedBesselFunction_i(nu, z) * exp(-z);
-                const std::complex<Real> calculated_k =
-                    modifiedBesselFunction_k_exponentiallyWeighted(nu, z);
-                const std::complex<Real> expected_k =
-                    M_PI_2 * (modifiedBesselFunction_i(-nu, z) * exp(-z) -
-                              modifiedBesselFunction_i(nu, z) * exp(-z)) /
-                    std::sin(M_PI * nu);
-                const Real tol_i = 1e3 * QL_EPSILON*std::abs(calculated_i);
-                const Real tol_k = 1e3 * QL_EPSILON*std::abs(calculated_k);
-                if (std::abs(calculated_i - expected_i) > tol_i) {
-                    BOOST_ERROR("failed to verify exponentially weighted"
-                                << "modified Bessel function of first kind"
-                                << "\n order      : " << nu
-                                << "\n argument   : " << z <<
-                                "\n calculated: "
-                                << calculated_i << "\n expected   : " << expected_i);
-                }
-                if (std::abs(calculated_k - expected_k) > tol_k) {
-                    BOOST_ERROR("failed to verify exponentially weighted"
-                                << "modified Bessel function of second kind"
-                                << "\n order      : " << nu
-                                << "\n argument   : " << z <<
-                                "\n calculated: "
-                                << calculated_k << "\n expected   : " << expected_k);
-                }
-                y += 0.5;
-            }
-            x += 0.5;
+        if (std::fabs(expected_k - calculated_k) > tol_k) {
+            BOOST_ERROR("failed to reproduce modified Bessel "
+                        << "function of second kind"
+                        << "\n order      : " << nu
+                        << "\n argument   : " << x
+                        << "\n calculated : " << calculated_k
+                        << "\n expected   : " << expected_k);
         }
-        nu += 0.5;
     }
 }
 
-test_suite* FunctionsTest::suite() {
-    test_suite* suite = BOOST_TEST_SUITE("Factorial tests");
-    suite->add(QUANTLIB_TEST_CASE(&FunctionsTest::testFactorial));
-    suite->add(QUANTLIB_TEST_CASE(&FunctionsTest::testGammaFunction));
-    suite->add(QUANTLIB_TEST_CASE(&FunctionsTest::testGammaValues));
-    suite->add(QUANTLIB_TEST_CASE(
-                        &FunctionsTest::testModifiedBesselFunctions));
-    suite->add(QUANTLIB_TEST_CASE(
-                        &FunctionsTest::testWeightedModifiedBesselFunctions));
-    return suite;
+BOOST_AUTO_TEST_CASE(testWeightedModifiedBesselFunctions) {
+    BOOST_TEST_MESSAGE("Testing weighted modified Bessel functions...");
+    for (Real nu = -5.0; nu <= 5.0; nu += 0.5) {
+        for (Real x = 0.1; x <= 15.0; x += 0.5) {
+            Real calculated_i = modifiedBesselFunction_i_exponentiallyWeighted(nu, x);
+            Real expected_i = modifiedBesselFunction_i(nu, x) * exp(-x);
+            Real calculated_k = modifiedBesselFunction_k_exponentiallyWeighted(nu, x);
+            // Mirror the check above for the first kind rather than
+            // inlining the old I_(-nu) - I_nu quotient: that expression is
+            // 0/0 at integer order, so using it here made the test assert
+            // the very failure it should catch.
+            Real expected_k = modifiedBesselFunction_k(nu, x) * exp(-x);
+            Real tol_i = std::max(QL_EPSILON, 1e3 * QL_EPSILON * std::fabs(expected_i) * std::max(exp(x), 1.0));
+            Real tol_k = std::max(QL_EPSILON, 1e3 * QL_EPSILON * std::fabs(expected_k) * std::max(exp(x), 1.0));
+            if (std::abs(expected_i - calculated_i) > tol_i) {
+                BOOST_ERROR("failed to verify exponentially weighted"
+                            << " modified Bessel function of first kind"
+                            << "\n order      : " << nu
+                            << "\n argument   : " << x
+                            << "\n calculated : " << calculated_i
+                            << "\n expected   : " << expected_i
+                            << "\n tolerance  : " << tol_i
+                            << "\n difference : " << (expected_i - calculated_i));
+            }
+            if (std::abs(expected_k - calculated_k) > tol_k) {
+                BOOST_ERROR("failed to verify exponentially weighted"
+                            << " modified Bessel function of second kind"
+                            << "\n order      : " << nu
+                            << "\n argument   : " << x
+                            << "\n calculated : " << calculated_k
+                            << "\n expected   : " << expected_k
+                            << "\n tolerance  : " << tol_k
+                            << "\n difference : " << (expected_k - calculated_k));
+            }
+        }
+    }
+    for (Real nu = -5.0; nu <= 5.0; nu += 0.5) {
+        for (Real x = -5.0; x <= 5.0; x += 0.5) {
+            for (Real y = -5.0; y <= 5.0; y += 0.5) {
+                std::complex<Real> z(x, y);
+                std::complex<Real> calculated_i =
+                    modifiedBesselFunction_i_exponentiallyWeighted(nu, z);
+                std::complex<Real> expected_i = modifiedBesselFunction_i(nu, z) * exp(-z);
+                std::complex<Real> calculated_k =
+                    modifiedBesselFunction_k_exponentiallyWeighted(nu, z);
+                // As above, check against the unweighted function rather
+                // than against the old I_(-nu) - I_nu quotient, which is
+                // 0/0 at integer order.
+                std::complex<Real> expected_k =
+                    modifiedBesselFunction_k(nu, z) * exp(-z);
+                Real tol_i = std::max(QL_EPSILON, 1e3 * QL_EPSILON * std::abs(calculated_i));
+                Real tol_k = std::max(QL_EPSILON, 1e3 * QL_EPSILON * std::abs(calculated_k));
+                if (std::abs(calculated_i - expected_i) > tol_i) {
+                    BOOST_ERROR("failed to verify exponentially weighted"
+                                << " modified Bessel function of first kind"
+                                << "\n order      : " << nu
+                                << "\n argument   : " << x
+                                << "\n calculated : " << calculated_i
+                                << "\n expected   : " << expected_i
+                                << "\n tolerance  : " << tol_i
+                                << "\n difference : " << (expected_i - calculated_i));
+                }
+                if (std::abs(expected_k - calculated_k) > tol_k) {
+                    BOOST_ERROR("failed to verify exponentially weighted"
+                                << " modified Bessel function of second kind"
+                                << "\n order      : " << nu
+                                << "\n argument   : " << x
+                                << "\n calculated : " << calculated_k
+                                << "\n expected   : " << expected_k
+                                << "\n tolerance  : " << tol_k
+                                << "\n difference : " << (expected_k - calculated_k));
+                }
+            }
+        }
+    }
 }
+
+BOOST_AUTO_TEST_CASE(testExpm1) {
+    BOOST_TEST_MESSAGE("Testing complex valued expm1...");
+
+    const std::complex<Real> z = std::complex<Real>(1.2, 0.5);
+    QL_CHECK_SMALL(std::abs(std::exp(z) - 1.0 - expm1(z)), 10*QL_EPSILON);
+
+    const std::complex<Real> calculated = expm1(std::complex<Real>(5e-6, 5e-5));
+    //scipy reference value
+    const std::complex<Real> expected(4.998762493771078e-06,5.000024997979157e-05);
+    const Real tol = std::max(2.2e-14, 100*QL_EPSILON);
+    QL_CHECK_CLOSE_FRACTION(calculated.real(), expected.real(), tol);
+    QL_CHECK_CLOSE_FRACTION(calculated.imag(), expected.imag(), tol);
+}
+
+BOOST_AUTO_TEST_CASE(testLog1p) {
+    BOOST_TEST_MESSAGE("Testing complex valued log1p...");
+
+    const std::complex<Real> z = std::complex<Real>(1.2, 0.57);
+    QL_CHECK_SMALL(std::abs(std::log(1.0+z) - log1p(z)), 10*QL_EPSILON);
+
+    const std::complex<Real> calculated = log1p(std::complex<Real>(5e-6, 5e-5));
+    //scipy reference value
+    const std::complex<Real> expected(5.0012374875401984e-06, 4.999974995958395e-05);
+    const Real tol = std::max(2.2e-14, 100*QL_EPSILON);
+    QL_CHECK_CLOSE_FRACTION(calculated.real(), expected.real(), tol);
+    QL_CHECK_CLOSE_FRACTION(calculated.imag(), expected.imag(), tol);
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_AUTO_TEST_SUITE_END()

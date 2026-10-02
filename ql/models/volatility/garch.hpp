@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -38,8 +38,6 @@ namespace QuantLib {
     class Garch11 : public VolatilityCompositor {
       public:
         typedef TimeSeries<Volatility> time_series;
-        typedef time_series::const_iterator const_iterator;
-        typedef time_series::const_value_iterator const_value_iterator;
 
         enum Mode {
             MomentMatchingGuess,   /*!< The initial guess is a moment
@@ -77,11 +75,12 @@ namespace QuantLib {
 
         //! \name VolatilityCompositor interface
         //@{
-        time_series calculate(const time_series& quoteSeries) {
+        time_series calculate(const time_series& quoteSeries) override {
             return calculate(quoteSeries, alpha(), beta(), omega());
         }
-        void calibrate(const time_series& quoteSeries) {
-            calibrate(quoteSeries.cbegin_values(), quoteSeries.cend_values());
+        void calibrate(const time_series& quoteSeries) override {
+            const auto values = quoteSeries.values();
+            calibrate(values.cbegin(), values.cend());
         }
         //@}
 
@@ -93,7 +92,8 @@ namespace QuantLib {
         void calibrate(const time_series& quoteSeries,
                        OptimizationMethod& method,
                        const EndCriteria& endCriteria) {
-            calibrate(quoteSeries.cbegin_values(), quoteSeries.cend_values(),
+            const auto values = quoteSeries.values();
+            calibrate(values.cbegin(), values.cend(),
                       method, endCriteria);
         }
 
@@ -101,7 +101,8 @@ namespace QuantLib {
                        OptimizationMethod& method,
                        const EndCriteria& endCriteria,
                        const Array& initialGuess) {
-            calibrate(quoteSeries.cbegin_values(), quoteSeries.cend_values(),
+            const auto values = quoteSeries.values();
+            calibrate(values.cbegin(), values.cend(),
                       method, endCriteria, initialGuess);
         }
 
@@ -244,7 +245,7 @@ namespace QuantLib {
                 u2 = *begin; u2 *= u2;
                 retval += std::log(sigma2) + u2 / sigma2;
             }
-            return N > 0 ? retval / (2*N) : 0.0;
+            return N > 0 ? Real(retval / (2*N)) : 0.0;
         }
         //@}
       private:

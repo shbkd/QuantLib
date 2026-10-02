@@ -3,6 +3,7 @@
 /*
 Copyright (C) 2013 Chris Higgs
 Copyright (C) 2015 Klaus Spanderen
+Copyright (C) 2026 Kyrylo Protsenko
 
 This file is part of QuantLib, a free-software/open-source library
 for financial quantitative analysts and developers - http://quantlib.org/
@@ -11,7 +12,7 @@ QuantLib is free software: you can redistribute it and/or modify it
 under the terms of the QuantLib license.  You should have received a
 copy of the license along with this program; if not, please email
 <quantlib-dev@lists.sf.net>. The license is also available online at
-<http://quantlib.org/license.shtml>.
+<https://www.quantlib.org/license.shtml>.
 
 This program is distributed in the hope that it will be useful, but WITHOUT
 ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -30,14 +31,17 @@ namespace QuantLib {
         updatesDeferred_ = false;
 
         // if there are outstanding deferred updates, do the notification
-        if (deferredObservers_.size()) {
+        if (!deferredObservers_.empty()) {
             bool successful = true;
             std::string errMsg;
+            runningDeferredUpdates_ = true;
 
-            for (iterator i=deferredObservers_.begin();
-                i!=deferredObservers_.end(); ++i) {
+            for (const auto& [deferredObserver, isValid] : deferredObservers_) {
+                if (!isValid)
+                    continue;
+
                 try {
-                    (*i)->update();
+                    deferredObserver->update();
                 } catch (std::exception& e) {
                     successful = false;
                     errMsg = e.what();
@@ -47,25 +51,26 @@ namespace QuantLib {
             }
 
             deferredObservers_.clear();
+            runningDeferredUpdates_ = false;
 
             QL_ENSURE(successful,
                   "could not notify one or more observers: " << errMsg);
         }
+
     }
 
 
     void Observable::notifyObservers() {
-        if (!settings_.updatesEnabled()) {
+        if (!ObservableSettings::instance().updatesEnabled()) {
             // if updates are only deferred, flag this for later notification
             // these are held centrally by the settings singleton
-            settings_.registerDeferredObservers(observers_);
-        }
-        else if (observers_.size()) {
+            ObservableSettings::instance().registerDeferredObservers(observers_);
+        } else if (!observers_.empty()) {
             bool successful = true;
             std::string errMsg;
-            for (iterator i=observers_.begin(); i!=observers_.end(); ++i) {
+            for (auto* observer : observers_) {
                 try {
-                    (*i)->update();
+                    observer->update();
                 } catch (std::exception& e) {
                     // quite a dilemma. If we don't catch the exception,
                     // other observers will not receive the notification
@@ -90,6 +95,7 @@ namespace QuantLib {
 #else
 
 #include <boost/signals2/signal_type.hpp>
+#include <map>
 
 namespace QuantLib {
 
@@ -99,16 +105,27 @@ namespace QuantLib {
           public:
             typedef boost::signals2::signal_type<
                 void(),
-                boost::signals2::keywords::mutex_type<boost::recursive_mutex> >
+                boost::signals2::keywords::mutex_type<std::recursive_mutex> >
                 ::type signal_type;
 
-            void connect(const signal_type::slot_type& slot) {
-                sig_.connect(slot);
+            /* Keeping each connection under QL_ENABLE_THREAD_SAFE_OBSERVER_PATTERN 
+			   avoids searching all entries when an observer unregisters (common for coupons in rate helpers).
+			   This speeds up cleanup for observables materially. */
+            boost::signals2::connection connect(const signal_type::slot_type& slot) {
+                return sig_.connect(slot);
             }
 
-            template <class T>
-            void disconnect(const T& slot) {
-                sig_.disconnect(slot);
+            void store(const void* observer, const boost::signals2::connection& c) {
+                connections_[observer] = c;
+            }
+
+            boost::signals2::connection release(const void* observer) {
+                auto i = connections_.find(observer);
+                if (i == connections_.end())
+                    return {};
+                boost::signals2::connection c = i->second;
+                connections_.erase(i);
+                return c;
             }
 
             void operator()() const {
@@ -116,64 +133,90 @@ namespace QuantLib {
             }
           private:
             signal_type sig_;
+            std::map<const void*, boost::signals2::connection> connections_;
+        };
+
+        template <class T>
+        class ProxyUpdater {
+            T* proxy_;
+          public:
+            explicit ProxyUpdater(const ext::shared_ptr<T>& observerProxy)
+            : proxy_(observerProxy.get()) {}
+
+            void operator()() const {
+                proxy_->update();
+            }
         };
 
     }
 
-    void Observable::registerObserver(
-        const ext::shared_ptr<Observer::Proxy>& observerProxy) {
+    void Observable::registerObserver(const ext::shared_ptr<Observer::Proxy>& observerProxy) {
         {
-            boost::lock_guard<boost::recursive_mutex> lock(mutex_);
-            observers_.insert(observerProxy);
+            std::lock_guard<std::recursive_mutex> lock(mutex_);
+            // an observer registered twice is notified once, as in the
+            // single-threaded implementation
+            if (!observers_.insert(observerProxy).second)
+                return;
         }
 
-        detail::Signal::signal_type::slot_type slot(&Observer::Proxy::update,
-                                    observerProxy.get());
-        sig_->connect(slot.track(observerProxy));
+        detail::Signal::signal_type::slot_type slot {detail::ProxyUpdater<Observer::Proxy>(observerProxy)};
+        #if defined(QL_USE_STD_SHARED_PTR)
+        boost::signals2::connection connection = sig_->connect(slot.track_foreign(observerProxy));
+        #else
+        boost::signals2::connection connection = sig_->connect(slot.track(observerProxy));
+        #endif
+
+        std::lock_guard<std::recursive_mutex> lock(mutex_);
+        sig_->store(observerProxy.get(), connection);
     }
 
-    void Observable::unregisterObserver(
-        const ext::shared_ptr<Observer::Proxy>& observerProxy) {
+    void Observable::unregisterObserver(const ext::shared_ptr<Observer::Proxy>& observerProxy,
+                                        bool disconnect) {
+        boost::signals2::connection connection;
         {
-            boost::lock_guard<boost::recursive_mutex> lock(mutex_);
+            std::lock_guard<std::recursive_mutex> lock(mutex_);
             observers_.erase(observerProxy);
+            connection = sig_->release(observerProxy.get());
         }
 
-        if (settings_.updatesDeferred()) {
-            boost::lock_guard<boost::mutex> sLock(settings_.mutex_);
-            if (settings_.updatesDeferred()) {
-                settings_.unregisterDeferredObserver(observerProxy);
-            }
+        if (ObservableSettings::instance().updatesDeferred()) {
+            std::lock_guard<std::mutex> sLock(ObservableSettings::instance().mutex_);
+            if (ObservableSettings::instance().updatesDeferred())
+                ObservableSettings::instance().unregisterDeferredObserver(observerProxy);
         }
 
-        sig_->disconnect(boost::bind(&Observer::Proxy::update,
-                             observerProxy.get()));
+        // without disconnect the slot expires with the tracked proxy
+        if (disconnect) {
+            connection.disconnect();
+        }
     }
 
     void Observable::notifyObservers() {
-        if (settings_.updatesEnabled()) {
-            return (*sig_)();
+        if (ObservableSettings::instance().updatesEnabled()) {
+            sig_->operator()();
         }
+        else {
+            bool updatesEnabled = false;
+            {
+                std::lock_guard<std::mutex> sLock(ObservableSettings::instance().mutex_);
+                updatesEnabled = ObservableSettings::instance().updatesEnabled();
 
-        boost::lock_guard<boost::mutex> sLock(settings_.mutex_);
-        if (settings_.updatesEnabled()) {
-            return (*sig_)();
-        }
-        else if (settings_.updatesDeferred()) {
-            boost::lock_guard<boost::recursive_mutex> lock(mutex_);
-            // if updates are only deferred, flag this for later notification
-            // these are held centrally by the settings singleton
-            settings_.registerDeferredObservers(observers_);
+                if (ObservableSettings::instance().updatesDeferred()) {
+                    std::lock_guard<std::recursive_mutex> lock(mutex_);
+                    ObservableSettings::instance().registerDeferredObservers(observers_);
+                }
+            }
+
+            if (updatesEnabled)
+                sig_->operator()();
         }
     }
 
     Observable::Observable()
-    : sig_(new detail::Signal()),
-      settings_(ObservableSettings::instance()) { }
+    : sig_(new detail::Signal()) { }
 
     Observable::Observable(const Observable&)
-    : sig_(new detail::Signal()),
-      settings_(ObservableSettings::instance()) {
+    : sig_(new detail::Signal()) {
         // the observer set is not copied; no observer asked to
         // register with this object
     }

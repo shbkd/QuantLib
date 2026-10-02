@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -36,14 +36,12 @@ namespace QuantLib {
 
     class FdmBatesSolver : public LazyObject {
       public:
-        FdmBatesSolver(
-            const Handle<BatesProcess>& process,
-            const FdmSolverDesc& solverDesc,
-            const FdmSchemeDesc& schemeDesc = FdmSchemeDesc::Hundsdorfer(),
-            Size integroIntegrationOrder = 12,
-            const Handle<FdmQuantoHelper>& quantoHelper
-                                                = Handle<FdmQuantoHelper>());
-        
+        FdmBatesSolver(Handle<BatesProcess> process,
+                       FdmSolverDesc solverDesc,
+                       const FdmSchemeDesc& schemeDesc = FdmSchemeDesc::Hundsdorfer(),
+                       Size integroIntegrationOrder = 12,
+                       Handle<FdmQuantoHelper> quantoHelper = Handle<FdmQuantoHelper>());
+
         Real valueAt(Real s, Real v) const;
         Real thetaAt(Real s, Real v) const;
 
@@ -56,8 +54,8 @@ namespace QuantLib {
         Real gammaAt(Real s, Real v) const;
 
       protected:
-        void performCalculations() const;
-        
+        void performCalculations() const override;
+
       private:
         const Handle<BatesProcess> process_;
         const FdmSolverDesc solverDesc_;

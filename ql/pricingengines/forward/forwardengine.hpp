@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -25,13 +25,14 @@
 #ifndef quantlib_forward_engine_hpp
 #define quantlib_forward_engine_hpp
 
+#include <ql/exercise.hpp>
 #include <ql/instruments/forwardvanillaoption.hpp>
+#include <ql/instruments/payoffs.hpp>
 #include <ql/instruments/vanillaoption.hpp>
 #include <ql/processes/blackscholesprocess.hpp>
 #include <ql/termstructures/volatility/equityfx/impliedvoltermstructure.hpp>
 #include <ql/termstructures/yield/impliedtermstructure.hpp>
-#include <ql/instruments/payoffs.hpp>
-#include <ql/exercise.hpp>
+#include <utility>
 
 namespace QuantLib {
 
@@ -49,9 +50,9 @@ namespace QuantLib {
         : public GenericEngine<ForwardOptionArguments<VanillaOption::arguments>,
                                VanillaOption::results> {
       public:
-        ForwardVanillaEngine(
-                    const ext::shared_ptr<GeneralizedBlackScholesProcess>&);
-        void calculate() const;
+        ForwardVanillaEngine(ext::shared_ptr<GeneralizedBlackScholesProcess>);
+        void calculate() const override;
+
       protected:
         void setup() const;
         void getOriginalResults() const;
@@ -66,8 +67,8 @@ namespace QuantLib {
 
     template <class Engine>
     ForwardVanillaEngine<Engine>::ForwardVanillaEngine(
-        const ext::shared_ptr<GeneralizedBlackScholesProcess>& process)
-    : process_(process) {
+        ext::shared_ptr<GeneralizedBlackScholesProcess> process)
+    : process_(std::move(process)) {
         registerWith(process_);
     }
 
@@ -80,40 +81,35 @@ namespace QuantLib {
                 this->arguments_.payoff);
         QL_REQUIRE(argumentsPayoff, "wrong payoff given");
 
-        ext::shared_ptr<StrikedTypePayoff> payoff(
-                   new PlainVanillaPayoff(argumentsPayoff->optionType(),
+        auto payoff = ext::make_shared<PlainVanillaPayoff>(argumentsPayoff->optionType(),
                                           this->arguments_.moneyness *
-                                          process_->x0()));
+                                          process_->x0());
 
         // maybe the forward value is "better", in some fashion
         // the right level is needed in order to interpolate
         // the vol
         Handle<Quote> spot = process_->stateVariable();
-        QL_REQUIRE(spot->value() >= 0.0, "negative or null underlting given");
+        QL_REQUIRE(spot->value() > 0.0, "negative or null underlying given");
         Handle<YieldTermStructure> dividendYield(
-            ext::shared_ptr<YieldTermStructure>(
-               new ImpliedTermStructure(process_->dividendYield(),
-                                        this->arguments_.resetDate)));
+            ext::make_shared<ImpliedTermStructure>(process_->dividendYield(),
+                                        this->arguments_.resetDate));
         Handle<YieldTermStructure> riskFreeRate(
-            ext::shared_ptr<YieldTermStructure>(
-               new ImpliedTermStructure(process_->riskFreeRate(),
-                                        this->arguments_.resetDate)));
+            ext::make_shared<ImpliedTermStructure>(process_->riskFreeRate(),
+                                        this->arguments_.resetDate));
         // The following approach is ok if the vol is at most
-        // time dependant. It is plain wrong if it is asset dependant.
+        // time-dependent. It is plain wrong if it is asset-dependent.
         // In the latter case the right solution would be stochastic
         // volatility or at least local volatility (which unfortunately
         // implies an unrealistic time-decreasing smile)
         Handle<BlackVolTermStructure> blackVolatility(
-            ext::shared_ptr<BlackVolTermStructure>(
-                new ImpliedVolTermStructure(process_->blackVolatility(),
-                                            this->arguments_.resetDate)));
+            ext::make_shared<ImpliedVolTermStructure>(process_->blackVolatility(),
+                                            this->arguments_.resetDate));
 
-        ext::shared_ptr<GeneralizedBlackScholesProcess> fwdProcess(
-                       new GeneralizedBlackScholesProcess(spot, dividendYield,
+        auto fwdProcess = ext::make_shared<GeneralizedBlackScholesProcess>(spot, dividendYield,
                                                           riskFreeRate,
-                                                          blackVolatility));
+                                                          blackVolatility);
 
-        originalEngine_ = ext::shared_ptr<Engine>(new Engine(fwdProcess));
+        originalEngine_ = ext::make_shared<Engine>(fwdProcess);
         originalEngine_->reset();
 
         originalArguments_ =

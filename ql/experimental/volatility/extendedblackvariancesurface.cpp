@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -19,21 +19,21 @@
 
 #include <ql/experimental/volatility/extendedblackvariancesurface.hpp>
 #include <ql/math/interpolations/bilinearinterpolation.hpp>
+#include <utility>
 
 namespace QuantLib {
 
     ExtendedBlackVarianceSurface::ExtendedBlackVarianceSurface(
-                          const Date& referenceDate,
-                          const Calendar& calendar,
-                          const std::vector<Date>& dates,
-                          const std::vector<Real>& strikes,
-                          const std::vector<Handle<Quote> >& volatilities,
-                          const DayCounter& dayCounter,
-                          ExtendedBlackVarianceSurface::Extrapolation lowerEx,
-                          ExtendedBlackVarianceSurface::Extrapolation upperEx)
-    : BlackVarianceTermStructure(referenceDate, calendar),
-      dayCounter_(dayCounter), maxDate_(dates.back()),
-      volatilities_(volatilities), strikes_(strikes),
+        const Date& referenceDate,
+        const Calendar& calendar,
+        const std::vector<Date>& dates,
+        std::vector<Real> strikes,
+        const std::vector<Handle<Quote> >& volatilities,
+        DayCounter dayCounter,
+        ExtendedBlackVarianceSurface::Extrapolation lowerEx,
+        ExtendedBlackVarianceSurface::Extrapolation upperEx)
+    : BlackVarianceTermStructure(referenceDate, calendar), dayCounter_(std::move(dayCounter)),
+      maxDate_(dates.back()), volatilities_(volatilities), strikes_(std::move(strikes)),
       lowerExtrapolation_(lowerEx), upperExtrapolation_(upperEx) {
 
         QL_REQUIRE(dates.size()*strikes_.size()==volatilities_.size(),
@@ -58,19 +58,26 @@ namespace QuantLib {
 
         setInterpolation<Bilinear>();
 
-        for (Size j = 0; j < volatilities_.size(); j++)
-            registerWith(volatilities_[j]);
-
+        for (const auto& volatilitie : volatilities_)
+            registerWith(volatilitie);
     }
 
     void ExtendedBlackVarianceSurface::setVariances() {
 
-        for (Size i=0; i<times_.size()+1; i++) {
-            variances_[0][i] = 0.0;
+        // times_ carries a leading 0.0, so there is one fewer date (and one
+        // fewer volatility per strike) than there are times.
+        Size dates = times_.size() - 1;
+
+        // variances_ is (strikes x times) and Matrix leaves its data
+        // uninitialized, so seed the t = 0 column for every strike: this loop
+        // used to walk row 0 across the times instead, leaving every strike
+        // after the first with an uninitialized variance at t = 0.
+        for (Size i=0; i<strikes_.size(); i++) {
+            variances_[i][0] = 0.0;
         }
-        for (Size j=1; j<=times_.size(); j++) {
+        for (Size j=1; j<times_.size(); j++) {
             for (Size i=0; i<strikes_.size(); i++) {
-                Volatility sigma = volatilities_[i*times_.size()+j-1]->value();
+                Volatility sigma = volatilities_[i*dates+j-1]->value();
                 variances_[i][j] = times_[j] * sigma * sigma;
                 QL_REQUIRE(variances_[i][j]>=variances_[i][j-1],
                            "variance must be non-decreasing");

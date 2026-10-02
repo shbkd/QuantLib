@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -51,7 +51,7 @@ namespace QuantLib {
                                      const std::vector<unsigned long>& seeds);
         /*! returns a sample with weight 1.0 containing a random number
             in the (0.0, 1.0) interval  */
-        sample_type next() const { return sample_type(nextReal(),1.0); }
+        sample_type next() const { return {nextReal(), 1.0}; }
         //! return a random number in the (0.0, 1.0)-interval
         Real nextReal() const {
             return (Real(nextInt32()) + 0.5)/4294967296.0;

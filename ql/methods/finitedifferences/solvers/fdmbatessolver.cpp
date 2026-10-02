@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -20,29 +20,26 @@
 /*! \file fdmbatessolver.cpp
 */
 
-#include <ql/processes/batesprocess.hpp>
 #include <ql/methods/finitedifferences/operators/fdmbatesop.hpp>
 #include <ql/methods/finitedifferences/solvers/fdm2dimsolver.hpp>
 #include <ql/methods/finitedifferences/solvers/fdmbatessolver.hpp>
+#include <ql/processes/batesprocess.hpp>
+#include <utility>
 
 
 namespace QuantLib {
-    
-    FdmBatesSolver::FdmBatesSolver(
-            const Handle<BatesProcess>& process,
-            const FdmSolverDesc& solverDesc,
-            const FdmSchemeDesc& schemeDesc,
-            Size integroIntegrationOrder,
-            const Handle<FdmQuantoHelper>& quantoHelper)
-    : process_(process),
-      solverDesc_(solverDesc),
-      schemeDesc_(schemeDesc),
-      integroIntegrationOrder_(integroIntegrationOrder),
-      quantoHelper_(quantoHelper) {
+
+    FdmBatesSolver::FdmBatesSolver(Handle<BatesProcess> process,
+                                   FdmSolverDesc solverDesc,
+                                   const FdmSchemeDesc& schemeDesc,
+                                   Size integroIntegrationOrder,
+                                   Handle<FdmQuantoHelper> quantoHelper)
+    : process_(std::move(process)), solverDesc_(std::move(solverDesc)), schemeDesc_(schemeDesc),
+      integroIntegrationOrder_(integroIntegrationOrder), quantoHelper_(std::move(quantoHelper)) {
         registerWith(process_);
         registerWith(quantoHelper_);
     }
-          
+
     void FdmBatesSolver::performCalculations() const {
         ext::shared_ptr<FdmLinearOpComposite> op(
             new FdmBatesOp(solverDesc_.mesher, process_.currentLink(),

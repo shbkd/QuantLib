@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -39,19 +39,19 @@ namespace QuantLib {
                          public virtual Observer {
       public:
         SmileSection(const Date& d,
-                     const DayCounter& dc = DayCounter(),
+                     DayCounter dc = DayCounter(),
                      const Date& referenceDate = Date(),
-                     const VolatilityType type = ShiftedLognormal,
-                     const Rate shift = 0.0);
+                     VolatilityType type = ShiftedLognormal,
+                     Rate shift = 0.0);
         SmileSection(Time exerciseTime,
-                     const DayCounter& dc = DayCounter(),
-                     const VolatilityType type = ShiftedLognormal,
-                     const Rate shift = 0.0);
-        SmileSection() {}
+                     DayCounter dc = DayCounter(),
+                     VolatilityType type = ShiftedLognormal,
+                     Rate shift = 0.0);
+        SmileSection() = default;
 
-        virtual ~SmileSection() {}
+        ~SmileSection() override = default;
 
-        virtual void update();
+        void update() override;
         virtual Real minStrike() const = 0;
         virtual Real maxStrike() const = 0;
         Real variance(Rate strike) const;

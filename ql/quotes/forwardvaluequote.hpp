@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -34,14 +34,14 @@ namespace QuantLib {
     class ForwardValueQuote : public Quote,
                               public Observer {
       public:
-        ForwardValueQuote(const ext::shared_ptr<Index>& index,
-                          const Date& fixingDate);
+        ForwardValueQuote(ext::shared_ptr<Index> index, const Date& fixingDate);
         //! \name Quote interface
         //@{
-        Real value() const;
-        bool isValid() const;
+        Real value() const override;
+        bool isValid() const override;
         //@}
-        void update();
+        void update() override;
+
       private:
         ext::shared_ptr<Index> index_;
         Date fixingDate_;

@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -43,16 +43,15 @@ namespace QuantLib {
     */
     class PiecewiseTimeDependentHestonModel : public CalibratedModel {
       public:
-          PiecewiseTimeDependentHestonModel(
-              const Handle<YieldTermStructure>& riskFreeRate,
-              const Handle<YieldTermStructure>& dividendYield,
-              const Handle<Quote>& s0,
-              Real v0,
-              const Parameter& theta,
-              const Parameter& kappa,
-              const Parameter& sigma,
-              const Parameter& rho,
-              const TimeGrid& timeGrid);
+        PiecewiseTimeDependentHestonModel(const Handle<YieldTermStructure>& riskFreeRate,
+                                          const Handle<YieldTermStructure>& dividendYield,
+                                          const Handle<Quote>& s0,
+                                          Real v0,
+                                          const Parameter& theta,
+                                          const Parameter& kappa,
+                                          const Parameter& sigma,
+                                          const Parameter& rho,
+                                          TimeGrid timeGrid);
 
         // variance mean version level
         Real theta(Time t) const { return arguments_[0](t); }

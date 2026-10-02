@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -23,7 +23,6 @@
 
 #include <ql/instruments/claim.hpp>
 #include <ql/experimental/credit/defaultprobabilitykey.hpp>
-#include <ql/utilities/disposable.hpp>
 #include <ql/experimental/credit/basket.hpp>
 
 #include <ql/utilities/null_deleter.hpp>
@@ -46,25 +45,24 @@ namespace QuantLib {
     basket loss models, which might require recalculations (of the basket) or 
     not depending on the pricing order.
     */
-    class DefaultLossModel : public Observable {// joint-? basket?-defaultLoss
+    class DefaultLossModel : public virtual Observable {// joint-? basket?-defaultLoss
      /* Protection together with frienship to avoid the need of checking the 
-     basket-argument pointer integrity. It is the responsibility of the basket 
-     now; our only caller.
+      basket-argument pointer integrity. It is the responsibility of the basket 
+      now; our only caller.
      */
         friend class Basket;
     protected:
         // argument basket:
         mutable RelinkableHandle<Basket> basket_;
 
-        DefaultLossModel() { }
+        DefaultLossModel() = default;
         //! \name Statistics
         //@{
-        /* Non mandatory implementations, fails if client is not providing what 
-        requested. */
-
-        /* Default implementation using the expectedLoss(Date) method. 
-          Typically this method is called repeatedly with the same 
-          date parameter which makes it innefficient. */
+        //! Expected tranche loss as an absolute amount, not a fraction.
+        /*! Derived classes need to implement this method, as the default
+            implementation throws. Efficiency is a concern when calling this
+            method repeatedly with the same date parameter.
+        */
         virtual Real expectedTrancheLoss(const Date& d) const {
             QL_FAIL("expectedTrancheLoss Not implemented for this model.");
         }
@@ -87,21 +85,18 @@ namespace QuantLib {
             QL_FAIL("eSF Not implemented for this model.");   
         }
         //! Associated VaR fraction to each counterparty.
-        virtual Disposable<std::vector<Real> >
-            splitVaRLevel(const Date& d, Real loss) const {
+        virtual std::vector<Real> splitVaRLevel(const Date& d, Real loss) const {
             QL_FAIL("splitVaRLevel Not implemented for this model.");   
         }
         //! Associated ESF fraction to each counterparty.
-        virtual Disposable<std::vector<Real> >
-            splitESFLevel(const Date& d, Real loss) const {
+        virtual std::vector<Real> splitESFLevel(const Date& d, Real loss) const {
             QL_FAIL("splitESFLevel Not implemented for this model.");   
         }
 
         // \todo Add splits by instrument position.
 
         //! Full loss distribution.
-        virtual Disposable<std::map<Real, Probability> > 
-            lossDistribution(const Date&) const {
+        virtual std::map<Real, Probability> lossDistribution(const Date&) const {
             QL_FAIL("lossDistribution Not implemented for this model.");   
         }
         //! Probability density of a given loss fraction of the basket notional.
@@ -116,8 +111,7 @@ namespace QuantLib {
             The the probabilities ordering in the vector coincides with the 
             pool order.
         */
-        virtual Disposable<std::vector<Probability> > probsBeingNthEvent(
-            Size n, const Date& d) const {
+        virtual std::vector<Probability> probsBeingNthEvent(Size n, const Date& d) const {
             QL_FAIL("probsBeingNthEvent Not implemented for this model.");
         }
         //! Pearsons' default probability correlation. 
@@ -153,6 +147,9 @@ namespace QuantLib {
             until the basket takes in a new model....
             ..alternatively both old basket and model could be forced reset here
             */
+            if (!basket_.empty() && basket_.currentLink().get() == bskt)
+                return; // already linked to this basket, nothing to reset
+            
             basket_.linkTo(ext::shared_ptr<Basket>(bskt, null_deleter()),
                            false);
             resetModel();// or rename to setBasketImpl(...)

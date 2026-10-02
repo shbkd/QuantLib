@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -33,6 +33,7 @@
 */
 
 
+#include <algorithm>
 #include <ql/math/matrixutilities/svd.hpp>
 
 namespace QuantLib {
@@ -306,8 +307,8 @@ namespace QuantLib {
                     if (ks == k) {
                         break;
                     }
-                    Real t = (ks != p ? std::fabs(e[ks]) : 0.) +
-                        (ks != k+1 ? std::fabs(e[ks-1]) : 0.);
+                    Real t = (ks != p ? Real(std::fabs(e[ks])) : 0.) +
+                        (ks != k+1 ? Real(std::fabs(e[ks-1])) : 0.);
                     if (std::fabs(s_[ks]) <= eps*t)  {
                         s_[ks] = 0.0;
                         break;
@@ -326,7 +327,7 @@ namespace QuantLib {
 
             // Perform the task indicated by kase.
 
-            switch (kase) {
+            switch (kase) { // NOLINT(bugprone-switch-missing-default-case)
 
                 // Deflate negligible s(p).
 
@@ -377,14 +378,13 @@ namespace QuantLib {
               case 3: {
 
                   // Calculate the shift.
-                  Real scale = std::max(
-                                     std::max(
-                                         std::max(
-                                             std::max(std::fabs(s_[p-1]),
-                                                    std::fabs(s_[p-2])),
-                                             std::fabs(e[p-2])),
-                                         std::fabs(s_[k])),
-                                     std::fabs(e[k]));
+                  Real scale = std::max({
+                          std::fabs(s_[p-1]),
+                          std::fabs(s_[p-2]),
+                          std::fabs(e[p-2]),
+                          std::fabs(s_[k]),
+                          std::fabs(e[k])
+                      });
                   Real sp = s_[p-1]/scale;
                   Real spm1 = s_[p-2]/scale;
                   Real epm1 = e[p-2]/scale;
@@ -449,7 +449,7 @@ namespace QuantLib {
                   // Make the singular values positive.
 
                   if (s_[k] <= 0.0) {
-                      s_[k] = (s_[k] < 0.0 ? -s_[k] : 0.0);
+                      s_[k] = (s_[k] < 0.0 ? Real(-s_[k]) : 0.0);
                       for (i = 0; i <= pp; i++) {
                           V_[i][k] = -V_[i][k];
                       }
@@ -494,7 +494,7 @@ namespace QuantLib {
         return s_;
     }
 
-    Disposable<Matrix> SVD::S() const {
+    Matrix SVD::S() const {
         Matrix S(n_,n_);
         for (Size i = 0; i < Size(n_); i++) {
             for (Size j = 0; j < Size(n_); j++) {
@@ -514,26 +514,25 @@ namespace QuantLib {
     }
 
     Size SVD::rank() const {
-        Real eps = QL_EPSILON;
+        constexpr auto eps = QL_EPSILON;
         Real tol = m_*s_[0]*eps;
         Size r = 0;
-        for (Size i = 0; i < s_.size(); i++) {
-            if (s_[i] > tol) {
+        for (Real i : s_) {
+            if (i > tol) {
                 r++;
             }
         }
         return r;
     }
 
-    Disposable<Array> SVD::solveFor(const Array& b) const{
+    Array SVD::solveFor(const Array& b) const{
         Matrix W(n_, n_, 0.0);
         const Size numericalRank = this->rank();
         for (Size i=0; i<numericalRank; i++)
             W[i][i] = 1./s_[i];
 
         Matrix inverse = V()* W * transpose(U());
-        Array result = inverse * b;
-        return result;
+        return inverse * b;
     }
 
 }

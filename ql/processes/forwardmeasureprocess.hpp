@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -39,7 +39,7 @@ namespace QuantLib {
         virtual void setForwardMeasureTime(Time);
         Time getForwardMeasureTime() const;
       protected:
-        ForwardMeasureProcess() {}
+        ForwardMeasureProcess() = default;
         explicit ForwardMeasureProcess(Time T) : T_(T) {}
         explicit ForwardMeasureProcess(
                                    const ext::shared_ptr<discretization>&);
@@ -57,7 +57,7 @@ namespace QuantLib {
         virtual void setForwardMeasureTime(Time);
         Time getForwardMeasureTime() const;
       protected:
-        ForwardMeasureProcess1D() {}
+        ForwardMeasureProcess1D() = default;
         explicit ForwardMeasureProcess1D(Time T) : T_(T) {}
         explicit ForwardMeasureProcess1D(
                                     const ext::shared_ptr<discretization>&);

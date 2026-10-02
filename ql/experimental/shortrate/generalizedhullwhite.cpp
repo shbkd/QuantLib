@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -19,11 +19,12 @@
 */
 
 #include <ql/experimental/shortrate/generalizedhullwhite.hpp>
-#include <ql/math/interpolations/backwardflatinterpolation.hpp>
-#include <ql/methods/lattices/trinomialtree.hpp>
-#include <ql/math/solvers1d/brent.hpp>
-#include <ql/pricingengines/blackformula.hpp>
 #include <ql/math/integrals/simpsonintegral.hpp>
+#include <ql/math/interpolations/backwardflatinterpolation.hpp>
+#include <ql/math/solvers1d/brent.hpp>
+#include <ql/methods/lattices/trinomialtree.hpp>
+#include <ql/pricingengines/blackformula.hpp>
+#include <utility>
 
 namespace QuantLib {
 
@@ -48,15 +49,15 @@ namespace QuantLib {
     */
     class GeneralizedHullWhite::Helper {
       public:
-        Helper(const Size i, const Real xMin, const Real dx,
+        Helper(const Size i,
+               const Real xMin,
+               const Real dx,
                const Real discountBondPrice,
                const ext::shared_ptr<ShortRateTree>& tree,
-               const boost::function<Real(Real)>& fInv)
-        : size_(tree->size(i)),
-          dt_(tree->timeGrid().dt(i)),
-          xMin_(xMin), dx_(dx),
-          statePrices_(tree->statePrices(i)),
-          discountBondPrice_(discountBondPrice), fInverse_(fInv) {}
+               std::function<Real(Real)> fInv)
+        : size_(tree->size(i)), dt_(tree->timeGrid().dt(i)), xMin_(xMin), dx_(dx),
+          statePrices_(tree->statePrices(i)), discountBondPrice_(discountBondPrice),
+          fInverse_(std::move(fInv)) {}
 
         Real operator()(const Real theta) const {
             Real value = discountBondPrice_;
@@ -75,7 +76,7 @@ namespace QuantLib {
         Real xMin_, dx_;
         const Array& statePrices_;
         Real discountBondPrice_;
-        boost::function<Real(Real)> fInverse_;
+        std::function<Real(Real)> fInverse_;
     };
 
     GeneralizedHullWhite::GeneralizedHullWhite(
@@ -84,8 +85,8 @@ namespace QuantLib {
         const std::vector<Date>& volstructure,
         const std::vector<Real>& speed,
         const std::vector<Real>& vol,
-        const boost::function<Real(Real)>& f,
-        const boost::function<Real(Real)>& fInverse)
+        const std::function<Real(Real)>& f,
+        const std::function<Real(Real)>& fInverse)
     : OneFactorAffineModel(2), TermStructureConsistentModel(yieldtermStructure),
       speedstructure_(speedstructure),
       volstructure_(volstructure),
@@ -129,7 +130,7 @@ namespace QuantLib {
         Real lnEt = integrateMeanReversion(speed_,0,t);
         Real Et = exp(lnEt);
         Real B = 0;
-        Size N = std::min<Size>((T-t)*365, 2000);
+        Size N = std::min<Size>(Size((T-t)*365), 2000);
         if (N==0) N=1;
         Real dt = 0.5*(T-t)/N;
         Real a,b,c,_t,total=0;
@@ -152,7 +153,7 @@ namespace QuantLib {
         // Gurrieri et al, equation (37)
         Real lnEt = integrateMeanReversion(speed_,0,t);
         Real V = 0,Eu;
-        Size N = std::min<Size>((T-t)*365, 2000);
+        Size N = std::min<Size>(Size((T-t)*365), 2000);
         if (N==0) N=1;
         Real dt = 0.5*(T-t)/N;
         Real a,b,c,_t,lnE=lnEt;
@@ -238,14 +239,6 @@ namespace QuantLib {
         }
 
         return numericTree;
-    }
-
-    boost::function<Real (Time)> GeneralizedHullWhite::speed() const {
-        return speed_;
-    }
-
-    boost::function<Real (Time)> GeneralizedHullWhite::vol() const {
-        return vol_;
     }
 
     //! vector to pass to 'calibrate' to fit only volatility

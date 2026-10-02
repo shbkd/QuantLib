@@ -12,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -50,19 +50,19 @@ namespace QuantLib {
 
     /*! return the MidEquivalent price, i.e. the mid if available,
         or a suitable substitute if the proper mid is not available
+        \test different combinations are tested
     */
-    Real midEquivalent(const Real bid,
-                       const Real ask,
-                       const Real last,
-                       const Real close);
+    Real midEquivalent(Real bid, Real ask, Real last, Real close);
 
     /*! return the MidSafe price, i.e. the mid only if
         both bid and ask prices are available
+        \test different combinations are tested
     */
-    Real midSafe(const Real bid,
-                 const Real ask);
+    Real midSafe(Real bid, Real ask);
 
     //! interval price
+    /*! \test Inspectors, Modifiers, and Helper functions are tested.
+    */
     class IntervalPrice {
       public:
         enum Type { Open, Close, High, Low };
@@ -98,19 +98,10 @@ namespace QuantLib {
                                           IntervalPrice::Type);
         static TimeSeries<Real> extractComponent(
                                           const TimeSeries<IntervalPrice>&,
-                                          enum IntervalPrice::Type);
+                                          IntervalPrice::Type);
         //@}
       private:
         Real open_, close_, high_, low_;
-    };
-
-    
-    template <>
-    class Null<IntervalPrice> 
-    {
-      public:
-        Null() {}
-        operator IntervalPrice() const { return IntervalPrice(); }
     };
 
 }

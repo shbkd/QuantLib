@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -19,15 +19,15 @@
 */
 
 
-#include <ql/cashflows/rangeaccrual.hpp>
 #include <ql/cashflows/cashflowvectors.hpp>
-#include <ql/pricingengines/blackformula.hpp>
-#include <ql/math/distributions/normaldistribution.hpp>
-#include <ql/time/schedule.hpp>
+#include <ql/cashflows/rangeaccrual.hpp>
 #include <ql/indexes/iborindex.hpp>
+#include <ql/math/distributions/normaldistribution.hpp>
+#include <ql/pricingengines/blackformula.hpp>
 #include <ql/termstructures/yieldtermstructure.hpp>
-
+#include <ql/time/schedule.hpp>
 #include <cmath>
+#include <utility>
 
 namespace QuantLib {
 
@@ -36,36 +36,43 @@ namespace QuantLib {
     //===========================================================================//
 
     RangeAccrualFloatersCoupon::RangeAccrualFloatersCoupon(
-                const Date& paymentDate,
-                Real nominal,
-                const ext::shared_ptr<IborIndex>& index,
-                const Date& startDate,                                  // S
-                const Date& endDate,                                    // T
-                Natural fixingDays,
-                const DayCounter& dayCounter,
-                Real gearing,
-                Rate spread,
-                const Date& refPeriodStart,
-                const Date& refPeriodEnd,
-                const ext::shared_ptr<Schedule>&  observationsSchedule,
-                Real lowerTrigger,                                    // l
-                Real upperTrigger                                     // u
+        const Date& paymentDate,
+        Real nominal,
+        const ext::shared_ptr<IborIndex>& index,
+        const Date& startDate, // S
+        const Date& endDate,   // T
+        Natural fixingDays,
+        const DayCounter& dayCounter,
+        Real gearing,
+        Rate spread,
+        const Date& refPeriodStart,
+        const Date& refPeriodEnd,
+        Schedule observationSchedule,
+        Real lowerTrigger, // l
+        Real upperTrigger  // u
         )
-    : FloatingRateCoupon(paymentDate, nominal, startDate, endDate,
-                         fixingDays, index, gearing, spread,
-                         refPeriodStart, refPeriodEnd, dayCounter),
-    observationsSchedule_(observationsSchedule),
-    lowerTrigger_(lowerTrigger),
-    upperTrigger_(upperTrigger){
+    : FloatingRateCoupon(paymentDate,
+                         nominal,
+                         startDate,
+                         endDate,
+                         fixingDays,
+                         index,
+                         gearing,
+                         spread,
+                         refPeriodStart,
+                         refPeriodEnd,
+                         dayCounter),
+      observationSchedule_(std::move(observationSchedule)), lowerTrigger_(lowerTrigger),
+      upperTrigger_(upperTrigger) {
 
         QL_REQUIRE(lowerTrigger_<upperTrigger,
                    "lowerTrigger_>=upperTrigger");
-        QL_REQUIRE(observationsSchedule_->startDate()==startDate,
+        QL_REQUIRE(observationSchedule_.startDate()==startDate,
                    "incompatible start date");
-        QL_REQUIRE(observationsSchedule_->endDate()==endDate,
+        QL_REQUIRE(observationSchedule_.endDate()==endDate,
                    "incompatible end date");
 
-        observationDates_ = observationsSchedule_->dates();
+        observationDates_ = observationSchedule_.dates();
         observationDates_.pop_back();                       //remove end date
         observationDates_.erase(observationDates_.begin()); //remove start date
         observationsNo_ = observationDates_.size();
@@ -80,13 +87,11 @@ namespace QuantLib {
             observationTimes_.push_back(
                 dayCounter.yearFraction(referenceDate, observationDates_[i]));
         }
-
-     }
+    }
 
     void RangeAccrualFloatersCoupon::accept(AcyclicVisitor& v) {
-        Visitor<RangeAccrualFloatersCoupon>* v1 =
-            dynamic_cast<Visitor<RangeAccrualFloatersCoupon>*>(&v);
-        if (v1 != 0)
+        auto* v1 = dynamic_cast<Visitor<RangeAccrualFloatersCoupon>*>(&v);
+        if (v1 != nullptr)
             v1->visit(*this);
         else
             FloatingRateCoupon::accept(v);
@@ -127,7 +132,7 @@ namespace QuantLib {
         observationsNo_ = coupon_->observationsNo();
 
         const std::vector<Date> &observationDates =
-            coupon_->observationsSchedule()->dates();
+            coupon_->observationSchedule().dates();
         QL_REQUIRE(observationDates.size()==observationsNo_+2,
                    "incompatible size of initialValues vector");
         initialValues_= std::vector<Real>(observationDates.size(),0.);
@@ -165,20 +170,13 @@ namespace QuantLib {
     //===========================================================================//
     //                          RangeAccrualPricerByBgm                          //
     //===========================================================================//
-    RangeAccrualPricerByBgm::RangeAccrualPricerByBgm(
-            Real correlation,
-            const  ext::shared_ptr<SmileSection>& smilesOnExpiry,
-            const  ext::shared_ptr<SmileSection>& smilesOnPayment,
-            bool withSmile,
-            bool byCallSpread)
-    : correlation_(correlation),
-      withSmile_(withSmile),
-      byCallSpread_(byCallSpread),
-      smilesOnExpiry_(smilesOnExpiry),
-      smilesOnPayment_(smilesOnPayment),
-      eps_(1.0e-8) {
-
-    }
+    RangeAccrualPricerByBgm::RangeAccrualPricerByBgm(Real correlation,
+                                                     ext::shared_ptr<SmileSection> smilesOnExpiry,
+                                                     ext::shared_ptr<SmileSection> smilesOnPayment,
+                                                     bool withSmile,
+                                                     bool byCallSpread)
+    : correlation_(correlation), withSmile_(withSmile), byCallSpread_(byCallSpread),
+      smilesOnExpiry_(std::move(smilesOnExpiry)), smilesOnPayment_(std::move(smilesOnPayment)) {}
     Real RangeAccrualPricerByBgm::swapletPrice() const{
 
         Real result = 0.;
@@ -525,14 +523,8 @@ namespace QuantLib {
     }
 
 
-
-
-    RangeAccrualLeg::RangeAccrualLeg(
-                            const Schedule& schedule,
-                            const ext::shared_ptr<IborIndex>& index)
-    : schedule_(schedule), index_(index),
-      paymentAdjustment_(Following),
-      observationConvention_(ModifiedFollowing) {}
+    RangeAccrualLeg::RangeAccrualLeg(Schedule schedule, ext::shared_ptr<IborIndex> index)
+    : schedule_(std::move(schedule)), index_(std::move(index)) {}
 
     RangeAccrualLeg& RangeAccrualLeg::withNotionals(Real notional) {
         notionals_ = std::vector<Real>(1,notional);
@@ -655,7 +647,6 @@ namespace QuantLib {
 
         Date refStart, start, refEnd, end;
         Date paymentDate;
-        std::vector<ext::shared_ptr<Schedule> > observationsSchedules;
 
         for (Size i=0; i<n; ++i) {
             refStart = start = schedule_.date(i);
@@ -677,12 +668,12 @@ namespace QuantLib {
                                     paymentDayCounter_,
                                     start, end, refStart, refEnd)));
             } else { // floating coupon
-                observationsSchedules.push_back(
-                    ext::make_shared<Schedule>(start, end,
-                                 observationTenor_, calendar,
-                                 observationConvention_,
-                                 observationConvention_,
-                                 DateGeneration::Forward, false));
+                auto observationSchedule =
+                    Schedule(start, end,
+                             observationTenor_, calendar,
+                             observationConvention_,
+                             observationConvention_,
+                             DateGeneration::Forward, false);
 
                     leg.push_back(ext::shared_ptr<CashFlow>(new
                        RangeAccrualFloatersCoupon(
@@ -695,7 +686,7 @@ namespace QuantLib {
                             detail::get(gearings_, i, 1.0),
                             detail::get(spreads_, i, 0.0),
                             refStart, refEnd,
-                            observationsSchedules.back(),
+                            observationSchedule,
                             detail::get(lowerTriggers_, i, Null<Rate>()),
                             detail::get(upperTriggers_, i, Null<Rate>()))));
             }

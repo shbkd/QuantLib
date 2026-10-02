@@ -10,25 +10,25 @@ QuantLib is free software: you can redistribute it and/or modify it
 under the terms of the QuantLib license.  You should have received a
 copy of the license along with this program; if not, please email
 <quantlib-dev@lists.sf.net>. The license is also available online at
-<http://quantlib.org/license.shtml>.
+<https://www.quantlib.org/license.shtml>.
 
 This program is distributed in the hope that it will be useful, but WITHOUT
 ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
 FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include <ql/experimental/variancegamma/fftengine.hpp>
 #include <ql/exercise.hpp>
-#include <ql/math/interpolations/linearinterpolation.hpp>
+#include <ql/experimental/variancegamma/fftengine.hpp>
 #include <ql/math/fastfouriertransform.hpp>
+#include <ql/math/interpolations/linearinterpolation.hpp>
 #include <complex>
+#include <utility>
 
 namespace QuantLib {
 
-    FFTEngine::FFTEngine(
-        const ext::shared_ptr<StochasticProcess1D>& process, Real logStrikeSpacing)
-        : process_(process), lambda_(logStrikeSpacing) {
-            registerWith(process_);
+    FFTEngine::FFTEngine(ext::shared_ptr<StochasticProcess1D> process, Real logStrikeSpacing)
+    : process_(std::move(process)), lambda_(logStrikeSpacing) {
+        registerWith(process_);
     }
 
     void FFTEngine::calculate() const
@@ -40,10 +40,10 @@ namespace QuantLib {
             ext::dynamic_pointer_cast<StrikedTypePayoff>(arguments_.payoff);
         QL_REQUIRE(payoff, "non-striked payoff given");
 
-        ResultMap::const_iterator r1 = resultMap_.find(arguments_.exercise->lastDate());
+        auto r1 = resultMap_.find(arguments_.exercise->lastDate());
         if (r1 != resultMap_.end())
         {
-            PayoffResultMap::const_iterator r2 = r1->second.find(payoff);
+            auto r2 = r1->second.find(payoff);
             if (r2 != r1->second.end())
             {
                 results_.value = r2->second;
@@ -64,10 +64,9 @@ namespace QuantLib {
         VanillaOption::engine::update();
     }
 
-    void FFTEngine::calculateUncached(ext::shared_ptr<StrikedTypePayoff> payoff,
-        ext::shared_ptr<Exercise> exercise) const
-    {
-        ext::shared_ptr<VanillaOption> option(new VanillaOption(payoff, exercise));
+    void FFTEngine::calculateUncached(const ext::shared_ptr<StrikedTypePayoff>& payoff,
+                                      const ext::shared_ptr<Exercise>& exercise) const {
+        auto option = ext::make_shared<VanillaOption>(payoff, exercise);
         std::vector<ext::shared_ptr<Instrument> > optionList;
         optionList.push_back(option);
 
@@ -85,11 +84,9 @@ namespace QuantLib {
         typedef std::vector<ext::shared_ptr<StrikedTypePayoff> > PayoffList;
         typedef std::map<Date, PayoffList> PayoffMap;
         PayoffMap payoffMap;
-        
-        for (std::vector<ext::shared_ptr<Instrument> >::const_iterator optIt = optionList.begin();
-            optIt != optionList.end(); ++optIt)
-        {
-            ext::shared_ptr<VanillaOption> option = ext::dynamic_pointer_cast<VanillaOption>(*optIt);
+
+        for (const auto& optIt : optionList) {
+            ext::shared_ptr<VanillaOption> option = ext::dynamic_pointer_cast<VanillaOption>(optIt);
             QL_REQUIRE(option, "instrument must be option");
             QL_REQUIRE(option->exercise()->type() == Exercise::European,
                 "not an European Option");
@@ -104,17 +101,13 @@ namespace QuantLib {
         std::complex<Real> i1(0, 1);
         Real alpha = 1.25;
 
-        for (PayoffMap::const_iterator payIt = payoffMap.begin(); payIt != payoffMap.end(); ++payIt)
+        for (auto & payIt : payoffMap)
         {
-            Date expiryDate = payIt->first;
+            Date expiryDate = payIt.first;
 
             // Calculate n large enough for maximum strike, and round up to a power of 2
             Real maxStrike = 0.0;
-            for (PayoffList::const_iterator it = payIt->second.begin();
-                it != payIt->second.end(); ++it)
-            {
-                ext::shared_ptr<StrikedTypePayoff> payoff = *it;
-
+            for (const auto& payoff : payIt.second) {
                 if (payoff->strike() > maxStrike)
                     maxStrike = payoff->strike();
             }
@@ -166,12 +159,9 @@ namespace QuantLib {
                 strikes[i] = std::exp(k_u);
             }
 
-            for (PayoffList::const_iterator it = payIt->second.begin();
-                it != payIt->second.end(); ++it)
-            {
-                ext::shared_ptr<StrikedTypePayoff> payoff = *it;
-
-                Real callPrice = LinearInterpolation(strikes.begin(), strikes.end(), prices.begin())(payoff->strike());
+            for (const auto& payoff : payIt.second) {
+                Real callPrice = LinearInterpolation(strikes.begin(), strikes.end(),
+                                                     prices.begin())(payoff->strike());
                 switch (payoff->optionType())
                 {
                 case Option::Call:
@@ -188,4 +178,3 @@ namespace QuantLib {
     }
 
 }
-

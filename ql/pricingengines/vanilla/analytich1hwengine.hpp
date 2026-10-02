@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -69,14 +69,14 @@ namespace QuantLib {
       public:
         AnalyticH1HWEngine(const ext::shared_ptr<HestonModel>& model,
                            const ext::shared_ptr<HullWhite>& hullWhiteModel,
-                           Real rhoXV, Size integrationOrder = 144);
+                           Real rhoSr, Size integrationOrder = 144);
 
         AnalyticH1HWEngine(const ext::shared_ptr<HestonModel>& model,
                            const ext::shared_ptr<HullWhite>& hullWhiteModel,
                            Real rhoSr, Real relTolerance, Size maxEvaluations);
 
       protected:
-        std::complex<Real> addOnTerm(Real phi, Time t, Size j) const;
+        std::complex<Real> addOnTerm(Real phi, Time t, Size j) const override;
 
       private:
         class Fj_Helper;

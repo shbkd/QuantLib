@@ -12,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -26,8 +26,10 @@
 #ifndef quantlib_derived_quote_hpp
 #define quantlib_derived_quote_hpp
 
-#include <ql/quote.hpp>
 #include <ql/handle.hpp>
+#include <ql/quote.hpp>
+#include <ql/utilities/null.hpp>
+#include <utility>
 
 namespace QuantLib {
 
@@ -38,35 +40,43 @@ namespace QuantLib {
     template <class UnaryFunction>
     class DerivedQuote : public Quote, public Observer {
       public:
-        DerivedQuote(const Handle<Quote>& element,
-                     const UnaryFunction& f);
+        DerivedQuote(Handle<Quote> element, UnaryFunction f);
         //! \name Quote interface
         //@{
-        Real value() const;
-        bool isValid() const;
+        Real value() const override;
+        bool isValid() const override;
         //@}
         //! \name Observer interface
         //@{
-        void update();
+        void update() override;
         //@}
       private:
         Handle<Quote> element_;
+        mutable Real value_ = Null<Real>();
         UnaryFunction f_;
     };
 
+    //! creator method
+    template <class UnaryFunction>
+    DerivedQuote<UnaryFunction> makeDerivedQuote(Handle<Quote> element,
+                                                 UnaryFunction f) {
+        return DerivedQuote<UnaryFunction>(std::move(element), std::move(f));
+    }
+
     // inline definitions
     template <class UnaryFunction>
-    inline DerivedQuote<UnaryFunction>::DerivedQuote(
-                                                 const Handle<Quote>& element,
-                                                 const UnaryFunction& f)
-    : element_(element), f_(f) {
+    inline DerivedQuote<UnaryFunction>::DerivedQuote(Handle<Quote> element, UnaryFunction f)
+    : element_(std::move(element)), f_(std::move(f)) {
         registerWith(element_);
     }
 
     template <class UnaryFunction>
     inline Real DerivedQuote<UnaryFunction>::value() const {
-        QL_ENSURE(isValid(), "invalid DerivedQuote");
-        return f_(element_->value());
+        if (value_ == Null<Real>()) {
+            QL_ENSURE(isValid(), "invalid DerivedQuote");
+            value_ = f_(element_->value());
+        }
+        return value_;
     }
 
     template <class UnaryFunction>
@@ -76,6 +86,7 @@ namespace QuantLib {
 
     template <class UnaryFunction>
     inline void DerivedQuote<UnaryFunction>::update() {
+        value_ = Null<Real>();
         notifyObservers();
     }
 

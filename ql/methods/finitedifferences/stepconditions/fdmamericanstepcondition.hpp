@@ -12,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -34,16 +34,16 @@ namespace QuantLib {
 
     class FdmAmericanStepCondition : public StepCondition<Array> {
       public:
-        FdmAmericanStepCondition(
-            const ext::shared_ptr<FdmMesher> & mesher,
-            const ext::shared_ptr<FdmInnerValueCalculator> & calculator);
+        FdmAmericanStepCondition(ext::shared_ptr<FdmMesher> mesher,
+                                 ext::shared_ptr<FdmInnerValueCalculator> calculator,
+                                 Time exerciseStart = 0.0);
 
-        void applyTo(Array& a,
-                     Time) const;
+        void applyTo(Array& a, Time t) const override;
 
       private:
         const ext::shared_ptr<FdmMesher> mesher_;
         const ext::shared_ptr<FdmInnerValueCalculator> calculator_;
+        const Time exerciseStart_;
     };
 }
 #endif

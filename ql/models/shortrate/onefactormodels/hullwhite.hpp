@@ -12,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -27,6 +27,7 @@
 #define quantlib_hull_white_hpp
 
 #include <ql/models/shortrate/onefactormodels/vasicek.hpp>
+#include <utility>
 
 namespace QuantLib {
 
@@ -40,30 +41,27 @@ namespace QuantLib {
 
         \test calibration results are tested against cached values
 
-        \bug When the term structure is relinked, the r0 parameter of
-             the underlying Vasicek model is not updated.
-
         \ingroup shortrate
     */
     class HullWhite : public Vasicek, public TermStructureConsistentModel {
       public:
-        HullWhite(const Handle<YieldTermStructure>& termStructure,
-                  Real a = 0.1, Real sigma = 0.01);
+        explicit HullWhite(const Handle<YieldTermStructure>& termStructure,
+                           Real a = 0.1, Real sigma = 0.01);
 
-        ext::shared_ptr<Lattice> tree(const TimeGrid& grid) const;
+        ext::shared_ptr<Lattice> tree(const TimeGrid& grid) const override;
 
-        ext::shared_ptr<ShortRateDynamics> dynamics() const;
+        ext::shared_ptr<ShortRateDynamics> dynamics() const override;
 
         Real discountBondOption(Option::Type type,
                                 Real strike,
                                 Time maturity,
-                                Time bondMaturity) const;
+                                Time bondMaturity) const override;
 
-       Real discountBondOption(Option::Type type,
-                               Real strike,
-                               Time maturity,
-                               Time bondStart,
-                               Time bondMaturity) const;
+        Real discountBondOption(Option::Type type,
+                                Real strike,
+                                Time maturity,
+                                Time bondStart,
+                                Time bondMaturity) const override;
 
         /*! Futures convexity bias (i.e., the difference between
             futures implied rate and forward rate) calculated as in
@@ -86,9 +84,9 @@ namespace QuantLib {
         }
 
       protected:
-        void generateArguments();
+        void generateArguments() override;
 
-        Real A(Time t, Time T) const;
+        Real A(Time t, Time T) const override;
 
       private:
         class Dynamics;
@@ -108,19 +106,14 @@ namespace QuantLib {
     */
     class HullWhite::Dynamics : public OneFactorModel::ShortRateDynamics {
       public:
-        Dynamics(const Parameter& fitting,
-                 Real a,
-                 Real sigma)
-        : ShortRateDynamics(ext::shared_ptr<StochasticProcess1D>(
-                                     new OrnsteinUhlenbeckProcess(a, sigma))),
-          fitting_(fitting) {}
+        Dynamics(Parameter fitting, Real a, Real sigma)
+        : ShortRateDynamics(
+              ext::shared_ptr<StochasticProcess1D>(new OrnsteinUhlenbeckProcess(a, sigma))),
+          fitting_(std::move(fitting)) {}
 
-        Real variable(Time t, Rate r) const {
-            return r - fitting_(t);
-        }
-        Real shortRate(Time t, Real x) const {
-            return x + fitting_(t);
-        }
+        Real variable(Time t, Rate r) const override { return r - fitting_(t); }
+        Real shortRate(Time t, Real x) const override { return x + fitting_(t); }
+
       private:
         Parameter fitting_;
     };
@@ -135,20 +128,20 @@ namespace QuantLib {
     class HullWhite::FittingParameter
         : public TermStructureFittingParameter {
       private:
-        class Impl : public Parameter::Impl {
+        class Impl final : public Parameter::Impl {
           public:
-            Impl(const Handle<YieldTermStructure>& termStructure,
-                 Real a, Real sigma)
-            : termStructure_(termStructure), a_(a), sigma_(sigma) {}
+            Impl(Handle<YieldTermStructure> termStructure, Real a, Real sigma)
+            : termStructure_(std::move(termStructure)), a_(a), sigma_(sigma) {}
 
-            Real value(const Array&, Time t) const {
+            Real value(const Array&, Time t) const override {
                 Rate forwardRate =
                     termStructure_->forwardRate(t, t, Continuous, NoFrequency);
                 Real temp = a_ < std::sqrt(QL_EPSILON) ?
-                            sigma_*t :
-                            sigma_*(1.0 - std::exp(-a_*t))/a_;
+                            Real(sigma_*t) :
+                            Real(sigma_*(1.0 - std::exp(-a_*t))/a_);
                 return (forwardRate + 0.5*temp*temp);
             }
+
           private:
             Handle<YieldTermStructure> termStructure_;
             Real a_, sigma_;
@@ -173,4 +166,3 @@ namespace QuantLib {
 
 
 #endif
-

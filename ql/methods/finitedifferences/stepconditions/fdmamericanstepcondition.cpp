@@ -12,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -21,22 +21,26 @@
 
 #include <ql/methods/finitedifferences/operators/fdmlinearoplayout.hpp>
 #include <ql/methods/finitedifferences/stepconditions/fdmamericanstepcondition.hpp>
+#include <utility>
 
 namespace QuantLib {
 
     FdmAmericanStepCondition::FdmAmericanStepCondition(
-            const ext::shared_ptr<FdmMesher> & mesher,
-            const ext::shared_ptr<FdmInnerValueCalculator> & calculator)
-    : mesher_(mesher),
-      calculator_(calculator) {
-    }
+        ext::shared_ptr<FdmMesher> mesher,
+        ext::shared_ptr<FdmInnerValueCalculator> calculator,
+        Time exerciseStart)
+    : mesher_(std::move(mesher)),
+      calculator_(std::move(calculator)),
+      exerciseStart_(exerciseStart) {}
 
     void FdmAmericanStepCondition::applyTo(Array& a, Time t) const {
-        ext::shared_ptr<FdmLinearOpLayout> layout = mesher_->layout();
-        const FdmLinearOpIterator endIter = layout->end();
+        if (t < exerciseStart_)
+            return;
 
-        for (FdmLinearOpIterator iter = layout->begin(); iter != endIter;
-            ++iter) {
+        QL_REQUIRE(mesher_->layout()->size() == a.size(),
+                   "inconsistent array dimensions");
+
+        for (const auto& iter : *mesher_->layout()) {
             const Real innerValue = calculator_->innerValue(iter, t);
             if (innerValue > a[iter.index()]) {
                 a[iter.index()] = innerValue;

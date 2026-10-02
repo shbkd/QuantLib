@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -40,34 +40,23 @@ namespace QuantLib {
         }
         //! \name TermStructure interface
         //@{
-        const Date& referenceDate() const {
-            return blackVarianceCurve_->referenceDate();
-        }
-        Calendar calendar() const {
-            return blackVarianceCurve_->calendar();
-        }
-        DayCounter dayCounter() const {
-            return blackVarianceCurve_->dayCounter();
-        }
-        Date maxDate() const {
-            return blackVarianceCurve_->maxDate();
-        }
+        const Date& referenceDate() const override { return blackVarianceCurve_->referenceDate(); }
+        Calendar calendar() const override { return blackVarianceCurve_->calendar(); }
+        DayCounter dayCounter() const override { return blackVarianceCurve_->dayCounter(); }
+        Date maxDate() const override { return blackVarianceCurve_->maxDate(); }
         //@}
         //! \name VolatilityTermStructure interface
         //@{
-        Real minStrike() const {
-            return QL_MIN_REAL;
-        }
-        Real maxStrike() const {
-            return QL_MAX_REAL;
-        }
+        Real minStrike() const override { return QL_MIN_REAL; }
+        Real maxStrike() const override { return QL_MAX_REAL; }
         //@}
         //! \name Visitability
         //@{
-        virtual void accept(AcyclicVisitor&);
+        void accept(AcyclicVisitor&) override;
         //@}
       protected:
-        Volatility localVolImpl(Time, Real) const;
+        Volatility localVolImpl(Time, Real) const override;
+
       private:
         Handle<BlackVarianceCurve> blackVarianceCurve_;
     };
@@ -77,9 +66,8 @@ namespace QuantLib {
     // inline definitions
 
     inline void LocalVolCurve::accept(AcyclicVisitor& v) {
-        Visitor<LocalVolCurve>* v1 =
-            dynamic_cast<Visitor<LocalVolCurve>*>(&v);
-        if (v1 != 0)
+        auto* v1 = dynamic_cast<Visitor<LocalVolCurve>*>(&v);
+        if (v1 != nullptr)
             v1->visit(*this);
         else
             LocalVolTermStructure::accept(v);

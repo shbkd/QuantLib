@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -25,6 +25,7 @@
 #include <ql/pricingengines/vanilla/analyticgjrgarchengine.hpp>
 #include <ql/math/distributions/normaldistribution.hpp>
 #include <ql/instruments/payoffs.hpp>
+#include <cmath>
 
 using std::exp;
 using std::pow;
@@ -58,7 +59,7 @@ namespace QuantLib {
         QL_REQUIRE(spotPrice > 0.0, "negative or null underlying given");
         const Real strikePrice = payoff->strike();
         const Real term = process->time(arguments_.exercise->lastDate());
-        Size T = Size(process->daysPerYear()*term+0.5);
+        Size T = Size(std::lround(process->daysPerYear()*term));
         Real r = -std::log(riskFreeDiscount/dividendDiscount)/(process->daysPerYear()*term);
         Real h1 = process->v0();
         Real b0 = process->omega();
@@ -136,9 +137,9 @@ namespace QuantLib {
             m1 = m1_; m2 = m2_; m3 = m3_; 
             v1 = v1_; v2 = v2_; /*v3 = v3_;*/ z1 = z1_; /*z2 = z2_;*/ x1 = x1_;
 
-            boost::scoped_array<Real> m1ai(new Real[T]);
-            boost::scoped_array<Real> m2ai(new Real[T]);
-            boost::scoped_array<Real> m3ai(new Real[T]);
+            auto m1ai = std::make_unique<Real[]>(T);
+            auto m2ai = std::make_unique<Real[]>(T);
+            auto m3ai = std::make_unique<Real[]>(T);
             m1ai[0] = m2ai[0] = m3ai[0] = 1.0;
             for (i=1; i < T; ++i) {
                 m1ai[i] = m1ai[i-1]*m1;

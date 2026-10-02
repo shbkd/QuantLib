@@ -10,27 +10,27 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
+#include <ql/experimental/processes/extendedornsteinuhlenbeckprocess.hpp>
 #include <ql/math/integrals/gausslobattointegral.hpp>
 #include <ql/processes/ornsteinuhlenbeckprocess.hpp>
-#include <ql/experimental/processes/extendedornsteinuhlenbeckprocess.hpp>
+#include <utility>
 
 namespace QuantLib {
 
     namespace {
 
         class integrand {
-            boost::function<Real (Real)> b;
+            std::function<Real (Real)> b;
             Real speed;
           public:
-            integrand(const boost::function<Real (Real)>& b, Real speed)
-            : b(b), speed(speed) {}
+            integrand(std::function<Real(Real)> b, Real speed) : b(std::move(b)), speed(speed) {}
             Real operator()(Real x) const {
                 return b(x) * std::exp(speed*x);
             }
@@ -39,16 +39,14 @@ namespace QuantLib {
     }
 
     ExtendedOrnsteinUhlenbeckProcess::ExtendedOrnsteinUhlenbeckProcess(
-                                        Real speed, Volatility vol, Real x0,
-                                        const boost::function<Real (Real)>& b,
-                                        Discretization discretization,
-                                        Real intEps)
-    : speed_    (speed),
-      vol_      (vol),
-      b_        (b),
-      intEps_   (intEps),
-      ouProcess_(new OrnsteinUhlenbeckProcess(speed, vol, x0)),
-      discretization_(discretization) {
+        Real speed,
+        Volatility vol,
+        Real x0,
+        std::function<Real(Real)> b,
+        Discretization discretization,
+        Real intEps)
+    : speed_(speed), vol_(vol), b_(std::move(b)), intEps_(intEps),
+      ouProcess_(new OrnsteinUhlenbeckProcess(speed, vol, x0)), discretization_(discretization) {
         QL_REQUIRE(speed_ >= 0.0, "negative a given");
         QL_REQUIRE(vol_ >= 0.0, "negative volatility given");
     }
@@ -89,7 +87,6 @@ namespace QuantLib {
           case MidPoint:
             return ouProcess_->expectation(t0, x0, dt)
                     + b_(t0+0.5*dt)*(1.0 - std::exp(-speed_*dt));
-            break;
           case Trapezodial:
             {
               const Time t = t0+dt;
@@ -101,13 +98,11 @@ namespace QuantLib {
               return ouProcess_->expectation(t0, x0, dt)
                     + bt-ex*bu - (bt-bu)/(speed_*dt)*(1-ex);
             }
-            break;
           case GaussLobatto:
               return ouProcess_->expectation(t0, x0, dt)
                   + speed_*std::exp(-speed_*(t0+dt))
                   * GaussLobattoIntegral(100000, intEps_)(integrand(b_, speed_),
                                                           t0, t0+dt);
-            break;
           default:
             QL_FAIL("unknown discretization scheme");
         }

@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -27,6 +27,7 @@
 
 #include <ql/instruments/oneassetoption.hpp>
 #include <ql/instruments/payoffs.hpp>
+#include <ql/instruments/dividendschedule.hpp>
 
 namespace QuantLib {
 
@@ -57,6 +58,7 @@ namespace QuantLib {
                      value lower than the intrinsic value in the case
                      of American options.
         */
+        //@{
         Volatility impliedVolatility(
              Real price,
              const ext::shared_ptr<GeneralizedBlackScholesProcess>& process,
@@ -64,6 +66,16 @@ namespace QuantLib {
              Size maxEvaluations = 100,
              Volatility minVol = 1.0e-7,
              Volatility maxVol = 4.0) const;
+
+        Volatility impliedVolatility(
+             Real price,
+             const ext::shared_ptr<GeneralizedBlackScholesProcess>& process,
+             const DividendSchedule& dividends,
+             Real accuracy = 1.0e-4,
+             Size maxEvaluations = 100,
+             Volatility minVol = 1.0e-7,
+             Volatility maxVol = 4.0) const;
+        //@}
     };
 
 }

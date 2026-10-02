@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -24,11 +24,12 @@
 #ifndef quantlib_mc_heston_hull_white_engine_hpp
 #define quantlib_mc_heston_hull_white_engine_hpp
 
+#include <ql/pricingengines/vanilla/analytichestonhullwhiteengine.hpp>
+#include <ql/pricingengines/vanilla/mcvanillaengine.hpp>
 #include <ql/processes/hestonprocess.hpp>
 #include <ql/processes/hullwhiteprocess.hpp>
 #include <ql/processes/hybridhestonhullwhiteprocess.hpp>
-#include <ql/pricingengines/vanilla/mcvanillaengine.hpp>
-#include <ql/pricingengines/vanilla/analytichestonhullwhiteengine.hpp>
+#include <utility>
 
 namespace QuantLib {
 
@@ -53,25 +54,24 @@ namespace QuantLib {
                Size maxSamples,
                BigNatural seed);
 
-        void calculate() const;
-        
+        void calculate() const override;
+
       protected:
         // just to avoid upcasting
         ext::shared_ptr<HybridHestonHullWhiteProcess> process_;
 
-        ext::shared_ptr<path_pricer_type> pathPricer() const;
+        ext::shared_ptr<path_pricer_type> pathPricer() const override;
 
-        ext::shared_ptr<path_pricer_type>    controlPathPricer() const;
-        ext::shared_ptr<PricingEngine>       controlPricingEngine() const;
-        ext::shared_ptr<path_generator_type> controlPathGenerator() const;
+        ext::shared_ptr<path_pricer_type> controlPathPricer() const override;
+        ext::shared_ptr<PricingEngine> controlPricingEngine() const override;
+        ext::shared_ptr<path_generator_type> controlPathGenerator() const override;
     };
 
     //! Monte Carlo Heston/Hull-White engine factory
     template <class RNG = PseudoRandom, class S = Statistics>
     class MakeMCHestonHullWhiteEngine {
       public:
-        MakeMCHestonHullWhiteEngine(
-                    const ext::shared_ptr<HybridHestonHullWhiteProcess>&);
+        explicit MakeMCHestonHullWhiteEngine(ext::shared_ptr<HybridHestonHullWhiteProcess>);
         // named parameters
         MakeMCHestonHullWhiteEngine& withSteps(Size steps);
         MakeMCHestonHullWhiteEngine& withStepsPerYear(Size steps);
@@ -86,20 +86,19 @@ namespace QuantLib {
       private:
         ext::shared_ptr<HybridHestonHullWhiteProcess> process_;
         Size steps_, stepsPerYear_, samples_, maxSamples_;
-        bool antithetic_, controlVariate_;
+        bool antithetic_ = false, controlVariate_ = false;
         Real tolerance_;
-        BigNatural seed_;
+        BigNatural seed_ = 0;
     };
 
 
     class HestonHullWhitePathPricer : public PathPricer<MultiPath> {
       public:
-        HestonHullWhitePathPricer(
-             Time exerciseTime,
-             const ext::shared_ptr<Payoff> & payoff,
-             const ext::shared_ptr<HybridHestonHullWhiteProcess> & process);
+        HestonHullWhitePathPricer(Time exerciseTime,
+                                  ext::shared_ptr<Payoff> payoff,
+                                  ext::shared_ptr<HybridHestonHullWhiteProcess> process);
 
-        Real operator()(const MultiPath& path) const;
+        Real operator()(const MultiPath& path) const override;
 
       private:
         Time exerciseTime_;
@@ -147,10 +146,9 @@ namespace QuantLib {
 
         const Time exerciseTime = process_->time(exercise->lastDate());
 
-        return ext::shared_ptr<path_pricer_type>(
-             new HestonHullWhitePathPricer(exerciseTime,
+        return ext::make_shared<HestonHullWhitePathPricer>(exerciseTime,
                                            this->arguments_.payoff,
-                                           process_));
+                                           process_);
     }
 
     template <class RNG, class S> inline
@@ -171,11 +169,10 @@ namespace QuantLib {
 
         const Time exerciseTime = process_->time(exercise->lastDate());
 
-        return ext::shared_ptr<path_pricer_type>(
-             new HestonHullWhitePathPricer(
+        return ext::make_shared<HestonHullWhitePathPricer>(
                   exerciseTime,
                   this->arguments_.payoff,
-                  process_) );
+                  process_);
     }
 
     template <class RNG, class S> inline
@@ -188,15 +185,12 @@ namespace QuantLib {
         ext::shared_ptr<HullWhiteForwardProcess> hullWhiteProcess =
             process_->hullWhiteProcess();
 
-        ext::shared_ptr<HestonModel> hestonModel(
-                                              new HestonModel(hestonProcess));
-        ext::shared_ptr<HullWhite> hwModel(
-                              new HullWhite(hestonProcess->riskFreeRate(),
+        auto hestonModel = ext::make_shared<HestonModel>(hestonProcess);
+        auto hwModel = ext::make_shared<HullWhite>(hestonProcess->riskFreeRate(),
                                             hullWhiteProcess->a(),
-                                            hullWhiteProcess->sigma()));
+                                            hullWhiteProcess->sigma());
 
-        return ext::shared_ptr<PricingEngine>(
-                new AnalyticHestonHullWhiteEngine(hestonModel, hwModel, 144));
+        return ext::make_shared<AnalyticHestonHullWhiteEngine>(hestonModel, hwModel, 144);
     }
 
     template <class RNG, class S> inline
@@ -210,25 +204,20 @@ namespace QuantLib {
             RNG::make_sequence_generator(dimensions*(grid.size()-1),
                                          this->seed_);
 
-        ext::shared_ptr<HybridHestonHullWhiteProcess> cvProcess(
-            new HybridHestonHullWhiteProcess(process_->hestonProcess(),
+        auto cvProcess = ext::make_shared<HybridHestonHullWhiteProcess>(process_->hestonProcess(),
                                              process_->hullWhiteProcess(),
                                              0.0,
-                                             process_->discretization()));
+                                             process_->discretization());
 
-        return ext::shared_ptr<path_generator_type>(
-                  new path_generator_type(cvProcess, grid, generator, false));
+        return ext::make_shared<path_generator_type>(cvProcess, grid, generator, false);
     }
 
 
     template <class RNG, class S>
-    inline MakeMCHestonHullWhiteEngine<RNG,S>::MakeMCHestonHullWhiteEngine(
-             const ext::shared_ptr<HybridHestonHullWhiteProcess>& process)
-    : process_(process),
-      steps_(Null<Size>()), stepsPerYear_(Null<Size>()),
-      samples_(Null<Size>()), maxSamples_(Null<Size>()),
-      antithetic_(false), controlVariate_(false),
-      tolerance_(Null<Real>()), seed_(0) {}
+    inline MakeMCHestonHullWhiteEngine<RNG, S>::MakeMCHestonHullWhiteEngine(
+        ext::shared_ptr<HybridHestonHullWhiteProcess> process)
+    : process_(std::move(process)), steps_(Null<Size>()), stepsPerYear_(Null<Size>()),
+      samples_(Null<Size>()), maxSamples_(Null<Size>()), tolerance_(Null<Real>()) {}
 
     template <class RNG, class S>
     inline MakeMCHestonHullWhiteEngine<RNG,S>&
@@ -301,8 +290,7 @@ namespace QuantLib {
                    "number of steps not given");
         QL_REQUIRE(steps_ == Null<Size>() || stepsPerYear_ == Null<Size>(),
                    "number of steps overspecified");
-        return ext::shared_ptr<PricingEngine>(new
-            MCHestonHullWhiteEngine<RNG,S>(process_,
+        return ext::make_shared<MCHestonHullWhiteEngine<RNG,S>>(process_,
                                            steps_,
                                            stepsPerYear_,
                                            antithetic_,
@@ -310,7 +298,7 @@ namespace QuantLib {
                                            samples_,
                                            tolerance_,
                                            maxSamples_,
-                                           seed_));
+                                           seed_);
     }
 
 }

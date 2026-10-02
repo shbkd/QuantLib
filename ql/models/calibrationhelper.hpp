@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -25,40 +25,46 @@
 #ifndef quantlib_interest_rate_modelling_calibration_helper_h
 #define quantlib_interest_rate_modelling_calibration_helper_h
 
-#include <ql/quote.hpp>
-#include <ql/termstructures/yieldtermstructure.hpp>
-#include <ql/termstructures/volatility/volatilitytype.hpp>
 #include <ql/patterns/lazyobject.hpp>
+#include <ql/quote.hpp>
+#include <ql/termstructures/volatility/volatilitytype.hpp>
+#include <ql/termstructures/yieldtermstructure.hpp>
 #include <list>
+#include <utility>
 
 namespace QuantLib {
 
     class PricingEngine;
 
-    //! liquid market instrument used during calibration
-    class CalibrationHelper : public LazyObject {
+    //! abstract base class for calibration helpers
+    class CalibrationHelper {
+      public:
+        virtual ~CalibrationHelper() = default;
+        //! returns the error resulting from the model valuation
+        virtual Real calibrationError() = 0;
+    };
+
+    //! liquid Black76 market instrument used during calibration
+    class BlackCalibrationHelper : public LazyObject, public CalibrationHelper {
       public:
         enum CalibrationErrorType {
                             RelativePriceError, PriceError, ImpliedVolError};
-        CalibrationHelper(const Handle<Quote>& volatility,
-                          const Handle<YieldTermStructure>& termStructure,
-                          CalibrationErrorType calibrationErrorType
-                                                         = RelativePriceError,
-                          const VolatilityType type = ShiftedLognormal,
-                          const Real shift = 0.0)
-        : volatility_(volatility), termStructure_(termStructure),
-          volatilityType_(type), shift_(shift),
+
+        BlackCalibrationHelper(Handle<Quote> volatility,
+                               CalibrationErrorType calibrationErrorType = RelativePriceError,
+                               const VolatilityType type = ShiftedLognormal,
+                               const Real shift = 0.0)
+        : volatility_(std::move(volatility)), volatilityType_(type), shift_(shift),
           calibrationErrorType_(calibrationErrorType) {
             registerWith(volatility_);
-            registerWith(termStructure_);
         }
 
-        void performCalculations() const {
+        void performCalculations() const override {
             marketValue_ = blackPrice(volatility_->value());
         }
 
         //! returns the volatility Handle
-        Handle<Quote> volatility() const { return volatility_; }
+        const Handle<Quote>& volatility() const { return volatility_; }
 
         //! returns the volatility type
         VolatilityType volatilityType() const { return volatilityType_; }
@@ -70,7 +76,7 @@ namespace QuantLib {
         virtual Real modelValue() const = 0;
 
         //! returns the error resulting from the model valuation
-        virtual Real calibrationError();
+        Real calibrationError() override;
 
         virtual void addTimesTo(std::list<Time>& times) const = 0;
 
@@ -91,13 +97,11 @@ namespace QuantLib {
       protected:
         mutable Real marketValue_;
         Handle<Quote> volatility_;
-        Handle<YieldTermStructure> termStructure_;
         ext::shared_ptr<PricingEngine> engine_;
         const VolatilityType volatilityType_;
         const Real shift_;
 
       private:
-        class ImpliedVolatilityHelper;
         const CalibrationErrorType calibrationErrorType_;
     };
 

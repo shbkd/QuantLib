@@ -10,38 +10,36 @@
   under the terms of the QuantLib license.  You should have received a
   copy of the license along with this program; if not, please email
   <quantlib-dev@lists.sf.net>. The license is also available online at
-  <http://quantlib.org/license.shtml>.
+  <https://www.quantlib.org/license.shtml>.
 
   This program is distributed in the hope that it will be useful, but WITHOUT
   ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
   FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include <ql/experimental/exoticoptions/continuousarithmeticasianvecerengine.hpp>
-#include <ql/pricingengines/blackcalculator.hpp>
-#include <ql/math/distributions/normaldistribution.hpp>
 #include <ql/exercise.hpp>
+#include <ql/experimental/exoticoptions/continuousarithmeticasianvecerengine.hpp>
+#include <ql/instruments/vanillaoption.hpp>
+#include <ql/math/distributions/normaldistribution.hpp>
 #include <ql/math/rounding.hpp>
 #include <ql/methods/finitedifferences/tridiagonaloperator.hpp>
-#include <ql/methods/finitedifferences/dminus.hpp>
-#include <ql/methods/finitedifferences/dplus.hpp>
-#include <ql/methods/finitedifferences/dplusdminus.hpp>
-#include <ql/instruments/vanillaoption.hpp>
+#include <ql/pricingengines/blackcalculator.hpp>
 #include <ql/pricingengines/vanilla/analyticeuropeanengine.hpp>
+#include <utility>
 
 namespace QuantLib {
 
     ContinuousArithmeticAsianVecerEngine::ContinuousArithmeticAsianVecerEngine(
-         const ext::shared_ptr<GeneralizedBlackScholesProcess>& process,
-         const Handle<Quote>& currentAverage,
-         Date startDate,
-         Size timeSteps,
-         Size assetSteps,
-         Real z_min,
-         Real z_max )
-        : process_(process), currentAverage_(currentAverage),
-          startDate_(startDate),z_min_(z_min),z_max_(z_max),
-          timeSteps_(timeSteps),assetSteps_(assetSteps){
+        ext::shared_ptr<GeneralizedBlackScholesProcess> process,
+        Handle<Quote> currentAverage,
+        Date startDate,
+        Size timeSteps,
+        Size assetSteps,
+        Real z_min,
+        Real z_max)
+    : process_(std::move(process)), currentAverage_(std::move(currentAverage)),
+      startDate_(startDate), z_min_(z_min), z_max_(z_max), timeSteps_(timeSteps),
+      assetSteps_(assetSteps) {
         registerWith(process_);
         registerWith(currentAverage_);
     }
@@ -118,7 +116,10 @@ namespace QuantLib {
             }
 
             // Begin gamma construction
-            TridiagonalOperator gammaOp = DPlusDMinus(assetSteps_+1,h);
+            TridiagonalOperator gammaOp(assetSteps_+1);
+            gammaOp.setFirstRow(0.0,0.0);
+            gammaOp.setMidRows(1/(h*h),-2/(h*h),1/(h*h));
+            gammaOp.setLastRow(0.0,0.0);
 
             Array upperD = gammaOp.upperDiagonal();
             Array lowerD = gammaOp.lowerDiagonal();
@@ -146,7 +147,7 @@ namespace QuantLib {
                             0.5 * sigma2 * vecerTerm * vecerTerm  * Dia[i],
                             0.5 * sigma2 *  vecerTerm * vecerTerm * upperD[i]);
                     }
-                    explicit_part = gammaOp.identity(gammaOp.size()) +
+                    explicit_part = TridiagonalOperator::identity(gammaOp.size()) +
                                     (1 - Theta) * k * gammaOp;
                     explicit_part.setFirstRow(1.0,0.0); // Apply before applying
                     explicit_part.setLastRow(-1.0,1.0); // Neumann BC
@@ -168,7 +169,7 @@ namespace QuantLib {
                             0.5 * sigma2 * vecerTerm * vecerTerm * upperD[i]);
                     }
 
-                    implicit_part = gammaOp.identity(gammaOp.size()) -
+                    implicit_part = TridiagonalOperator::identity(gammaOp.size()) -
                                     Theta * k * gammaOp;
 
                     // Apply before solving
@@ -182,7 +183,7 @@ namespace QuantLib {
             } // End Time Loop
 
             DownRounding Rounding(0);
-            Integer lowerI = Integer(Rounding( (Z_0-z_min_)/h));
+            auto lowerI = Integer(Rounding((Z_0 - z_min_) / h));
             // Interpolate solution
             Real pv;
 

@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -18,7 +18,7 @@
 */
 
 #include <ql/experimental/credit/pool.hpp>
-#include <boost/bind.hpp>
+#include <functional>
 #include <iterator>
 
 namespace QuantLib {
@@ -74,11 +74,11 @@ namespace QuantLib {
         return names_;
     }
 
-    Disposable<std::vector<DefaultProbKey> > Pool::defaultKeys() const {
+    std::vector<DefaultProbKey> Pool::defaultKeys() const {
         std::vector<DefaultProbKey> defaultKeys;
-        std::transform(defaultKeys_.begin(), defaultKeys_.end(),
-            std::back_inserter(defaultKeys), boost::bind(
-              &std::map<std::string, DefaultProbKey>::value_type::second, _1));
+        defaultKeys.reserve(defaultKeys_.size());
+        for (const auto & i : defaultKeys_)
+            defaultKeys.push_back(i.second);
         return defaultKeys;
     }
 

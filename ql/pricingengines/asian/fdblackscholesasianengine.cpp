@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -18,27 +18,28 @@
 */
 
 #include <ql/exercise.hpp>
-#include <ql/processes/blackscholesprocess.hpp>
 #include <ql/math/distributions/normaldistribution.hpp>
-#include <ql/pricingengines/asian/fdblackscholesasianengine.hpp>
-#include <ql/methods/finitedifferences/solvers/fdmsimple2dbssolver.hpp>
-#include <ql/methods/finitedifferences/utilities/fdminnervaluecalculator.hpp>
-#include <ql/methods/finitedifferences/operators/fdmlinearoplayout.hpp>
 #include <ql/methods/finitedifferences/meshers/fdmblackscholesmesher.hpp>
 #include <ql/methods/finitedifferences/meshers/fdmmeshercomposite.hpp>
-#include <ql/methods/finitedifferences/stepconditions/fdmstepconditioncomposite.hpp>
+#include <ql/methods/finitedifferences/operators/fdmlinearoplayout.hpp>
+#include <ql/methods/finitedifferences/solvers/fdmsimple2dbssolver.hpp>
 #include <ql/methods/finitedifferences/stepconditions/fdmarithmeticaveragecondition.hpp>
+#include <ql/methods/finitedifferences/stepconditions/fdmstepconditioncomposite.hpp>
+#include <ql/methods/finitedifferences/utilities/fdminnervaluecalculator.hpp>
+#include <ql/pricingengines/asian/fdblackscholesasianengine.hpp>
+#include <ql/processes/blackscholesprocess.hpp>
+#include <utility>
 
 namespace QuantLib {
 
 
     FdBlackScholesAsianEngine::FdBlackScholesAsianEngine(
-            const ext::shared_ptr<GeneralizedBlackScholesProcess>& process,
-            Size tGrid, Size xGrid, Size aGrid, 
-            const FdmSchemeDesc& schemeDesc)
-    : GenericEngine<DiscreteAveragingAsianOption::arguments,
-                    DiscreteAveragingAsianOption::results>(),
-      process_(process), tGrid_(tGrid), xGrid_(xGrid), aGrid_(aGrid),
+        ext::shared_ptr<GeneralizedBlackScholesProcess> process,
+        Size tGrid,
+        Size xGrid,
+        Size aGrid,
+        const FdmSchemeDesc& schemeDesc)
+    : process_(std::move(process)), tGrid_(tGrid), xGrid_(xGrid), aGrid_(aGrid),
       schemeDesc_(schemeDesc) {}
 
 
@@ -56,9 +57,8 @@ namespace QuantLib {
         const ext::shared_ptr<StrikedTypePayoff> payoff =
             ext::dynamic_pointer_cast<StrikedTypePayoff>(arguments_.payoff);
         const Time maturity = process_->time(arguments_.exercise->lastDate());
-        const ext::shared_ptr<Fdm1dMesher> equityMesher(
-            new FdmBlackScholesMesher(xGrid_, process_, maturity,
-                                      payoff->strike()));
+        const auto equityMesher = ext::make_shared<FdmBlackScholesMesher>(xGrid_, process_, maturity,
+                                      payoff->strike());
 
         const Real spot = process_->x0();
         QL_REQUIRE(spot > 0.0, "negative or null underlying given");
@@ -75,16 +75,13 @@ namespace QuantLib {
         Real xMin = std::min(std::log(avg)  - 0.25*r, std::log(spot) - 1.5*r);
         Real xMax = std::max(std::log(avg)  + 0.25*r, std::log(spot) + 1.5*r);
 
-        const ext::shared_ptr<Fdm1dMesher> averageMesher(
-            new FdmBlackScholesMesher(aGrid_, process_, maturity,
-                                      payoff->strike(), xMin, xMax));
+        const auto averageMesher = ext::make_shared<FdmBlackScholesMesher>(aGrid_, process_, maturity,
+                                      payoff->strike(), xMin, xMax);
 
-        const ext::shared_ptr<FdmMesher> mesher (
-            new FdmMesherComposite(equityMesher, averageMesher));
+        const auto mesher = ext::make_shared<FdmMesherComposite>(equityMesher, averageMesher);
 
         // 2. Calculator
-        ext::shared_ptr<FdmInnerValueCalculator> calculator(
-                                new FdmLogInnerValue(payoff, mesher, 1));
+        auto calculator = ext::make_shared<FdmLogInnerValue>(payoff, mesher, 1);
 
         // 3. Step conditions
         std::list<ext::shared_ptr<StepCondition<Array> > > stepConditions;
@@ -92,19 +89,17 @@ namespace QuantLib {
 
         // 3.1 Arithmetic average step conditions
         std::vector<Time> averageTimes;
-        for (Size i=0; i<arguments_.fixingDates.size(); ++i) {
-            Time t = process_->time(arguments_.fixingDates[i]);
+        for (auto& fixingDate : arguments_.fixingDates) {
+            Time t = process_->time(fixingDate);
             QL_REQUIRE(t >= 0, "Fixing dates must not contain past date");
             averageTimes.push_back(t);
         }
-        stoppingTimes.push_back(std::vector<Time>(averageTimes));
-        stepConditions.push_back(ext::shared_ptr<StepCondition<Array> >(
-                new FdmArithmeticAverageCondition(
+        stoppingTimes.emplace_back(averageTimes);
+        stepConditions.push_back(ext::make_shared<FdmArithmeticAverageCondition>(
                         averageTimes, arguments_.runningAccumulator,
-                        arguments_.pastFixings, mesher, 0)));
+                        arguments_.pastFixings, mesher, 0));
 
-        ext::shared_ptr<FdmStepConditionComposite> conditions(
-                new FdmStepConditionComposite(stoppingTimes, stepConditions));
+        auto conditions = ext::make_shared<FdmStepConditionComposite>(stoppingTimes, stepConditions);
 
         // 4. Boundary conditions
         const FdmBoundaryConditionSet boundaries;
@@ -112,10 +107,9 @@ namespace QuantLib {
         // 5. Solver
         FdmSolverDesc solverDesc = { mesher, boundaries, conditions,
                                      calculator, maturity, tGrid_, 0 };
-        ext::shared_ptr<FdmSimple2dBSSolver> solver(
-              new FdmSimple2dBSSolver(
+        auto solver = ext::make_shared<FdmSimple2dBSSolver>(
                               Handle<GeneralizedBlackScholesProcess>(process_),
-                              payoff->strike(), solverDesc, schemeDesc_));
+                              payoff->strike(), solverDesc, schemeDesc_);
 
         results_.value = solver->valueAt(spot, avg);
         results_.delta = solver->deltaAt(spot, avg, spot*0.01);

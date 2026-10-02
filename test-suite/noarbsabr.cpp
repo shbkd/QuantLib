@@ -10,45 +10,43 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "noarbsabr.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
-
-#include <boost/assign/list_of.hpp>
-
 #include <ql/termstructures/volatility/sabrsmilesection.hpp>
 #include <ql/experimental/volatility/noarbsabrsmilesection.hpp>
 
 using namespace QuantLib;
 using namespace boost::unit_test_framework;
 
-namespace {
+BOOST_FIXTURE_TEST_SUITE(QuantLibTests, TopLevelFixture)
+
+BOOST_AUTO_TEST_SUITE(NoArbSabrTests)
+
 void checkD0(const Real sigmaI, const Real beta, const Real rho, const Real nu,
              const Real tau, const unsigned int absorptions) {
 
     Real forward = 0.03; // does not matter in the end
     Real alpha = sigmaI / std::pow(forward, beta - 1.0);
 
-    detail::D0Interpolator d(forward, tau, alpha, beta, nu, rho);
+    QuantLib::detail::D0Interpolator d(forward, tau, alpha, beta, nu, rho);
 
-    if (std::fabs(d() * detail::NoArbSabrModel::nsim - (Real)absorptions) > 0.1)
+    if (std::fabs(d() * QuantLib::detail::NoArbSabrModel::nsim - (Real)absorptions) > 0.1)
         BOOST_ERROR("failed to reproduce number of absorptions at sigmaI="
                     << sigmaI << ", beta=" << beta << ", rho=" << rho << ", nu="
                     << nu << " tau=" << tau << ": D0Interpolator says "
-                    << d() * detail::NoArbSabrModel::nsim
+                    << d() * QuantLib::detail::NoArbSabrModel::nsim
                     << " while the reference value is " << absorptions);
-
-    return;
-}
 }
 
-void NoArbSabrTest::testAbsorptionMatrix() {
+
+BOOST_AUTO_TEST_CASE(testAbsorptionMatrix) {
 
     BOOST_TEST_MESSAGE("Testing no-arbitrage Sabr absorption matrix...");
 
@@ -74,7 +72,7 @@ void NoArbSabrTest::testAbsorptionMatrix() {
 
 }
 
-void NoArbSabrTest::testConsistencyWithHagan() {
+BOOST_AUTO_TEST_CASE(testConsistencyWithHagan) {
 
     BOOST_TEST_MESSAGE("Testing consistency of noarb-sabr with Hagan et al (2002)");
 
@@ -87,8 +85,8 @@ void NoArbSabrTest::testConsistencyWithHagan() {
     Real nu = 0.4;
     Real f = 0.0488;
 
-    SabrSmileSection sabr(tau,f,boost::assign::list_of(alpha)(beta)(nu)(rho));
-    NoArbSabrSmileSection noarbsabr(tau,f,boost::assign::list_of(alpha)(beta)(nu)(rho));
+    SabrSmileSection sabr(tau, f, {alpha, beta, nu, rho});
+    NoArbSabrSmileSection noarbsabr(tau, f, {alpha, beta, nu, rho});
 
     Real absProb=noarbsabr.model()->absorptionProbability();
     if( absProb > 1E-10 || absProb < 0.0 )
@@ -122,10 +120,6 @@ void NoArbSabrTest::testConsistencyWithHagan() {
 
 }
 
+BOOST_AUTO_TEST_SUITE_END()
 
-test_suite* NoArbSabrTest::suite() {
-    test_suite* suite = BOOST_TEST_SUITE("NoArbSabrModel tests");
-    suite->add(QUANTLIB_TEST_CASE(&NoArbSabrTest::testAbsorptionMatrix));
-    suite->add(QUANTLIB_TEST_CASE(&NoArbSabrTest::testConsistencyWithHagan));
-    return suite;
-}
+BOOST_AUTO_TEST_SUITE_END()

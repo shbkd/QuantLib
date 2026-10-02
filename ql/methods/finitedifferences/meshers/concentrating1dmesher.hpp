@@ -2,7 +2,7 @@
 
 /*
  Copyright (C) 2009 Ralph Schreyer
- Copyright (C) 2014 Johannes Goettker-Schnetmann
+ Copyright (C) 2014 Johannes Göttker-Schnetmann
  Copyright (C) 2014 Klaus Spanderen
 
  This file is part of QuantLib, a free-software/open-source library
@@ -12,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -28,9 +28,7 @@
 
 #include <ql/methods/finitedifferences/meshers/fdm1dmesher.hpp>
 #include <ql/utilities/null.hpp>
-
-#include <boost/tuple/tuple.hpp>
-
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -38,15 +36,16 @@ namespace QuantLib {
 
     class Concentrating1dMesher : public Fdm1dMesher {
       public:
-        Concentrating1dMesher(
-            Real start, Real end, Size size,
-            const std::pair<Real, Real>& cPoints
-                     = (std::pair<Real, Real>(Null<Real>(), Null<Real>())),
-            const bool requireCPoint = false);
+        Concentrating1dMesher(Real start,
+                              Real end,
+                              Size size,
+                              const std::pair<Real, Real>& cPoints =
+                                  (std::pair<Real, Real>(Null<Real>(), Null<Real>())),
+                              bool requireCPoint = false);
 
         Concentrating1dMesher(
             Real start, Real end, Size size,
-            const std::vector<boost::tuple<Real, Real, bool> >& cPoints,
+            const std::vector<std::tuple<Real, Real, bool> >& cPoints,
             Real tol = 1e-8);
     };
 }

@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -36,15 +36,13 @@ namespace QuantLib {
       public:
         //! \name Constructors
         //@{
-        FlatHazardRate(const Date& referenceDate,
-                       const Handle<Quote>& hazardRate,
-                       const DayCounter&);
+        FlatHazardRate(const Date& referenceDate, Handle<Quote> hazardRate, const DayCounter&);
         FlatHazardRate(const Date& referenceDate,
                        Rate hazardRate,
                        const DayCounter&);
         FlatHazardRate(Natural settlementDays,
                        const Calendar& calendar,
-                       const Handle<Quote>& hazardRate,
+                       Handle<Quote> hazardRate,
                        const DayCounter&);
         FlatHazardRate(Natural settlementDays,
                        const Calendar& calendar,
@@ -53,17 +51,17 @@ namespace QuantLib {
         //@}
         //! \name TermStructure interface
         //@{
-        Date maxDate() const { return Date::maxDate(); }
+        Date maxDate() const override { return Date::maxDate(); }
         //@}
       private:
         //! \name HazardRateStructure interface
         //@{
-        Rate hazardRateImpl(Time) const { return hazardRate_->value(); }
+        Rate hazardRateImpl(Time) const override { return hazardRate_->value(); }
         //@}
 
         //! \name DefaultProbabilityTermStructure interface
         //@{
-        Probability survivalProbabilityImpl(Time) const;
+        Probability survivalProbabilityImpl(Time) const override;
         //@}
 
         Handle<Quote> hazardRate_;

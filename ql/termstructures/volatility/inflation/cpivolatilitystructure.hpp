@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -65,6 +65,9 @@ namespace QuantLib {
                               Rate strike,
                               const Period &obsLag = Period(-1,Days),
                               bool extrapolate = false) const;
+        /*! Returns the volatility for a given time and strike rate. No adjustments
+          due to lags and interpolation are applied to the input time. */
+        Volatility volatility(Time time, Rate strike) const;
 
         //! Returns the total integrated variance for a given exercise
         //! date and strike rate.
@@ -114,9 +117,9 @@ namespace QuantLib {
         //! \name Limits
         //@{
         //! the minimum strike for which the term structure can return vols
-        virtual Real minStrike() const = 0;
+        Real minStrike() const override = 0;
         //! the maximum strike for which the term structure can return vols
-        virtual Real maxStrike() const = 0;
+        Real maxStrike() const override = 0;
         //@}
       protected:
         virtual void checkRange(const Date&, Rate strike, bool extrapolate) const;

@@ -10,15 +10,16 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include <ql/quotes/simplequote.hpp>
 #include <ql/models/equity/piecewisetimedependenthestonmodel.hpp>
+#include <ql/quotes/simplequote.hpp>
+#include <utility>
 
 namespace QuantLib {
 
@@ -31,13 +32,10 @@ namespace QuantLib {
         const Parameter& kappa,
         const Parameter& sigma,
         const Parameter& rho,
-        const TimeGrid& timeGrid)
-    : CalibratedModel(5), 
-      s0_           (s0),
-      riskFreeRate_ (riskFreeRate),
-      dividendYield_(dividendYield),
-      timeGrid_     (timeGrid) {
-            
+        TimeGrid timeGrid)
+    : CalibratedModel(5), s0_(s0), riskFreeRate_(riskFreeRate), dividendYield_(dividendYield),
+      timeGrid_(std::move(timeGrid)) {
+
         arguments_[0] = theta;
         arguments_[1] = kappa;
         arguments_[2] = sigma;

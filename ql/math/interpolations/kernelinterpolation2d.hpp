@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -26,6 +26,7 @@
 
 #include <ql/math/interpolations/interpolation2d.hpp>
 #include <ql/math/matrixutilities/qrdecomposition.hpp>
+#include <utility>
 
 /*
   Grid Explanation:
@@ -56,17 +57,15 @@ namespace QuantLib {
             : public Interpolation2D::templateImpl<I1,I2,M> {
 
           public:
-            KernelInterpolation2DImpl(const I1& xBegin, const I1& xEnd,
-                                      const I2& yBegin, const I2& yEnd,
+            KernelInterpolation2DImpl(const I1& xBegin,
+                                      const I1& xEnd,
+                                      const I2& yBegin,
+                                      const I2& yEnd,
                                       const M& zData,
-                                      const Kernel& kernel)
-            : Interpolation2D::templateImpl<I1,I2,M>(xBegin, xEnd,
-                                                     yBegin, yEnd, zData),
-              xSize_(Size(xEnd-xBegin)), ySize_(Size(yEnd-yBegin)),
-              xySize_(xSize_*ySize_), invPrec_(1.0e-10),
-              alphaVec_(xySize_), yVec_(xySize_),
-              M_(xySize_,xySize_),
-              kernel_(kernel) {
+                                      Kernel kernel)
+            : Interpolation2D::templateImpl<I1, I2, M>(xBegin, xEnd, yBegin, yEnd, zData),
+              xSize_(Size(xEnd - xBegin)), ySize_(Size(yEnd - yBegin)), xySize_(xSize_ * ySize_),
+              alphaVec_(xySize_), yVec_(xySize_), M_(xySize_, xySize_), kernel_(std::move(kernel)) {
 
                 QL_REQUIRE(zData.rows()==xSize_,
                            "Z value matrix has wrong number of rows");
@@ -74,11 +73,9 @@ namespace QuantLib {
                            "Z value matrix has wrong number of columns");
             }
 
-            void calculate() {
-                updateAlphaVec();
-            }
+            void calculate() override { updateAlphaVec(); }
 
-            Real value(Real x1, Real x2) const {
+            Real value(Real x1, Real x2) const override {
 
                 Real res=0.0;
 
@@ -168,16 +165,14 @@ namespace QuantLib {
                 // I've chosen not to check determinant(M_)!=0 before solving
 
                 Array diffVec=Abs(M_*alphaVec_ - yVec_);
-                for (Size i=0; i<diffVec.size(); ++i) {
-                    QL_REQUIRE(diffVec[i]<invPrec_,
-                               "inversion failed in 2d kernel interpolation");
+                for (Real i : diffVec) {
+                    QL_REQUIRE(i < invPrec_, "inversion failed in 2d kernel interpolation");
                 }
             }
 
-          private:
 
             Size xSize_,ySize_,xySize_;
-            Real invPrec_;
+            Real invPrec_ = 1.0e-10;
             Array alphaVec_, yVec_;
             Matrix M_;
             Kernel kernel_;
@@ -192,6 +187,10 @@ namespace QuantLib {
 
         The kernel in the implementation is kept general, although a
         Gaussian is considered in the cited text.
+
+        \ingroup interpolations
+        \warning See the Interpolation class for information about the
+                 required lifetime of the underlying data.
     */
     class KernelInterpolation2D : public Interpolation2D{
       public:

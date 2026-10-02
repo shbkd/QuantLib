@@ -10,17 +10,17 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "compoundoption.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
-#include <ql/experimental/exoticoptions/compoundoption.hpp>
-#include <ql/experimental/exoticoptions/analyticcompoundoptionengine.hpp>
+#include <ql/instruments/compoundoption.hpp>
+#include <ql/pricingengines/exotic/analyticcompoundoptionengine.hpp>
 #include <ql/instruments/europeanoption.hpp>
 #include <ql/pricingengines/vanilla/analyticeuropeanengine.hpp>
 #include <ql/time/calendars/target.hpp>
@@ -34,6 +34,11 @@
 using namespace QuantLib;
 using namespace boost::unit_test_framework;
 
+BOOST_FIXTURE_TEST_SUITE(QuantLibTests, TopLevelFixture)
+
+BOOST_AUTO_TEST_SUITE(CompoundOptionTests)
+
+#undef REPORT_FAILURE
 #define REPORT_FAILURE(greekName, payoffM, payoffD, exerciseM,    \
                        exerciseD, s, q, r, today,                 \
                        v, expected, calculated, error, tolerance) \
@@ -54,35 +59,27 @@ using namespace boost::unit_test_framework;
                "\nerror:                " << error << \
                "\ntolerance:            " << tolerance);
 
-namespace {
-
-    Integer timeToDays(Time t) {
-        return Integer(t*360+0.5);
-    }
-
-    struct CompoundOptionData {
-        Option::Type typeMother;
-        Option::Type typeDaughter;
-        Real strikeMother;
-        Real strikeDaughter;
-        Real s;        // spot
-        Rate q;        // dividend
-        Rate r;        // risk-free rate
-        Time tMother;  // time to maturity
-        Time tDaughter;// time to maturity
-        Volatility v;  // volatility
-        Real npv;   // expected result
-        Real tol;      // tolerance
-        Real delta;
-        Real gamma;
-        Real vega;
-        Real theta;
-    };
-
-}
+struct CompoundOptionData {
+    Option::Type typeMother;
+    Option::Type typeDaughter;
+    Real strikeMother;
+    Real strikeDaughter;
+    Real s;        // spot
+    Rate q;        // dividend
+    Rate r;        // risk-free rate
+    Time tMother;  // time to maturity
+    Time tDaughter;// time to maturity
+    Volatility v;  // volatility
+    Real npv;   // expected result
+    Real tol;      // tolerance
+    Real delta;
+    Real gamma;
+    Real vega;
+    Real theta;
+};
 
 
-void CompoundOptionTest::testPutCallParity(){
+BOOST_AUTO_TEST_CASE(testPutCallParity){
 
     BOOST_TEST_MESSAGE("Testing compound-option put-call parity...");
 
@@ -106,8 +103,6 @@ void CompoundOptionTest::testPutCallParity(){
         { Option::Call, Option::Put,  0.02,           1.6   ,      1.6,     0.013, 0.022,  0.45,     0.5,         0.17},
     };
 
-    SavedSettings backup;
-
     Calendar calendar = TARGET();
 
     DayCounter dc = Actual360();
@@ -128,30 +123,29 @@ void CompoundOptionTest::testPutCallParity(){
                               new BlackConstantVol(todaysDate, NullCalendar(),
                                                    Handle<Quote>(vol), dc));
 
-    for (Size i=0; i<LENGTH(values); i++) {
+    for (auto& value : values) {
 
         ext::shared_ptr<StrikedTypePayoff> payoffMotherCall(
-                new PlainVanillaPayoff(Option::Call, values[i].strikeMother));
+            new PlainVanillaPayoff(Option::Call, value.strikeMother));
 
         ext::shared_ptr<StrikedTypePayoff> payoffMotherPut(
-                new PlainVanillaPayoff(Option::Put, values[i].strikeMother));
+            new PlainVanillaPayoff(Option::Put, value.strikeMother));
 
         ext::shared_ptr<StrikedTypePayoff> payoffDaughter(
-                            new PlainVanillaPayoff(values[i].typeDaughter,
-                                                   values[i].strikeDaughter));
+            new PlainVanillaPayoff(value.typeDaughter, value.strikeDaughter));
 
-        Date matDateMom = todaysDate + timeToDays(values[i].tMother);
-        Date matDateDaughter = todaysDate + timeToDays(values[i].tDaughter);
+        Date matDateMom = todaysDate + timeToDays(value.tMother);
+        Date matDateDaughter = todaysDate + timeToDays(value.tDaughter);
 
         ext::shared_ptr<Exercise> exerciseCompound(
                                             new EuropeanExercise(matDateMom));
         ext::shared_ptr<Exercise> exerciseDaughter(
                                        new EuropeanExercise(matDateDaughter));
 
-        spot ->setValue(values[i].s);
-        qRate->setValue(values[i].q);
-        rRate->setValue(values[i].r);
-        vol  ->setValue(values[i].v);
+        spot->setValue(value.s);
+        qRate->setValue(value.q);
+        rRate->setValue(value.r);
+        vol->setValue(value.v);
 
         CompoundOption compoundOptionCall(payoffMotherCall,exerciseCompound,
                                           payoffDaughter, exerciseDaughter);
@@ -181,7 +175,7 @@ void CompoundOptionTest::testPutCallParity(){
         vanillaOption.setPricingEngine(engineEuropean);
 
         Real discFact=rTS->discount(matDateMom);
-        Real discStrike=values[i].strikeMother*discFact;
+        Real discStrike = value.strikeMother * discFact;
 
         Real calculated =
             compoundOptionCall.NPV() + discStrike - compoundOptionPut.NPV()
@@ -192,16 +186,14 @@ void CompoundOptionTest::testPutCallParity(){
         Real tolerance=1.0e-8;
 
         if(error>tolerance){
-            REPORT_FAILURE("put call parity", payoffMotherCall, payoffDaughter,
-                           exerciseCompound, exerciseDaughter, values[i].s,
-                           values[i].q, values[i].r, todaysDate,
-                           values[i].v, values[i].delta, calculated,
-                           error, tolerance);
+            REPORT_FAILURE("put call parity", payoffMotherCall, payoffDaughter, exerciseCompound,
+                           exerciseDaughter, value.s, value.q, value.r, todaysDate, value.v,
+                           value.delta, calculated, error, tolerance);
         }
     }
 }
 
-void CompoundOptionTest::testValues(){
+BOOST_AUTO_TEST_CASE(testValues){
 
     BOOST_TEST_MESSAGE("Testing compound-option values and greeks...");
 
@@ -241,8 +233,6 @@ void CompoundOptionTest::testValues(){
         { Option::Put, Option::Put,  0.02,           1.6   ,      1.6,   0.013, 0.022,  0.45,     0.5,         0.17,  0.0078,   1.0e-3,   0.0413,0.0326, -0.0133, -0.0016}
     };
 
-    SavedSettings backup;
-
     Calendar calendar = TARGET();
 
     DayCounter dc = Actual360();
@@ -263,28 +253,26 @@ void CompoundOptionTest::testValues(){
                               new BlackConstantVol(todaysDate, NullCalendar(),
                                                    Handle<Quote>(vol), dc));
 
-    for (Size i=0; i<LENGTH(values); i++) {
+    for (auto& value : values) {
 
         ext::shared_ptr<StrikedTypePayoff> payoffMother(
-                    new PlainVanillaPayoff(values[i].typeMother,
-                                           values[i].strikeMother));
+            new PlainVanillaPayoff(value.typeMother, value.strikeMother));
 
         ext::shared_ptr<StrikedTypePayoff> payoffDaughter(
-                    new PlainVanillaPayoff(values[i].typeDaughter,
-                                           values[i].strikeDaughter));
+            new PlainVanillaPayoff(value.typeDaughter, value.strikeDaughter));
 
-        Date matDateMom = todaysDate + timeToDays(values[i].tMother);
-        Date matDateDaughter = todaysDate + timeToDays(values[i].tDaughter);
+        Date matDateMom = todaysDate + timeToDays(value.tMother);
+        Date matDateDaughter = todaysDate + timeToDays(value.tDaughter);
 
         ext::shared_ptr<Exercise> exerciseMother(
                                             new EuropeanExercise(matDateMom));
         ext::shared_ptr<Exercise> exerciseDaughter(
                                        new EuropeanExercise(matDateDaughter));
 
-        spot ->setValue(values[i].s);
-        qRate->setValue(values[i].q);
-        rRate->setValue(values[i].r);
-        vol  ->setValue(values[i].v);
+        spot->setValue(value.s);
+        qRate->setValue(value.q);
+        rRate->setValue(value.r);
+        vol->setValue(value.v);
 
         CompoundOption compoundOption(payoffMother,exerciseMother,
                                       payoffDaughter, exerciseDaughter);
@@ -302,75 +290,57 @@ void CompoundOptionTest::testValues(){
         compoundOption.setPricingEngine(engineCompound);
 
         Real calculated = compoundOption.NPV();
-        Real error= std::fabs(calculated-values[i].npv); //-values[i].npv
-        Real tolerance = values[i].tol;
+        Real error = std::fabs(calculated - value.npv); //-values[i].npv
+        Real tolerance = value.tol;
 
         if (error>tolerance) {
-            REPORT_FAILURE("value", payoffMother, payoffDaughter,
-                           exerciseMother, exerciseDaughter, values[i].s,
-                           values[i].q, values[i].r, todaysDate,
-                           values[i].v, values[i].npv, calculated,
+            REPORT_FAILURE("value", payoffMother, payoffDaughter, exerciseMother, exerciseDaughter,
+                           value.s, value.q, value.r, todaysDate, value.v, value.npv, calculated,
                            error, tolerance);
         }
 
         calculated = compoundOption.delta();
-        error= std::fabs(calculated-values[i].delta);
-        tolerance = values[i].tol;
+        error = std::fabs(calculated - value.delta);
+        tolerance = value.tol;
 
         if (error>tolerance) {
-            REPORT_FAILURE("delta", payoffMother, payoffDaughter,
-                           exerciseMother, exerciseDaughter, values[i].s,
-                           values[i].q, values[i].r, todaysDate,
-                           values[i].v, values[i].delta, calculated,
+            REPORT_FAILURE("delta", payoffMother, payoffDaughter, exerciseMother, exerciseDaughter,
+                           value.s, value.q, value.r, todaysDate, value.v, value.delta, calculated,
                            error, tolerance);
         }
 
         calculated = compoundOption.gamma();
-        error= std::fabs(calculated-values[i].gamma);
-        tolerance = values[i].tol;
+        error = std::fabs(calculated - value.gamma);
+        tolerance = value.tol;
 
         if (error>tolerance) {
-            REPORT_FAILURE("gamma", payoffMother, payoffDaughter,
-                           exerciseMother, exerciseDaughter, values[i].s,
-                           values[i].q, values[i].r, todaysDate,
-                           values[i].v, values[i].gamma, calculated,
+            REPORT_FAILURE("gamma", payoffMother, payoffDaughter, exerciseMother, exerciseDaughter,
+                           value.s, value.q, value.r, todaysDate, value.v, value.gamma, calculated,
                            error, tolerance);
         }
 
         calculated = compoundOption.vega();
-        error= std::fabs(calculated-values[i].vega);
-        tolerance = values[i].tol;
+        error = std::fabs(calculated - value.vega);
+        tolerance = value.tol;
 
         if (error>tolerance) {
-            REPORT_FAILURE("vega", payoffMother, payoffDaughter,
-                           exerciseMother, exerciseDaughter, values[i].s,
-                           values[i].q, values[i].r, todaysDate,
-                           values[i].v, values[i].vega, calculated,
+            REPORT_FAILURE("vega", payoffMother, payoffDaughter, exerciseMother, exerciseDaughter,
+                           value.s, value.q, value.r, todaysDate, value.v, value.vega, calculated,
                            error, tolerance);
         }
 
         calculated = compoundOption.theta();
-        error= std::fabs(calculated-values[i].theta);
-        tolerance = values[i].tol;
+        error = std::fabs(calculated - value.theta);
+        tolerance = value.tol;
 
         if (error>tolerance) {
-            REPORT_FAILURE("theta", payoffMother, payoffDaughter,
-                           exerciseMother, exerciseDaughter, values[i].s,
-                           values[i].q, values[i].r, todaysDate,
-                           values[i].v, values[i].theta, calculated,
+            REPORT_FAILURE("theta", payoffMother, payoffDaughter, exerciseMother, exerciseDaughter,
+                           value.s, value.q, value.r, todaysDate, value.v, value.theta, calculated,
                            error, tolerance);
         }
     }
 }
 
+BOOST_AUTO_TEST_SUITE_END()
 
-test_suite* CompoundOptionTest::suite() {
-    test_suite* suite = BOOST_TEST_SUITE("Compound option tests");
-
-    suite->add(QUANTLIB_TEST_CASE(&CompoundOptionTest::testValues));
-    suite->add(QUANTLIB_TEST_CASE(&CompoundOptionTest::testPutCallParity));
-
-    return suite;
-}
-
-
+BOOST_AUTO_TEST_SUITE_END()

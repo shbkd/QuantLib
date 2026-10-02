@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -37,7 +37,7 @@ namespace QuantLib {
     //! Base class for least square problem
     class LeastSquareProblem {
       public:
-        virtual ~LeastSquareProblem() {}
+        virtual ~LeastSquareProblem() = default;
         //! size of the problem ie size of target vector
         virtual Size size() = 0;
         //! compute the target vector and the values of the function to fit
@@ -60,18 +60,19 @@ namespace QuantLib {
     class LeastSquareFunction : public CostFunction {
       public:
         //! Default constructor
+        // TODO: Review whether this constructor should remain implicit.
         LeastSquareFunction(LeastSquareProblem& lsp) : lsp_(lsp) {}
         //! Destructor
-        virtual ~LeastSquareFunction() {}
+        ~LeastSquareFunction() override = default;
 
         //! compute value of the least square function
-        virtual Real value(const Array& x) const;
-        virtual Disposable<Array> values(const Array&) const;
+        Real value(const Array& x) const override;
+        Array values(const Array&) const override;
         //! compute vector of derivatives of the least square function
-        virtual void gradient(Array& grad_f, const Array& x) const;
+        void gradient(Array& grad_f, const Array& x) const override;
         //! compute value and gradient of the least square function
-        virtual Real valueAndGradient(Array& grad_f,
-                                      const Array& x) const;
+        Real valueAndGradient(Array& grad_f, const Array& x) const override;
+
       protected:
         //! least square problem
         LeastSquareProblem &lsp_;
@@ -97,16 +98,16 @@ namespace QuantLib {
     class NonLinearLeastSquare {
       public:
         //! Default constructor
-        NonLinearLeastSquare(Constraint& c,
-                             Real accuracy = 1e-4,
-                             Size maxiter = 100);
+        explicit NonLinearLeastSquare(Constraint& c,
+                                      Real accuracy = 1e-4,
+                                      Size maxiter = 100);
         //! Default constructor
         NonLinearLeastSquare(Constraint& c,
                              Real accuracy,
                              Size maxiter,
                              ext::shared_ptr<OptimizationMethod> om);
         //! Destructor
-        ~NonLinearLeastSquare() {}
+        ~NonLinearLeastSquare() = default;
 
         //! Solve least square problem using numerix solver
         Array& perform(LeastSquareProblem& lsProblem);
@@ -119,16 +120,17 @@ namespace QuantLib {
         Array& results() { return results_; }
 
         //! return the least square residual norm
-        Real residualNorm() { return resnorm_; }
+        Real residualNorm() const { return resnorm_; }
 
         //! return last function value
-        Real lastValue() { return bestAccuracy_; }
+        Real lastValue() const { return bestAccuracy_; }
 
         //! return exit flag
-        Integer exitFlag() { return exitFlag_; }
+        Integer exitFlag() const { return exitFlag_; }
 
         //! return the performed number of iterations
-        Integer iterationsNumber() { return nbIterations_; }
+        Integer iterationsNumber() const { return nbIterations_; }
+
       private:
         //! solution vector
         Array results_, initialValue_;

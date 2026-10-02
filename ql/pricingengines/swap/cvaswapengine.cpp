@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -115,22 +115,22 @@ namespace QuantLib {
     QL_REQUIRE(!swaptionletEngine_.empty(),
                  "no swap option engine set");
 
+    QL_REQUIRE(arguments_.nominal != Null<Real>(),
+               "non-constant nominals are not supported yet");
+
     Date priceDate = defaultTS_->referenceDate();
 
     Real cumOptVal = 0., 
         cumPutVal = 0.;
-    // Vanilla swap so 0 leg is floater
-
-    std::vector<Date>::const_iterator nextFD = 
+    auto nextFD = 
       arguments_.fixedPayDates.begin();
     Date swapletStart = priceDate;
     while (*nextFD < priceDate) ++nextFD;
 
     // Compute fair spread for strike value:
     // copy args into the non risky engine
-    Swap::arguments * noCVAArgs = dynamic_cast<Swap::arguments*>(
-      baseSwapEngine_->getArguments());
-    QL_REQUIRE(noCVAArgs != 0, "wrong argument type");
+    auto* noCVAArgs = dynamic_cast<Swap::arguments*>(baseSwapEngine_->getArguments());
+    QL_REQUIRE(noCVAArgs != nullptr, "wrong argument type");
 
     noCVAArgs->legs = this->arguments_.legs;
     noCVAArgs->payer = this->arguments_.payer;
@@ -141,16 +141,14 @@ namespace QuantLib {
     QL_REQUIRE(coupon,"dynamic cast of fixed leg coupon failed.");
     Rate baseSwapRate = coupon->rate();
 
-    const Swap::results * vSResults =  
-        dynamic_cast<const Swap::results *>(baseSwapEngine_->getResults());
-    QL_REQUIRE(vSResults != 0, "wrong result type");
+    const auto* vSResults = dynamic_cast<const Swap::results*>(baseSwapEngine_->getResults());
+    QL_REQUIRE(vSResults != nullptr, "wrong result type");
 
     Rate baseSwapFairRate = -baseSwapRate * vSResults->legNPV[1] / 
         vSResults->legNPV[0];
     Real baseSwapNPV = vSResults->value;
 
-    VanillaSwap::Type reversedType = arguments_.type == VanillaSwap::Payer ? 
-        VanillaSwap::Receiver : VanillaSwap::Payer;
+    Swap::Type reversedType = arguments_.type == Swap::Payer ? Swap::Receiver : Swap::Payer;
 
     // Swaplet options summatory:
     while(nextFD != arguments_.fixedPayDates.end()) {
@@ -168,9 +166,8 @@ namespace QuantLib {
 	    - swapletStart.serialNumber(), Days);
       ext::shared_ptr<VanillaSwap> swaplet = MakeVanillaSwap(
         baseSwapsTenor,
-        swapIndex, 
-        baseSwapFairRate // strike
-        )
+        swapIndex)
+        .withFixedRate(baseSwapFairRate)
 	    .withType(arguments_.type)
 	    .withNominal(arguments_.nominal)
           ////////	    .withSettlementDays(2)
@@ -178,9 +175,8 @@ namespace QuantLib {
         .withTerminationDate(arguments_.fixedPayDates.back());
       ext::shared_ptr<VanillaSwap> revSwaplet = MakeVanillaSwap(
         baseSwapsTenor,
-        swapIndex, 
-        baseSwapFairRate // strike
-        )
+        swapIndex)
+        .withFixedRate(baseSwapFairRate)
 	    .withType(reversedType)
 	    .withNominal(arguments_.nominal)
           /////////	    .withSettlementDays(2)

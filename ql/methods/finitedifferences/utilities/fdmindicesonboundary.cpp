@@ -12,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -31,14 +31,11 @@ namespace QuantLib {
         std::vector<Size> newDim(layout->dim());
         newDim[direction] = 1;
         const Size hyperSize
-            = std::accumulate(newDim.begin(), newDim.end(), Size(1),
-                              std::multiplies<Size>());
+            = std::accumulate(newDim.begin(), newDim.end(), Size(1), std::multiplies<>());
         indices_.resize(hyperSize);
 
         Size i=0;
-        const FdmLinearOpIterator endIter = layout->end();
-        for (FdmLinearOpIterator iter = layout->begin(); iter != endIter;
-            ++iter) {
+        for (const auto& iter : *layout) {
             if (   (   side == FdmDirichletBoundary::Lower
                     && iter.coordinates()[direction] == 0)
                 || (   side == FdmDirichletBoundary::Upper

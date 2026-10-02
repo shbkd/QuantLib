@@ -12,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -53,25 +53,23 @@ namespace QuantLib {
         class arguments;
         class results;
 
+        /*! If the passed iborIndex is an overnight rate such as
+            SOFR, ESTR or SONIA, the floatSchedule argument is
+            required and will be used to build overnight-indexed
+            coupons.
+        */
         AssetSwap(bool payBondCoupon,
-                  const ext::shared_ptr<Bond>& bond,
+                  ext::shared_ptr<Bond> bond,
                   Real bondCleanPrice,
                   const ext::shared_ptr<IborIndex>& iborIndex,
                   Spread spread,
-                  const Schedule& floatSchedule = Schedule(),
+                  Schedule floatSchedule = Schedule(),
                   const DayCounter& floatingDayCount = DayCounter(),
-                  bool parAssetSwap = true);
+                  bool parAssetSwap = true,
+                  Real gearing = 1.0,
+                  Real nonParRepayment = Null<Real>(),
+                  Date dealMaturity = Date());
 
-        AssetSwap(bool parAssetSwap,
-                  const ext::shared_ptr<Bond>& bond,
-                  Real bondCleanPrice,
-                  Real nonParRepayment,
-                  Real gearing,
-                  const ext::shared_ptr<IborIndex>& iborIndex,
-                  Spread spread = 0.0,
-                  const DayCounter& floatingDayCount = DayCounter(),
-                  Date dealMaturity = Date(),
-                  bool payBondCoupon = false);
         // results
         Spread fairSpread() const;
         Real floatingLegBPS() const;
@@ -88,10 +86,11 @@ namespace QuantLib {
         const Leg& bondLeg() const { return legs_[0]; }
         const Leg& floatingLeg() const { return legs_[1]; }
         // other
-        void setupArguments(PricingEngine::arguments* args) const;
-        void fetchResults(const PricingEngine::results*) const;
+        void setupArguments(PricingEngine::arguments* args) const override;
+        void fetchResults(const PricingEngine::results*) const override;
+
       private:
-        void setupExpired() const;
+        void setupExpired() const override;
         ext::shared_ptr<Bond> bond_;
         Real bondCleanPrice_, nonParRepayment_;
         Spread spread_;
@@ -106,7 +105,7 @@ namespace QuantLib {
     //! %Arguments for asset swap calculation
     class AssetSwap::arguments : public Swap::arguments {
       public:
-        arguments() {}
+        arguments() = default;
         std::vector<Date> fixedResetDates;
         std::vector<Date> fixedPayDates;
         std::vector<Real> fixedCoupons;
@@ -115,7 +114,7 @@ namespace QuantLib {
         std::vector<Date> floatingFixingDates;
         std::vector<Date> floatingPayDates;
         std::vector<Spread> floatingSpreads;
-        void validate() const;
+        void validate() const override;
     };
 
     //! %Results from simple swap calculation
@@ -123,7 +122,7 @@ namespace QuantLib {
       public:
         Spread fairSpread;
         Real fairCleanPrice, fairNonParRepayment;
-        void reset();
+        void reset() override;
     };
 
 }

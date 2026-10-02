@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -41,13 +41,13 @@ namespace QuantLib {
         class arguments;
         class results;
         class engine;
-        VarianceOption(const ext::shared_ptr<Payoff>& payoff,
+        VarianceOption(ext::shared_ptr<Payoff> payoff,
                        Real notional,
                        const Date& startDate,
                        const Date& maturityDate);
         //! \name Instrument interface
         //@{
-        bool isExpired() const;
+        bool isExpired() const override;
         //@}
         //! \name Inspectors
         //@{
@@ -56,7 +56,8 @@ namespace QuantLib {
         Real notional() const;
         ext::shared_ptr<Payoff> payoff() const;
         //@}
-        void setupArguments(PricingEngine::arguments* args) const;
+        void setupArguments(PricingEngine::arguments* args) const override;
+
       protected:
         // data members
         ext::shared_ptr<Payoff> payoff_;
@@ -69,7 +70,7 @@ namespace QuantLib {
     class VarianceOption::arguments : public virtual PricingEngine::arguments {
       public:
         arguments() : notional(Null<Real>()) {}
-        void validate() const;
+        void validate() const override;
         ext::shared_ptr<Payoff> payoff;
         Real notional;
         Date startDate;

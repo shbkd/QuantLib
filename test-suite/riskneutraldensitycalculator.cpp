@@ -1,8 +1,9 @@
 /* -*- mode: c++; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- */
 
 /*
- Copyright (C) 2015 Johannes Goettker-Schnetmann
+ Copyright (C) 2015 Johannes Göttker-Schnetmann
  Copyright (C) 2015, 2016 Klaus Spanderen
+ Copyright (C) 2026 Yassine Idyiahia
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -11,55 +12,52 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "riskneutraldensitycalculator.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
-
-#include <ql/timegrid.hpp>
-#include <ql/time/calendars/nullcalendar.hpp>
-#include <ql/math/functional.hpp>
-#include <ql/math/distributions/normaldistribution.hpp>
-#include <ql/math/integrals/gausslobattointegral.hpp>
-#include <ql/quotes/simplequote.hpp>
-#include <ql/processes/hestonprocess.hpp>
-#include <ql/processes/blackscholesprocess.hpp>
+#include <ql/experimental/volatility/svismilesection.hpp>
 #include <ql/instruments/vanillaoption.hpp>
+#include <ql/math/distributions/normaldistribution.hpp>
+#include <ql/math/integrals/gaussianquadratures.hpp>
+#include <ql/math/integrals/gausslobattointegral.hpp>
+#include <ql/methods/finitedifferences/utilities/bsmrndcalculator.hpp>
+#include <ql/methods/finitedifferences/utilities/cevrndcalculator.hpp>
+#include <ql/methods/finitedifferences/utilities/gbsmrndcalculator.hpp>
+#include <ql/methods/finitedifferences/utilities/hestonrndcalculator.hpp>
+#include <ql/methods/finitedifferences/utilities/localvolrndcalculator.hpp>
+#include <ql/methods/finitedifferences/utilities/smilesectionrndcalculator.hpp>
+#include <ql/methods/finitedifferences/utilities/squarerootprocessrndcalculator.hpp>
+#include <ql/models/equity/hestonmodel.hpp>
 #include <ql/pricingengines/blackcalculator.hpp>
 #include <ql/pricingengines/vanilla/fdblackscholesvanillaengine.hpp>
-#include <ql/termstructures/volatility/equityfx/localconstantvol.hpp>
+#include <ql/processes/blackscholesprocess.hpp>
+#include <ql/processes/hestonprocess.hpp>
+#include <ql/quotes/simplequote.hpp>
+#include <ql/termstructures/volatility/atmsmilesection.hpp>
 #include <ql/termstructures/volatility/equityfx/hestonblackvolsurface.hpp>
+#include <ql/termstructures/volatility/equityfx/localconstantvol.hpp>
 #include <ql/termstructures/volatility/equityfx/noexceptlocalvolsurface.hpp>
-#include <ql/experimental/finitedifferences/bsmrndcalculator.hpp>
-#include <ql/experimental/finitedifferences/gbsmrndcalculator.hpp>
-#include <ql/experimental/finitedifferences/hestonrndcalculator.hpp>
-#include <ql/experimental/finitedifferences/localvolrndcalculator.hpp>
-#include <ql/experimental/finitedifferences/squarerootprocessrndcalculator.hpp>
-#include <ql/models/equity/hestonmodel.hpp>
+#include <ql/termstructures/volatility/flatsmilesection.hpp>
+#include <ql/time/calendars/nullcalendar.hpp>
+#include <ql/timegrid.hpp>
 #include <ql/types.hpp>
-
-#if defined(__GNUC__) && (((__GNUC__ == 4) && (__GNUC_MINOR__ >= 8)) || (__GNUC__ > 4))
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-local-typedefs"
-#endif
-#include <boost/bind.hpp>
-#if defined(__GNUC__) && (((__GNUC__ == 4) && (__GNUC_MINOR__ >= 8)) || (__GNUC__ > 4))
-#pragma GCC diagnostic pop
-#endif
-
+#include <utility>
 
 using namespace QuantLib;
 using namespace boost::unit_test_framework;
 
-void RiskNeutralDensityCalculatorTest::testDensityAgainstOptionPrices() {
-    BOOST_TEST_MESSAGE("Testing density against option prices...");
+BOOST_FIXTURE_TEST_SUITE(QuantLibTests, TopLevelFixture)
 
-    SavedSettings backup;
+BOOST_AUTO_TEST_SUITE(RiskNeutralDensityCalculatorTests)
+
+BOOST_AUTO_TEST_CASE(testDensityAgainstOptionPrices) {
+    BOOST_TEST_MESSAGE("Testing density against option prices...");
 
     const DayCounter dayCounter = Actual365Fixed();
     const Date todaysDate = Settings::instance().evaluationDate();
@@ -85,19 +83,17 @@ void RiskNeutralDensityCalculatorTest::testDensityAgainstOptionPrices() {
     const Time times[] = { 0.5, 1.0, 2.0 };
     const Real strikes[] = { 75.0, 100.0, 150.0 };
 
-    for (Size i=0; i < LENGTH(times); ++i) {
-        const Time t = times[i];
-        const Volatility stdDev = v*std::sqrt(t);
+    for (Real t : times) {
+        const Volatility stdDev = v * std::sqrt(t);
         const DiscountFactor df = rTS->discount(t);
         const Real fwd = s0*qTS->discount(t)/df;
 
-        for (Size j=0; j < LENGTH(strikes); ++j) {
-            const Real strike = strikes[j];
+        for (Real strike : strikes) {
             const Real xs = std::log(strike);
             const BlackCalculator blackCalc(
                 Option::Put, strike, fwd, stdDev, df);
 
-            const Real tol = std::sqrt(QL_EPSILON);
+            const Real tol = 10*std::sqrt(QL_EPSILON);
             const Real calculatedCDF = bsm.cdf(xs, t);
             const Real expectedCDF
                 = blackCalc.strikeSensitivity()/df;
@@ -130,10 +126,8 @@ void RiskNeutralDensityCalculatorTest::testDensityAgainstOptionPrices() {
     }
 }
 
-void RiskNeutralDensityCalculatorTest::testBSMagainstHestonRND() {
+BOOST_AUTO_TEST_CASE(testBSMagainstHestonRND) {
     BOOST_TEST_MESSAGE("Testing Black-Scholes-Merton and Heston densities...");
-
-    SavedSettings backup;
 
     const DayCounter dayCounter = Actual365Fixed();
     const Date todaysDate = Settings::instance().evaluationDate();
@@ -171,11 +165,8 @@ void RiskNeutralDensityCalculatorTest::testBSMagainstHestonRND() {
     const Real strikes[] = { 7.5, 10, 15 };
     const Real probs[] = { 1e-6, 0.01, 0.5, 0.99, 1.0-1e-6 };
 
-    for (Size i=0; i < LENGTH(times); ++i) {
-        const Time t = times[i];
-
-        for (Size j=0; j < LENGTH(strikes); ++j) {
-            const Real strike = strikes[j];
+    for (Real t : times) {
+        for (Real strike : strikes) {
             const Real xs = std::log(strike);
 
             const Real expectedPDF = bsm.pdf(xs, t);
@@ -204,8 +195,7 @@ void RiskNeutralDensityCalculatorTest::testBSMagainstHestonRND() {
             }
         }
 
-        for (Size j=0; j < LENGTH(probs); ++j) {
-            const Real prob = probs[j];
+        for (Real prob : probs) {
             const Real expectedInvCDF = bsm.invcdf(prob, t);
             const Real calculatedInvCDF = heston.invcdf(prob, t);
 
@@ -222,90 +212,86 @@ void RiskNeutralDensityCalculatorTest::testBSMagainstHestonRND() {
     }
 }
 
-namespace {
-    // see Svetlana Borovkova, Ferry J. Permana
-    // Implied volatility in oil markets
-    // http://www.researchgate.net/publication/46493859_Implied_volatility_in_oil_markets
-    class DumasParametricVolSurface : public BlackVolatilityTermStructure {
-      public:
-        DumasParametricVolSurface(
-            Real b1, Real b2, Real b3, Real b4, Real b5,
-            const ext::shared_ptr<Quote>& spot,
-            const ext::shared_ptr<YieldTermStructure>& rTS,
-            const ext::shared_ptr<YieldTermStructure>& qTS)
-        : BlackVolatilityTermStructure(
-              0, NullCalendar(), Following, rTS->dayCounter()),
-          b1_(b1), b2_(b2), b3_(b3), b4_(b4), b5_(b5),
-          spot_(spot), rTS_(rTS), qTS_(qTS) {}
+// see Svetlana Borovkova, Ferry J. Permana
+// Implied volatility in oil markets
+// http://www.researchgate.net/publication/46493859_Implied_volatility_in_oil_markets
+class DumasParametricVolSurface : public BlackVolatilityTermStructure {
+  public:
+    DumasParametricVolSurface(Real b1,
+                              Real b2,
+                              Real b3,
+                              Real b4,
+                              Real b5,
+                              ext::shared_ptr<Quote> spot,
+                              const ext::shared_ptr<YieldTermStructure>& rTS,
+                              ext::shared_ptr<YieldTermStructure> qTS)
+    : BlackVolatilityTermStructure(0, NullCalendar(), Following, rTS->dayCounter()), b1_(b1),
+      b2_(b2), b3_(b3), b4_(b4), b5_(b5), spot_(std::move(spot)), rTS_(rTS),
+      qTS_(std::move(qTS)) {}
 
-        Date maxDate() const { return Date::maxDate(); }
-        Rate minStrike() const { return 0.0; }
-        Rate maxStrike() const { return QL_MAX_REAL; }
+    Date maxDate() const override { return Date::maxDate(); }
+    Rate minStrike() const override { return 0.0; }
+    Rate maxStrike() const override { return QL_MAX_REAL; }
 
-      protected:
-        Volatility blackVolImpl(Time t, Real strike) const {
-            QL_REQUIRE(t >= 0.0, "t must be >= 0");
+  protected:
+    Volatility blackVolImpl(Time t, Real strike) const override {
+        QL_REQUIRE(t >= 0.0, "t must be >= 0");
 
-            if (t < QL_EPSILON)
-                return b1_;
+        if (t < QL_EPSILON)
+            return b1_;
 
-            const Real fwd = spot_->value()*qTS_->discount(t)/rTS_->discount(t);
-            const Real mn = std::log(fwd/strike)/std::sqrt(t);
+        const Real fwd = spot_->value()*qTS_->discount(t)/rTS_->discount(t);
+        const Real mn = std::log(fwd/strike)/std::sqrt(t);
 
-            return b1_ + b2_*mn + b3_*mn*mn + b4_*t + b5_*mn*t;
-        }
-
-      private:
-        const Real b1_, b2_, b3_, b4_, b5_;
-        const ext::shared_ptr<Quote> spot_;
-        const ext::shared_ptr<YieldTermStructure> rTS_;
-        const ext::shared_ptr<YieldTermStructure> qTS_;
-    };
-
-    class ProbWeightedPayoff : public std::unary_function<Real, Real> {
-      public:
-        ProbWeightedPayoff(
-            Time t,
-            const ext::shared_ptr<Payoff>& payoff,
-            const ext::shared_ptr<RiskNeutralDensityCalculator>& calc)
-      : t_(t), payoff_(payoff), calc_(calc) {}
-
-        Real operator()(Real x) const {
-            return calc_->pdf(x, t_) * (*payoff_)(std::exp(x));
-        }
-
-      private:
-        const Real t_;
-        const ext::shared_ptr<Payoff> payoff_;
-        const ext::shared_ptr<RiskNeutralDensityCalculator> calc_;
-    };
-
-    Disposable<std::vector<Time> > adaptiveTimeGrid(
-        Size maxStepsPerYear, Size minStepsPerYear, Real decay, Time endTime) {
-        const Time maxDt = 1.0/maxStepsPerYear;
-        const Time minDt = 1.0/minStepsPerYear;
-
-        Time t=0.0;
-        std::vector<Time> times(1, t);
-        while (t < endTime) {
-            const Time dt = maxDt*std::exp(-decay*t)
-                          + minDt*(1.0-std::exp(-decay*t));
-            t+=dt;
-            times.push_back(std::min(endTime, t));
-        }
-
-        return times;
+        return b1_ + b2_*mn + b3_*mn*mn + b4_*t + b5_*mn*t;
     }
+
+  private:
+    const Real b1_, b2_, b3_, b4_, b5_;
+    const ext::shared_ptr<Quote> spot_;
+    const ext::shared_ptr<YieldTermStructure> rTS_;
+    const ext::shared_ptr<YieldTermStructure> qTS_;
+};
+
+class ProbWeightedPayoff {
+  public:
+    ProbWeightedPayoff(Time t,
+                       ext::shared_ptr<Payoff> payoff,
+                       ext::shared_ptr<RiskNeutralDensityCalculator> calc)
+    : t_(t), payoff_(std::move(payoff)), calc_(std::move(calc)) {}
+
+    Real operator()(Real x) const {
+        return calc_->pdf(x, t_) * (*payoff_)(std::exp(x));
+    }
+
+  private:
+    const Real t_;
+    const ext::shared_ptr<Payoff> payoff_;
+    const ext::shared_ptr<RiskNeutralDensityCalculator> calc_;
+};
+
+std::vector<Time> adaptiveTimeGrid(Size maxStepsPerYear, Size minStepsPerYear, Real decay, Time endTime) {
+    const Time maxDt = 1.0/maxStepsPerYear;
+    const Time minDt = 1.0/minStepsPerYear;
+
+    Time t=0.0;
+    std::vector<Time> times(1, t);
+    while (t < endTime) {
+        const Time dt = maxDt*std::exp(-decay*t)
+            + minDt*(1.0-std::exp(-decay*t));
+        t+=dt;
+        times.push_back(std::min(endTime, t));
+    }
+
+    return times;
 }
 
-void RiskNeutralDensityCalculatorTest::testLocalVolatilityRND() {
+
+BOOST_AUTO_TEST_CASE(testLocalVolatilityRND) {
     BOOST_TEST_MESSAGE("Testing Fokker-Planck forward equation "
                        "for local volatility process to calculate "
                        "risk neutral densities...");
 
-    SavedSettings backup;
-
-    const Calendar nullCalendar = NullCalendar();
     const DayCounter dayCounter = Actual365Fixed();
     const Date todaysDate = Date(28, Dec, 2012);
     Settings::instance().evaluationDate() = todaysDate;
@@ -430,33 +416,27 @@ void RiskNeutralDensityCalculatorTest::testLocalVolatilityRND() {
             spot, rTS, qTS, localVolSurface, dumasTimeGrid, 401, 0.1, 1e-8));
 
     const Real strikes[] = { 25, 50, 95, 100, 105, 150, 200, 400 };
-    const Date maturityDates[] = {
+    const std::vector<Date> maturities = {
         todaysDate + Period(1, Weeks),   todaysDate + Period(1, Months),
         todaysDate + Period(3, Months),  todaysDate + Period(6, Months),
         todaysDate + Period(12, Months), todaysDate + Period(18, Months),
         todaysDate + Period(2, Years),   todaysDate + Period(3, Years) };
-    const std::vector<Date> maturities(
-        maturityDates, maturityDates + LENGTH(maturityDates));
 
 
-    for (Size i=0; i < maturities.size(); ++i) {
+    for (auto maturity : maturities) {
         const Time expiry
-            = rTS->dayCounter().yearFraction(todaysDate, maturities[i]);
+            = rTS->dayCounter().yearFraction(todaysDate, maturity);
 
         const ext::shared_ptr<PricingEngine> engine(
             new FdBlackScholesVanillaEngine(
                 bsmProcess, std::max(Size(51), Size(expiry*101)),
                 201, 0, FdmSchemeDesc::Douglas(), true, b1));
 
-        const ext::shared_ptr<Exercise> exercise(
-            new EuropeanExercise(maturities[i]));
+        const ext::shared_ptr<Exercise> exercise(new EuropeanExercise(maturity));
 
-        for (Size k=0; k < LENGTH(strikes); ++k) {
-            const Real strike = strikes[k];
-            const ext::shared_ptr<StrikedTypePayoff> payoff(
-                new PlainVanillaPayoff(
-                    (strike > spot->value()) ? Option::Call : Option::Put
-                    , strike));
+        for (Real strike : strikes) {
+            const ext::shared_ptr<StrikedTypePayoff> payoff(new PlainVanillaPayoff(
+                (strike > spot->value()) ? Option::Call : Option::Put, strike));
 
             VanillaOption option(payoff, exercise);
             option.setPricingEngine(engine);
@@ -488,7 +468,7 @@ void RiskNeutralDensityCalculatorTest::testLocalVolatilityRND() {
     }
 }
 
-void RiskNeutralDensityCalculatorTest::testSquareRootProcessRND() {
+BOOST_AUTO_TEST_CASE(testSquareRootProcessRND) {
     BOOST_TEST_MESSAGE("Testing probability density for a square root process...");
 
     struct SquareRootProcessParams {
@@ -500,20 +480,19 @@ void RiskNeutralDensityCalculatorTest::testSquareRootProcessRND() {
             { 1.0, 0.6, 0.1, 0.75 },
             { 0.005, 0.6, 0.1, 0.05 } };
 
-    for (Size i=0; i < LENGTH(params); ++i) {
-        const SquareRootProcessRNDCalculator rndCalculator(
-            params[i].v0, params[i].kappa, params[i].theta, params[i].sigma);
+    for (const auto& param : params) {
+        const SquareRootProcessRNDCalculator rndCalculator(param.v0, param.kappa, param.theta,
+                                                           param.sigma);
 
         const Time t = 0.75;
-        const Time tInfty = 60.0/params[i].kappa;
+        const Time tInfty = 60.0 / param.kappa;
 
         const Real tol = 1e-10;
-        for (Real v = 1e-5; v < 1.0; v+=(v < params[i].theta) ? 0.005 : 0.1) {
+        for (Real v = 1e-5; v < 1.0; v += (v < param.theta) ? 0.005 : 0.1) {
 
             const Real cdfCalculated = rndCalculator.cdf(v, t);
             const Real cdfExpected = GaussLobattoIntegral(10000, 0.01*tol)(
-                boost::bind(&SquareRootProcessRNDCalculator::pdf,
-                    &rndCalculator, _1, t), 0, v);
+                [&](Real _x) { return rndCalculator.pdf(_x, t); }, 0, v);
 
             if (std::fabs(cdfCalculated - cdfExpected) > tol) {
                 BOOST_FAIL("failed to calculate cdf"
@@ -580,12 +559,10 @@ void RiskNeutralDensityCalculatorTest::testSquareRootProcessRND() {
     }
 }
 
-void RiskNeutralDensityCalculatorTest::testBlackScholesWithSkew() {
+BOOST_AUTO_TEST_CASE(testBlackScholesWithSkew) {
     BOOST_TEST_MESSAGE(
         "Testing probability density for a BSM process "
         "with strike dependent volatility vs local volatility...");
-
-    SavedSettings backup;
 
     const Date todaysDate = Date(3, Oct, 2016);
     Settings::instance().evaluationDate() = todaysDate;
@@ -616,7 +593,7 @@ void RiskNeutralDensityCalculatorTest::testBlackScholesWithSkew() {
         ext::make_shared<HestonBlackVolSurface>(
             Handle<HestonModel>(ext::make_shared<HestonModel>(hestonProcess)),
             AnalyticHestonEngine::AndersenPiterbarg,
-            AnalyticHestonEngine::Integration::discreteTrapezoid(32)));
+            AnalyticHestonEngine::Integration::discreteTrapezoid(128)));
 
     const ext::shared_ptr<TimeGrid> timeGrid(new TimeGrid(maturity, 51));
 
@@ -636,8 +613,7 @@ void RiskNeutralDensityCalculatorTest::testBlackScholesWithSkew() {
 
     const Real strikes[] = { 85, 75, 90, 110, 125, 150 };
 
-    for (Size i=0; i < LENGTH(strikes); ++i) {
-        const Real strike = strikes[i];
+    for (Real strike : strikes) {
         const Real logStrike = std::log(strike);
 
         const Real expected = hestonCalc.cdf(logStrike, maturity);
@@ -669,8 +645,7 @@ void RiskNeutralDensityCalculatorTest::testBlackScholesWithSkew() {
         }
     }
 
-    for (Size i=0; i < LENGTH(strikes); ++i) {
-        const Real strike = strikes[i];
+    for (Real strike : strikes) {
         const Real logStrike = std::log(strike);
 
         const Real expected = hestonCalc.pdf(logStrike, maturity)/strike;
@@ -704,9 +679,7 @@ void RiskNeutralDensityCalculatorTest::testBlackScholesWithSkew() {
     }
 
     const Real quantiles[] = { 0.05, 0.25, 0.5, 0.75, 0.95 };
-    for (Size i=0; i < LENGTH(quantiles); ++i) {
-        const Real quantile = quantiles[i];
-
+    for (Real quantile : quantiles) {
         const Real expected = std::exp(hestonCalc.invcdf(quantile, maturity));
         const Real calculatedGBSM = gbsmCalc.invcdf(quantile, maturity);
 
@@ -724,7 +697,7 @@ void RiskNeutralDensityCalculatorTest::testBlackScholesWithSkew() {
 
         const Real calculatedLocalVol
             = std::exp(localVolCalc.invcdf(quantile, maturity));
-        const Real localVolTol = 0.1;
+        const Real localVolTol = 0.2;
         if (std::fabs(expected - calculatedLocalVol) > localVolTol) {
             BOOST_FAIL("failed to match Heston and local Volatility invcdf"
                     << "\n   t:          " << maturity
@@ -738,22 +711,425 @@ void RiskNeutralDensityCalculatorTest::testBlackScholesWithSkew() {
     }
 }
 
-test_suite* RiskNeutralDensityCalculatorTest::experimental(SpeedLevel speed) {
-    test_suite* suite = BOOST_TEST_SUITE("Risk neutral density calculator tests");
+BOOST_AUTO_TEST_CASE(testMassAtZeroCEVProcessRND) {
+    BOOST_TEST_MESSAGE("Testing the mass at zero for a "
+                       "constant elasticity of variance (CEV) process...");
 
-    suite->add(QUANTLIB_TEST_CASE(
-        &RiskNeutralDensityCalculatorTest::testDensityAgainstOptionPrices));
-    suite->add(QUANTLIB_TEST_CASE(
-        &RiskNeutralDensityCalculatorTest::testBSMagainstHestonRND));
-    suite->add(QUANTLIB_TEST_CASE(
-        &RiskNeutralDensityCalculatorTest::testLocalVolatilityRND));
-    suite->add(QUANTLIB_TEST_CASE(
-        &RiskNeutralDensityCalculatorTest::testSquareRootProcessRND));
+    const Real f0 = 100.0;
+    const Time t = 2.75;
 
-    if (speed <= Fast) {
-        suite->add(QUANTLIB_TEST_CASE(
-            &RiskNeutralDensityCalculatorTest::testBlackScholesWithSkew));
+    const std::pair<Real, Real> params[] = {
+        {0.1, 1.6},
+        {0.01, 2.0},
+        {10.0, 0.35},
+        {50.0, 0.1}
+    };
+
+    const Real tol = 1e-4;
+
+    for (const auto& param : params) {
+        const Real alpha = param.first;
+        const Real beta = param.second;
+
+        const ext::shared_ptr<CEVRNDCalculator> calculator =
+            ext::make_shared<CEVRNDCalculator>(f0, alpha, beta);
+
+        const Real ax = 15.0*std::sqrt(t)*alpha*std::pow(f0, beta);
+
+        const Real calculated = GaussLobattoIntegral(1000, 1e-8)(
+            [&](Real _x) -> Real { return calculator->pdf(_x, t); }, std::max(QL_EPSILON, f0-ax), f0+ax) +
+            calculator->massAtZero(t);
+
+        if (std::fabs(calculated - 1.0) > tol) {
+            BOOST_FAIL("failed to reproduce the total probability mass"
+                    << "\n   alpha:     " << alpha
+                    << "\n   beta:      " << beta
+                    << "\n   prob mass: " << calculated
+                    << "\n   tolerance: " << tol);
+        }
+    }
+}
+
+BOOST_AUTO_TEST_CASE(testCEVCDF) {
+    BOOST_TEST_MESSAGE("Testing CDF for a "
+                       "constant elasticity of variance (CEV) process...");
+
+    const Real f0 = 2.1;
+    const Time t = 0.75;
+
+    const Real alpha = 0.1;
+    const Real betas[] = { 0.45, 1.25 };
+
+    const Real tol = 1e-6;
+    for (Size i = 1; i < std::size(betas); ++i) {
+        const Real beta = betas[i];
+        const ext::shared_ptr<CEVRNDCalculator> calculator =
+            ext::make_shared<CEVRNDCalculator>(f0, alpha, beta);
+
+        for (Real x = 1.3; x < 3.1; x+=0.1) {
+
+            const Real cdfValue = calculator->cdf(x, t);
+            const Real calculated = calculator->invcdf(cdfValue, t);
+
+            if (std::fabs(x - calculated) > tol) {
+                BOOST_FAIL(
+                    "failed to reproduce the inverse cumulative probability"
+                        << "\n   alpha:     " << alpha
+                        << "\n   beta:      " << beta
+                        << "\n   x:         " << x
+                        << "\n   calculated:" << calculated
+                        << "\n   difference:" << x - calculated
+                        << "\n   tolerance: " << tol);
+            }
+        }
+    }
+}
+
+BOOST_AUTO_TEST_CASE(testSmileSectionRNDvsBSM) {
+    BOOST_TEST_MESSAGE("Testing SmileSectionRNDCalculator on a flat-vol "
+                       "smile against BSMRNDCalculator...");
+
+    const DayCounter dc = Actual365Fixed();
+    const Date today = Settings::instance().evaluationDate();
+    const Date maturity = today + 1 * Years;
+
+    const Real s0 = 100.0;
+    const Rate r = 0.05;
+    const Rate q = 0.02;
+    const Volatility v = 0.20;
+
+    const Handle<Quote> spot(ext::make_shared<SimpleQuote>(s0));
+    const Handle<YieldTermStructure> rTS(flatRate(today, r, dc));
+    const Handle<YieldTermStructure> qTS(flatRate(today, q, dc));
+
+    const ext::shared_ptr<BlackScholesMertonProcess> bsmProcess =
+        ext::make_shared<BlackScholesMertonProcess>(
+            spot, qTS, rTS,
+            Handle<BlackVolTermStructure>(flatVol(today, v, dc)));
+
+    const BSMRNDCalculator bsmRnd(bsmProcess);
+
+    const Real fwd = s0 * qTS->discount(maturity) / rTS->discount(maturity);
+    const auto smile = ext::make_shared<FlatSmileSection>(
+        maturity, v, dc, today, fwd);
+    const SmileSectionRNDCalculator smileRnd(smile);
+    const Time T = smile->exerciseTime();
+
+    const Real logFwd = std::log(fwd);
+    const Real tol = 1e-3;
+
+    for (Real offset : { -0.30, -0.15, 0.0, 0.15, 0.30 }) {
+        const Real x = logFwd + offset;
+
+        const Real expectedCDF = bsmRnd.cdf(x, T);
+        const Real calculatedCDF = smileRnd.cdf(x, T);
+        if (std::fabs(expectedCDF - calculatedCDF) > tol) {
+            BOOST_FAIL("failed to reproduce BSM cdf with SmileSection RND"
+                    << "\n   x:          " << x
+                    << "\n   calculated: " << calculatedCDF
+                    << "\n   expected:   " << expectedCDF
+                    << "\n   diff:       " << calculatedCDF - expectedCDF
+                    << "\n   tolerance:  " << tol);
+        }
+
+        const Real expectedPDF = bsmRnd.pdf(x, T);
+        const Real calculatedPDF = smileRnd.pdf(x, T);
+        if (std::fabs(expectedPDF - calculatedPDF) > tol) {
+            BOOST_FAIL("failed to reproduce BSM pdf with SmileSection RND"
+                    << "\n   x:          " << x
+                    << "\n   calculated: " << calculatedPDF
+                    << "\n   expected:   " << expectedPDF
+                    << "\n   diff:       " << calculatedPDF - expectedPDF
+                    << "\n   tolerance:  " << tol);
+        }
     }
 
-    return suite;
+    for (Real prob : { 0.05, 0.25, 0.5, 0.75, 0.95 }) {
+        const Real expectedInvCDF = bsmRnd.invcdf(prob, T);
+        const Real calculatedInvCDF = smileRnd.invcdf(prob, T);
+        if (std::fabs(expectedInvCDF - calculatedInvCDF) > tol) {
+            BOOST_FAIL("failed to reproduce BSM invcdf with SmileSection RND"
+                    << "\n   prob:       " << prob
+                    << "\n   calculated: " << calculatedInvCDF
+                    << "\n   expected:   " << expectedInvCDF
+                    << "\n   diff:       " << calculatedInvCDF - expectedInvCDF
+                    << "\n   tolerance:  " << tol);
+        }
+    }
 }
+
+BOOST_AUTO_TEST_CASE(testSmileSectionRNDQuantileRange) {
+    BOOST_TEST_MESSAGE("Testing SmileSectionRNDCalculator quantile-range "
+                       "saturation...");
+
+    const Time T = 1.0;
+    const Real fwd = 100.0;
+    const Volatility vol = 0.20;
+    const Real nStd = 1.0;
+    const auto smile = ext::make_shared<FlatSmileSection>(
+        T, vol, DayCounter(), fwd);
+    const SmileSectionRNDCalculator rnd(smile, 200, nStd);
+    const CumulativeNormalDistribution Phi;
+
+    const Real logMean = std::log(fwd) - 0.5 * vol * vol * T;
+    const Real tol = 1e-6;
+    for (Real sign : { -1.0, 1.0 }) {
+        const Real probability = Phi(sign * 2.0 * nStd);
+        const Real calculated = rnd.invcdf(probability);
+        const Real expected = logMean + sign * nStd * vol * std::sqrt(T);
+
+        if (std::fabs(calculated - expected) > tol) {
+            BOOST_FAIL("failed to saturate at the requested normal quantile"
+                       << "\n   side:       " << sign
+                       << "\n   calculated: " << calculated
+                       << "\n   expected:   " << expected
+                       << "\n   difference: " << calculated - expected
+                       << "\n   tolerance:  " << tol);
+        }
+    }
+}
+
+BOOST_AUTO_TEST_CASE(testSmileSectionRNDLowVolFatWings) {
+    BOOST_TEST_MESSAGE("Testing SmileSectionRNDCalculator quantile range at a "
+                       "low at-the-money volatility...");
+
+    // Wings reaching far in log-moneyness on a 5% ATM volatility, which a
+    // search stepping in ATM standard deviations cannot cross.
+    const std::vector<Real> svi = { -0.7124561725, 0.2210528950, 3.2365013812,
+                                    -0.0171352352, -0.0547257886 };
+    const Real fwd = 50.0;
+    const Real nStd = 8.0;
+
+    const auto smile = ext::make_shared<SviSmileSection>(1.0, fwd, svi);
+    const SmileSectionRNDCalculator rnd(smile, 200, nStd);
+    const CumulativeNormalDistribution Phi;
+    const InverseCumulativeNormal invPhi;
+
+    const Real tol = 1e-3;
+    const Real edge = rnd.invcdf(Phi(-nStd));
+    const Real reached = invPhi(rnd.cdf(edge));
+
+    if (std::fabs(reached + nStd) > tol) {
+        BOOST_FAIL("failed to reach the requested quantile"
+                   << "\n   requested: " << -nStd
+                   << "\n   reached:   " << reached
+                   << "\n   at x:      " << edge
+                   << "\n   tolerance: " << tol);
+    }
+
+    // Beyond the range the quantile saturates.
+    const Real beyond = rnd.invcdf(Phi(-nStd - 1.0));
+    if (std::fabs(beyond - edge) > tol) {
+        BOOST_FAIL("failed to saturate past the tabulated range"
+                   << "\n   at the edge: " << edge
+                   << "\n   beyond it:   " << beyond
+                   << "\n   tolerance:   " << tol);
+    }
+}
+
+BOOST_AUTO_TEST_CASE(testSmileSectionRNDvsHeston) {
+    BOOST_TEST_MESSAGE("Testing SmileSectionRNDCalculator on a Heston-implied "
+                       "smile against HestonRNDCalculator...");
+
+    const DayCounter dc = Actual365Fixed();
+    const Date today = Settings::instance().evaluationDate();
+    const Date maturity = today + 1 * Years;
+
+    const Real s0 = 100.0;
+    const Rate r = 0.05;
+    const Rate q = 0.02;
+
+    const Handle<Quote> spot(ext::make_shared<SimpleQuote>(s0));
+    const Handle<YieldTermStructure> rTS(flatRate(today, r, dc));
+    const Handle<YieldTermStructure> qTS(flatRate(today, q, dc));
+
+    const Real v0 = 0.04, kappa = 1.0, theta = 0.04;
+    const Real sigma = 0.3, rho = -0.5;
+
+    const auto hestonProcess = ext::make_shared<HestonProcess>(
+        rTS, qTS, spot, v0, kappa, theta, sigma, rho);
+    const auto hestonModel = ext::make_shared<HestonModel>(hestonProcess);
+
+    const HestonRNDCalculator hestonRnd(hestonProcess);
+
+    const auto hestonVolSurface = ext::make_shared<HestonBlackVolSurface>(
+        Handle<HestonModel>(hestonModel));
+    const Time T = hestonVolSurface->timeFromReference(maturity);
+    const Real fwd = s0 * qTS->discount(maturity) / rTS->discount(maturity);
+    const auto smile = ext::make_shared<AtmSmileSection>(
+        hestonVolSurface->smileSection(T), fwd);
+    const SmileSectionRNDCalculator smileRnd(smile);
+
+    const Real logFwd = std::log(fwd);
+    const Real cdfTol = 5e-3;
+    const Real pdfTol = 1e-3;
+
+    for (Real offset : { -0.30, -0.15, 0.0, 0.15, 0.30 }) {
+        const Real x = logFwd + offset;
+
+        const Real expectedCDF = hestonRnd.cdf(x, T);
+        const Real calculatedCDF = smileRnd.cdf(x, T);
+        if (std::fabs(expectedCDF - calculatedCDF) > cdfTol) {
+            BOOST_FAIL("failed to reproduce Heston cdf with SmileSection RND"
+                    << "\n   x:          " << x
+                    << "\n   calculated: " << calculatedCDF
+                    << "\n   expected:   " << expectedCDF
+                    << "\n   diff:       " << calculatedCDF - expectedCDF
+                    << "\n   tolerance:  " << cdfTol);
+        }
+
+        const Real expectedPDF = hestonRnd.pdf(x, T);
+        const Real calculatedPDF = smileRnd.pdf(x, T);
+        if (std::fabs(expectedPDF - calculatedPDF) > pdfTol) {
+            BOOST_FAIL("failed to reproduce Heston pdf with SmileSection RND"
+                    << "\n   x:          " << x
+                    << "\n   calculated: " << calculatedPDF
+                    << "\n   expected:   " << expectedPDF
+                    << "\n   diff:       " << calculatedPDF - expectedPDF
+                    << "\n   tolerance:  " << pdfTol);
+        }
+    }
+}
+
+BOOST_AUTO_TEST_CASE(testSmileSectionRNDMissingAtmLevel) {
+    BOOST_TEST_MESSAGE("Testing that SmileSectionRNDCalculator raises "
+                       "when the smile has no atmLevel...");
+
+    const Date today = Settings::instance().evaluationDate();
+    const Date maturity = today + 1 * Years;
+    const auto smile = ext::make_shared<FlatSmileSection>(
+        maturity, 0.20, Actual365Fixed(), today);
+    SmileSectionRNDCalculator rnd(smile);
+
+    const Time T = smile->exerciseTime();
+    BOOST_CHECK_EXCEPTION(
+        rnd.invcdf(0.5, T), QuantLib::Error,
+        ExpectedErrorMessage("AtmSmileSection"));
+}
+
+BOOST_AUTO_TEST_CASE(testSmileSectionRNDMartingale) {
+    BOOST_TEST_MESSAGE("Testing that SmileSectionRNDCalculator reproduces the "
+                       "forward across volatility levels...");
+
+    // Scaling SVI total variance by c^2 fattens the wings while holding their
+    // shape. The tail then carries a share of E[S] far out of proportion to its
+    // probability, which is what a coarse or truncated quantile grid loses.
+    const Date today = Settings::instance().evaluationDate();
+    const Date maturity = today + 1 * Years;
+    const Time T = Actual365Fixed().yearFraction(today, maturity);
+    const Real fwd = 50.0;
+    // The residual is the tabulated quantile range, not the grid: refining the
+    // grid stalls at this level because invcdf takes a probability, which pins
+    // the deepest reachable quantile near 8 standard deviations.
+    const Real tol = 5.0e-3;
+
+    GaussHermiteIntegration gh(64);
+    const Array& nodes = gh.x();
+    const Array& weights = gh.weights();
+    const CumulativeNormalDistribution Phi;
+
+    for (Real c : { 0.7, 1.0, 1.5, 2.0, 2.5 }) {
+        const std::vector<Real> svi = { c * c * 0.1125, c * c * 0.10,
+                                        0.10, 0.525, 0.0 };
+        const auto smile = ext::make_shared<SviSmileSection>(T, fwd, svi);
+        const SmileSectionRNDCalculator rnd(smile);
+
+        Real mean = 0.0;
+        for (Size i = 0; i < gh.order(); ++i) {
+            const Real x = nodes[i];
+            const Real u = std::clamp(Phi(M_SQRT2 * x),
+                                      Real(QL_EPSILON), Real(1.0 - QL_EPSILON));
+            mean += weights[i] * std::exp(-x * x) * std::exp(rnd.invcdf(u));
+        }
+        mean /= std::sqrt(M_PI);
+
+        const Real relError = std::fabs(mean - fwd) / fwd;
+        if (relError > tol) {
+            BOOST_FAIL("failed to reproduce the forward from the "
+                       "SmileSectionRNDCalculator quantile"
+                       << std::fixed << std::setprecision(8)
+                       << "\n   vol scale : " << c
+                       << "\n   atm vol   : " << smile->volatility(fwd)
+                       << "\n   E[S]      : " << mean
+                       << "\n   forward   : " << fwd
+                       << "\n   rel error : " << relError
+                       << "\n   tolerance : " << tol);
+        }
+    }
+}
+
+BOOST_AUTO_TEST_CASE(testSmileSectionRNDLeftTailCdf) {
+    BOOST_TEST_MESSAGE("Testing SmileSectionRNDCalculator cdf deep in the "
+                       "left tail...");
+
+    // Below the forward the cdf is the small number, so taking it as
+    // 1 - P(S > K) spends it against a value close to one: at four standard
+    // deviations that left ~3 correct bits, and by six it returned zero. The
+    // put digital carries the same probability directly.
+    const Date today = Settings::instance().evaluationDate();
+    const Date maturity = today + 1 * Years;
+    const Time T = Actual365Fixed().yearFraction(today, maturity);
+    const Real fwd = 50.0;
+    const std::vector<Real> svi = { 0.1125, 0.10, 0.10, 0.525, 0.0 };
+
+    // A flat smile has an analytic left tail, so the reference here is
+    // independent of how the calculator obtains it.
+    const Volatility flatVol = 0.20;
+    const Real stdDev = flatVol * std::sqrt(T);
+    const auto flat = ext::make_shared<FlatSmileSection>(
+        T, flatVol, DayCounter(), fwd);
+    const SmileSectionRNDCalculator flatRnd(flat);
+    const CumulativeNormalDistribution Phi;
+
+    // Difference-quotient error grows as the probability shrinks, to a
+    // measured 1.4e-5 at the deepest point below.
+    const Real flatTol = 1e-4;
+    for (Real nStdDev : { 2.0, 3.0, 4.0, 5.0, 6.0 }) {
+        const Real x = std::log(fwd) - nStdDev * stdDev;
+        const Real d2 =
+            (std::log(fwd) - x) / stdDev - 0.5 * stdDev;
+
+        const Real calculated = flatRnd.cdf(x, T);
+        const Real expected = Phi(-d2);
+
+        BOOST_REQUIRE(value(expected) > 0.0);
+        const Real relError = std::fabs(calculated - expected) / expected;
+        if (relError > flatTol) {
+            BOOST_FAIL("failed to reproduce the analytic left-tail cdf"
+                       << "\n   std deviations: " << nStdDev
+                       << "\n   calculated:     " << calculated
+                       << "\n   expected:       " << expected
+                       << "\n   rel error:      " << relError
+                       << "\n   tolerance:      " << flatTol);
+        }
+    }
+
+    const auto smile = ext::make_shared<SviSmileSection>(T, fwd, svi);
+    const SmileSectionRNDCalculator rnd(smile);
+
+    const Real tol = 1e-6;
+    for (Real offset : { -2.0, -3.0, -4.0, -5.0, -6.0 }) {
+        const Real x = std::log(fwd) + offset;
+        const Real K = std::exp(x);
+
+        const Real calculated = rnd.cdf(x, T);
+        const Real expected = smile->digitalOptionPrice(
+            K, Option::Put, 1.0, std::abs(K) * 2.0e-6);
+
+        BOOST_REQUIRE(value(expected) > 0.0);
+        const Real relError = std::fabs(calculated - expected) / expected;
+        if (relError > tol) {
+            BOOST_FAIL("failed to reproduce the left-tail cdf"
+                       << "\n   log-moneyness: " << offset
+                       << "\n   strike:        " << K
+                       << "\n   calculated:    " << calculated
+                       << "\n   expected:      " << expected
+                       << "\n   rel error:     " << relError
+                       << "\n   tolerance:     " << tol);
+        }
+    }
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_AUTO_TEST_SUITE_END()

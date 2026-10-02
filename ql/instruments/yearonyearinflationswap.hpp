@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -26,12 +26,12 @@
 #define quantlib_yyiis_hpp
 
 #include <ql/instruments/swap.hpp>
+#include <ql/indexes/inflationindex.hpp>
 #include <ql/time/calendar.hpp>
 #include <ql/time/daycounter.hpp>
 #include <ql/time/schedule.hpp>
 
 namespace QuantLib {
-    class YoYInflationIndex;
 
     //! Year-on-year inflation-indexed swap
     /*! Quoted as a fixed rate \f$ K \f$.  At start:
@@ -43,32 +43,27 @@ namespace QuantLib {
         nominal discount factor at time \f$ t \f$, \f$ N \f$ is the
         notional, and \f$ I(t) \f$ is the inflation index value at
         time \f$ t \f$.
-
-        \note These instruments have now been changed to follow
-              typical VanillaSwap type design conventions
-              w.r.t. Schedules etc.
     */
     class YearOnYearInflationSwap : public Swap {
     public:
-        enum Type { Receiver = -1, Payer = 1 };
         class arguments;
         class results;
         class engine;
         YearOnYearInflationSwap(
-                    Type type,
-                    Real nominal,
-                    const Schedule& fixedSchedule,
-                    Rate fixedRate,
-                    const DayCounter& fixedDayCount,
-                    const Schedule& yoySchedule,
-                    const ext::shared_ptr<YoYInflationIndex>& yoyIndex,
-                    const Period& observationLag,
-                    Spread spread,
-                    const DayCounter& yoyDayCount,
-                    const Calendar& paymentCalendar,    // inflation index does not have a calendar
-                    BusinessDayConvention paymentConvention =
-                        ModifiedFollowing
-                    );
+            Type type,
+            Real nominal,
+            Schedule fixedSchedule,
+            Rate fixedRate,
+            DayCounter fixedDayCount,
+            Schedule yoySchedule,
+            ext::shared_ptr<YoYInflationIndex> yoyIndex,
+            const Period& observationLag,
+            CPI::InterpolationType interpolation,
+            Spread spread,
+            DayCounter yoyDayCount,
+            Calendar paymentCalendar, // inflation index does not have a calendar
+            BusinessDayConvention paymentConvention = ModifiedFollowing);
+
         // results
         virtual Real fixedLegNPV() const;
         virtual Rate fairRate() const;
@@ -96,12 +91,12 @@ namespace QuantLib {
         virtual const Leg& yoyLeg() const;
 
         // other
-        void setupArguments(PricingEngine::arguments* args) const;
-        void fetchResults(const PricingEngine::results*) const;
-        virtual ~YearOnYearInflationSwap() {}
+        void setupArguments(PricingEngine::arguments* args) const override;
+        void fetchResults(const PricingEngine::results*) const override;
+        ~YearOnYearInflationSwap() override = default;
 
-    private:
-        void setupExpired() const;
+      private:
+        void setupExpired() const override;
         Type type_;
         Real nominal_;
         Schedule fixedSchedule_;
@@ -123,22 +118,21 @@ namespace QuantLib {
     //! %Arguments for YoY swap calculation
     class YearOnYearInflationSwap::arguments : public Swap::arguments {
     public:
-        arguments() : type(Receiver),
-        nominal(Null<Real>()) {}
-        Type type;
-        Real nominal;
+      arguments() : nominal(Null<Real>()) {}
+      Type type = Receiver;
+      Real nominal;
 
-        std::vector<Date> fixedResetDates;
-        std::vector<Date> fixedPayDates;
-        std::vector<Time> yoyAccrualTimes;
-        std::vector<Date> yoyResetDates;
-        std::vector<Date> yoyFixingDates;
-        std::vector<Date> yoyPayDates;
+      std::vector<Date> fixedResetDates;
+      std::vector<Date> fixedPayDates;
+      std::vector<Time> yoyAccrualTimes;
+      std::vector<Date> yoyResetDates;
+      std::vector<Date> yoyFixingDates;
+      std::vector<Date> yoyPayDates;
 
-        std::vector<Real> fixedCoupons;
-        std::vector<Spread> yoySpreads;
-        std::vector<Real> yoyCoupons;
-        void validate() const;
+      std::vector<Real> fixedCoupons;
+      std::vector<Spread> yoySpreads;
+      std::vector<Real> yoyCoupons;
+      void validate() const override;
     };
 
     //! %Results from YoY swap calculation
@@ -146,16 +140,16 @@ namespace QuantLib {
     public:
         Rate fairRate;
         Spread fairSpread;
-        void reset();
+        void reset() override;
     };
 
     class YearOnYearInflationSwap::engine : public GenericEngine<YearOnYearInflationSwap::arguments,
-    YearOnYearInflationSwap::results> {};
+                                                                 YearOnYearInflationSwap::results> {};
 
 
     // inline definitions
 
-    inline YearOnYearInflationSwap::Type YearOnYearInflationSwap::type() const {
+    inline Swap::Type YearOnYearInflationSwap::type() const {
         return type_;
     }
 
@@ -202,15 +196,6 @@ namespace QuantLib {
     inline const Leg& YearOnYearInflationSwap::yoyLeg() const {
         return legs_[1];
     }
-
-    std::ostream& operator<<(std::ostream& out,
-                             YearOnYearInflationSwap::Type t);
-
-
-
-
-
-
 
 }
 

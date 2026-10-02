@@ -12,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -27,22 +27,23 @@
 #define quantlib_mid_point_cds_engine_hpp
 
 #include <ql/instruments/creditdefaultswap.hpp>
+#include <ql/optional.hpp>
 
 namespace QuantLib {
 
     class MidPointCdsEngine : public CreditDefaultSwap::engine {
       public:
-        MidPointCdsEngine(
-              const Handle<DefaultProbabilityTermStructure>&,
-              Real recoveryRate,
-              const Handle<YieldTermStructure>& discountCurve,
-              boost::optional<bool> includeSettlementDateFlows = boost::none);
-        void calculate() const;
+        MidPointCdsEngine(Handle<DefaultProbabilityTermStructure>,
+                          Real recoveryRate,
+                          Handle<YieldTermStructure> discountCurve,
+                          const std::optional<bool>& includeSettlementDateFlows = std::nullopt);
+        void calculate() const override;
+
       private:
         Handle<DefaultProbabilityTermStructure> probability_;
         Real recoveryRate_;
         Handle<YieldTermStructure> discountCurve_;
-        boost::optional<bool> includeSettlementDateFlows_;
+        std::optional<bool> includeSettlementDateFlows_;
     };
 
 }

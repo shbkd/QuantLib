@@ -13,7 +13,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -117,11 +117,9 @@ namespace QuantLib {
 
         class eqn3 { /* Relates to eqn3 Genz 2004 */
           public:
-            eqn3(Real h, Real k, Real asr) {
-                hk_ = h * k;
-                hs_  = (h * h + k * k) / 2;
-                asr_ = asr;
-            }
+            eqn3(Real h, Real k, Real asr)
+            : hk_(h * k), asr_(asr), hs_((h * h + k * k) / 2) {}
+
             Real operator()(Real x) const {
                 Real sn = std::sin(asr_ * (-x + 1) * 0.5);
                 return std::exp((sn * hk_ - hs_) / (1.0 - sn * sn));

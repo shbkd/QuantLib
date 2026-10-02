@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -35,19 +35,19 @@ namespace QuantLib {
     //! Predictor-Corrector
     class LogNormalCmSwapRatePc : public MarketModelEvolver {
       public:
-        LogNormalCmSwapRatePc(const Size spanningForwards,
+        LogNormalCmSwapRatePc(Size spanningForwards,
                               const ext::shared_ptr<MarketModel>&,
                               const BrownianGeneratorFactory&,
                               const std::vector<Size>& numeraires,
                               Size initialStep = 0);
         //! \name MarketModel interface
         //@{
-        const std::vector<Size>& numeraires() const;
-        Real startNewPath();
-        Real advanceStep();
-        Size currentStep() const;
-        const CurveState& currentState() const;
-        void setInitialState(const CurveState&);
+        const std::vector<Size>& numeraires() const override;
+        Real startNewPath() override;
+        Real advanceStep() override;
+        Size currentStep() const override;
+        const CurveState& currentState() const override;
+        void setInitialState(const CurveState&) override;
         //@}
       private:
         void setCMSwapRates(const std::vector<Real>& swapRates);

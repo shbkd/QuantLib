@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -28,11 +28,10 @@ namespace QuantLib {
      corrMatrix_(size, size),
      pseudoSqrt_(size, size) {
         arguments_[0] = ConstantParameter(rho, PositiveConstraint());
-        generateArguments();
+        LmExponentialCorrelationModel::generateArguments();
     }
 
-    Disposable<Matrix> LmExponentialCorrelationModel::correlation(
-                                                   Time, const Array&) const {
+    Matrix LmExponentialCorrelationModel::correlation(Time, const Array&) const {
 
         Matrix tmp(corrMatrix_);
         return tmp;
@@ -47,8 +46,7 @@ namespace QuantLib {
         return true;
     }
 
-    Disposable<Matrix> LmExponentialCorrelationModel::pseudoSqrt(
-                                                   Time, const Array&) const {
+    Matrix LmExponentialCorrelationModel::pseudoSqrt(Time, const Array&) const {
         Matrix tmp(pseudoSqrt_);
         return tmp;
     }

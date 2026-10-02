@@ -10,17 +10,17 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include <ql/models/marketmodels/products/pathwise/pathwiseproductcashrebate.hpp>
 #include <ql/models/marketmodels/curvestate.hpp>
+#include <ql/models/marketmodels/products/pathwise/pathwiseproductcashrebate.hpp>
 #include <ql/models/marketmodels/utilities.hpp>
-#include <ql/auto_ptr.hpp>
+#include <utility>
 
 namespace QuantLib 
 {
@@ -31,14 +31,13 @@ namespace QuantLib
         return false;
     }
 
-     MarketModelPathwiseCashRebate::MarketModelPathwiseCashRebate(
-                              const EvolutionDescription& evolution,
-                              const std::vector<Time>& paymentTimes,
-                              const Matrix& amounts,
-                              Size numberOfProducts)
-    : evolution_(evolution), paymentTimes_(paymentTimes),
-      amounts_(amounts), numberOfProducts_(numberOfProducts)
-    {
+    MarketModelPathwiseCashRebate::MarketModelPathwiseCashRebate(
+        EvolutionDescription evolution,
+        const std::vector<Time>& paymentTimes,
+        Matrix amounts,
+        Size numberOfProducts)
+    : evolution_(std::move(evolution)), paymentTimes_(paymentTimes), amounts_(std::move(amounts)),
+      numberOfProducts_(numberOfProducts) {
 
         checkIncreasingTimes(paymentTimes);
 
@@ -106,11 +105,10 @@ namespace QuantLib
         return true;
     }
 
-    QL_UNIQUE_OR_AUTO_PTR<MarketModelPathwiseMultiProduct>
+    std::unique_ptr<MarketModelPathwiseMultiProduct>
     MarketModelPathwiseCashRebate::clone() const 
     {
-        return QL_UNIQUE_OR_AUTO_PTR<MarketModelPathwiseMultiProduct>(
-                                    new MarketModelPathwiseCashRebate(*this));
+        return std::make_unique<MarketModelPathwiseCashRebate>(*this);
     }
 
 }

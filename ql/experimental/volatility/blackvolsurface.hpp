@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -78,15 +78,15 @@ namespace QuantLib {
         //@}
         //! \name Visitability
         //@{
-        void accept(AcyclicVisitor&);
+        void accept(AcyclicVisitor&) override;
         //@}
       protected:
         //! \name BlackAtmVolCurve interface
         //@{
         //! spot at-the-money variance calculation
-        Real atmVarianceImpl(Time t) const;
+        Real atmVarianceImpl(Time t) const override;
         //! spot at-the-money volatility calculation
-        Volatility atmVolImpl(Time t) const;
+        Volatility atmVolImpl(Time t) const override;
         //@}
         /*! \name Calculations
 

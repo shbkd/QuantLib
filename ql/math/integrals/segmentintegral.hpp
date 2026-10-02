@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -49,11 +49,10 @@ namespace QuantLib {
     */
     class SegmentIntegral : public Integrator {
       public:
-        SegmentIntegral(Size intervals);
+        explicit SegmentIntegral(Size intervals);
       protected:
-        virtual Real integrate(const boost::function<Real (Real)>& f,
-                               Real a,
-                               Real b) const;
+        Real integrate(const std::function<Real(Real)>& f, Real a, Real b) const override;
+
       private:
         Size intervals_;
     };
@@ -62,7 +61,7 @@ namespace QuantLib {
     // inline and template definitions
 
     inline Real
-    SegmentIntegral::integrate(const boost::function<Real (Real)>& f,
+    SegmentIntegral::integrate(const std::function<Real (Real)>& f,
                                Real a,
                                Real b) const {
         if(close_enough(a,b))

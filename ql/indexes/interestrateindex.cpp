@@ -12,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -21,21 +21,23 @@
 
 #include <ql/indexes/interestrateindex.hpp>
 #include <ql/settings.hpp>
-
 #include <sstream>
+#include <utility>
 
 namespace QuantLib {
 
-    InterestRateIndex::InterestRateIndex(const std::string& familyName,
+    InterestRateIndex::InterestRateIndex(std::string familyName,
                                          const Period& tenor,
                                          Natural fixingDays,
-                                         const Currency& currency,
-                                         const Calendar& fixingCalendar,
-                                         const DayCounter& dayCounter)
-    : familyName_(familyName), tenor_(tenor), fixingDays_(fixingDays),
-      currency_(currency), dayCounter_(dayCounter),
-      fixingCalendar_(fixingCalendar) {
-        tenor_.normalize();
+                                         Currency currency,
+                                         Calendar fixingCalendar,
+                                         DayCounter dayCounter)
+    : familyName_(std::move(familyName)), tenor_(tenor), fixingDays_(fixingDays),
+      currency_(std::move(currency)), dayCounter_(std::move(dayCounter)),
+      fixingCalendar_(std::move(fixingCalendar)) {
+        // tenor_.normalize() does too much; we want to leave days alone
+        if (tenor.units() == Months && tenor.length() % 12 == 0)
+            tenor_ = Period(tenor.length() / 12, Years);
 
         std::ostringstream out;
         out << familyName_;
@@ -55,7 +57,7 @@ namespace QuantLib {
         name_ = out.str();
 
         registerWith(Settings::instance().evaluationDate());
-        registerWith(IndexManager::instance().notifier(name()));
+        registerWith(notifier());
     }
 
     Rate InterestRateIndex::fixing(const Date& fixingDate,

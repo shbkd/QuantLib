@@ -12,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -58,18 +58,18 @@ namespace QuantLib {
                       bool isMeanReversionFixed);
 
         Matrix compute(const ext::shared_ptr<EndCriteria>& endCriteria,
-                      const ext::shared_ptr<OptimizationMethod>& method,
-                      const Matrix& guess,
-                      bool isMeanReversionFixed,
-                      const Real meanReversionGuess = Null<Real>());
+                       const ext::shared_ptr<OptimizationMethod>& method,
+                       const Matrix& guess,
+                       bool isMeanReversionFixed,
+                       Real meanReversionGuess = Null<Real>());
 
-        Matrix
-        computeParametric(const ext::shared_ptr<EndCriteria> &endCriteria,
-                          const ext::shared_ptr<OptimizationMethod> &method,
-                          const Matrix &guess, bool isMeanReversionFixed,
-                          const Real meanReversionGuess = Null<Real>());
+        Matrix computeParametric(const ext::shared_ptr<EndCriteria>& endCriteria,
+                                 const ext::shared_ptr<OptimizationMethod>& method,
+                                 const Matrix& guess,
+                                 bool isMeanReversionFixed,
+                                 Real meanReversionGuess = Null<Real>());
 
-        Real error() { return error_; }
+        Real error() const { return error_; }
         EndCriteria::Type endCriteria() { return endCriteria_; };
 
         static Real betaTransformInverse(Real beta) {
@@ -77,7 +77,7 @@ namespace QuantLib {
         }
         static Real betaTransformDirect(Real y) {
             return std::max(
-                std::min(std::fabs(y) < 10.0 ? std::exp(-(y * y)) : 0.0,
+                std::min(std::fabs(y) < 10.0 ? Real(std::exp(-(y * y))) : 0.0,
                          0.999999),
                 0.000001);
         }

@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -35,9 +35,8 @@ namespace QuantLib {
     void PagodaOption::setupArguments(PricingEngine::arguments* args) const {
         MultiAssetOption::setupArguments(args);
 
-        PagodaOption::arguments* arguments =
-            dynamic_cast<PagodaOption::arguments*>(args);
-        QL_REQUIRE(arguments != 0, "wrong argument type");
+        auto* arguments = dynamic_cast<PagodaOption::arguments*>(args);
+        QL_REQUIRE(arguments != nullptr, "wrong argument type");
 
         arguments->fixingDates = fixingDates_;
         arguments->roof = roof_;

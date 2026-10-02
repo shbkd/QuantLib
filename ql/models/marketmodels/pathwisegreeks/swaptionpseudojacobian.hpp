@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -39,16 +39,16 @@ namespace QuantLib
     {
 
         public:
-            SwaptionPseudoDerivative(ext::shared_ptr<MarketModel> inputModel,
+          SwaptionPseudoDerivative(const ext::shared_ptr<MarketModel>& inputModel,
                                    Size startIndex,
                                    Size endIndex);
 
-            const Matrix& varianceDerivative(Size i) const;
-            const Matrix& volatilityDerivative(Size i) const;
+          const Matrix& varianceDerivative(Size i) const;
+          const Matrix& volatilityDerivative(Size i) const;
 
-            Real impliedVolatility() const;
-            Real variance() const;
-            Real expiry() const;
+          Real impliedVolatility() const;
+          Real variance() const;
+          Real expiry() const;
 
 
 
@@ -79,16 +79,16 @@ This is  tested in the pathwise vegas routine in MarketModels.cpp
     {
 
         public:
-            CapPseudoDerivative(ext::shared_ptr<MarketModel> inputModel,
-                                   Real strike,
-                                   Size startIndex,
-                                   Size endIndex, 
-                                   Real firstDF);
+          CapPseudoDerivative(const ext::shared_ptr<MarketModel>& inputModel,
+                              Real strike,
+                              Size startIndex,
+                              Size endIndex,
+                              Real firstDF);
 
-            const Matrix& volatilityDerivative(Size i) const;
-            const Matrix& priceDerivative(Size i) const;
+          const Matrix& volatilityDerivative(Size i) const;
+          const Matrix& priceDerivative(Size i) const;
 
-            Real impliedVolatility() const;
+          Real impliedVolatility() const;
 
 
 

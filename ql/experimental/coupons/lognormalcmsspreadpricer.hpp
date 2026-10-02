@@ -10,7 +10,7 @@
   under the terms of the QuantLib license.  You should have received a
   copy of the license along with this program; if not, please email
   <quantlib-dev@lists.sf.net>. The license is also available online at
-  <http://quantlib.org/license.shtml>.
+  <https://www.quantlib.org/license.shtml>.
 
 
   This program is distributed in the hope that it will be useful, but
@@ -31,6 +31,7 @@
 #include <ql/experimental/coupons/swapspreadindex.hpp>
 #include <ql/math/integrals/gaussianquadratures.hpp>
 #include <ql/math/distributions/normaldistribution.hpp>
+#include <ql/optional.hpp>
 
 namespace QuantLib {
 
@@ -60,47 +61,30 @@ namespace QuantLib {
 
       public:
         LognormalCmsSpreadPricer(
-            const ext::shared_ptr<CmsCouponPricer> cmsPricer,
-            const Handle<Quote> &correlation,
-            const Handle<YieldTermStructure> &couponDiscountCurve =
-                Handle<YieldTermStructure>(),
-            const Size IntegrationPoints = 16,
-            const boost::optional<VolatilityType> volatilityType= boost::none,
-            const Real shift1 = Null<Real>(), const Real shift2 = Null<Real>());
+            const ext::shared_ptr<CmsCouponPricer>& cmsPricer,
+            const Handle<Quote>& correlation,
+            Handle<YieldTermStructure> couponDiscountCurve = Handle<YieldTermStructure>(),
+            Size IntegrationPoints = 16,
+            const std::optional<VolatilityType>& volatilityType = std::nullopt,
+            Real shift1 = Null<Real>(),
+            Real shift2 = Null<Real>());
 
         /* */
-        virtual Real swapletPrice() const;
-        virtual Rate swapletRate() const;
-        virtual Real capletPrice(Rate effectiveCap) const;
-        virtual Rate capletRate(Rate effectiveCap) const;
-        virtual Real floorletPrice(Rate effectiveFloor) const;
-        virtual Rate floorletRate(Rate effectiveFloor) const;
-        /* */
-        void flushCache();
+        Real swapletPrice() const override;
+        Rate swapletRate() const override;
+        Real capletPrice(Rate effectiveCap) const override;
+        Rate capletRate(Rate effectiveCap) const override;
+        Real floorletPrice(Rate effectiveFloor) const override;
+        Rate floorletRate(Rate effectiveFloor) const override;
 
       private:
-        class PrivateObserver : public Observer {
-          public:
-            explicit PrivateObserver(LognormalCmsSpreadPricer *t) : t_(t) {}
-            void update() { t_->flushCache(); }
-
-          private:
-            LognormalCmsSpreadPricer *t_;
-        };
-
-        ext::shared_ptr<PrivateObserver> privateObserver_;
-
-        typedef std::map<std::pair<std::string, Date>, std::pair<Real, Real> >
-        CacheType;
-
-        void initialize(const FloatingRateCoupon &coupon);
+        void initialize(const FloatingRateCoupon& coupon) override;
         Real optionletPrice(Option::Type optionType, Real strike) const;
 
-        Real integrand(const Real) const;
-        Real integrand_normal(const Real) const;
+        Real integrand(Real) const;
+        Real integrand_normal(Real) const;
 
         class integrand_f;
-        friend class integrand_f;
 
         ext::shared_ptr<CmsCouponPricer> cmsPricer_;
 
@@ -136,8 +120,6 @@ namespace QuantLib {
         mutable Option::Type optionType_;
 
         ext::shared_ptr<CmsCoupon> c1_, c2_;
-
-        CacheType cache_;
     };
 }
 

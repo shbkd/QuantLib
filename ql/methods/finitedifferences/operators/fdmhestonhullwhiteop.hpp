@@ -12,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -40,10 +40,9 @@ namespace QuantLib {
 
     class FdmHestonHullWhiteEquityPart {
       public:
-        FdmHestonHullWhiteEquityPart(
-            const ext::shared_ptr<FdmMesher>& mesher,
-            const ext::shared_ptr<HullWhite>& hwModel,
-            const ext::shared_ptr<YieldTermStructure>& qTS);
+        FdmHestonHullWhiteEquityPart(const ext::shared_ptr<FdmMesher>& mesher,
+                                     ext::shared_ptr<HullWhite> hwModel,
+                                     ext::shared_ptr<YieldTermStructure> qTS);
 
         void setTime(Time t1, Time t2);
         const TripleBandLinearOp& getMap() const;
@@ -68,21 +67,18 @@ namespace QuantLib {
             const ext::shared_ptr<HullWhiteProcess>& hwProcess,
             Real equityShortRateCorrelation);
 
-        Size size() const;
-        void setTime(Time t1, Time t2);
+        Size size() const override;
+        void setTime(Time t1, Time t2) override;
 
-        Disposable<Array> apply(const Array& r) const;
-        Disposable<Array> apply_mixed(const Array& r) const;
+        Array apply(const Array& r) const override;
+        Array apply_mixed(const Array& r) const override;
 
-        Disposable<Array> apply_direction(Size direction,
-                                          const Array& r) const;
-        Disposable<Array> solve_splitting(Size direction,
-                                          const Array& r, Real s) const;
-        Disposable<Array> preconditioner(const Array& r, Real s) const;
+        Array apply_direction(Size direction, const Array& r) const override;
+        Array solve_splitting(Size direction, const Array& r, Real s) const override;
+        Array preconditioner(const Array& r, Real s) const override;
 
-#if !defined(QL_NO_UBLAS_SUPPORT)
-        Disposable<std::vector<SparseMatrix> > toMatrixDecomp() const;
-#endif
+        std::vector<SparseMatrix> toMatrixDecomp() const override;
+
       private:
         const Real v0_, kappa_, theta_, sigma_, rho_;
         const ext::shared_ptr<HullWhite> hwModel_;

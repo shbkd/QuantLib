@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -19,37 +19,37 @@
 
 #include <ql/experimental/inflation/yoyoptionlethelpers.hpp>
 #include <ql/instruments/makeyoyinflationcapfloor.hpp>
-
 #include <ql/utilities/null_deleter.hpp>
+#include <utility>
 
 namespace QuantLib {
 
-    YoYOptionletHelper::YoYOptionletHelper(
-                  const Handle<Quote>& price,
-                  Real notional,
-                  YoYInflationCapFloor::Type capFloorType,
-                  Period &lag,
-                  const DayCounter& yoyDayCounter,
-                  const Calendar& paymentCalendar,
-                  Natural fixingDays,
-                  const ext::shared_ptr<YoYInflationIndex>& index,
-                  Rate strike, Size n,
-                  const ext::shared_ptr<YoYInflationCapFloorEngine> &pricer)
-    : BootstrapHelper<YoYOptionletVolatilitySurface>(price),
-      notional_(notional), capFloorType_(capFloorType), lag_(lag),
-      fixingDays_(fixingDays), index_(index), strike_(strike), n_(n),
-      yoyDayCounter_(yoyDayCounter), calendar_(paymentCalendar),
-      pricer_(pricer) {
+    YoYOptionletHelper::YoYOptionletHelper(const Handle<Quote>& price,
+                                           Real notional,
+                                           YoYInflationCapFloor::Type capFloorType,
+                                           Period& lag,
+                                           DayCounter yoyDayCounter,
+                                           Calendar paymentCalendar,
+                                           Natural fixingDays,
+                                           ext::shared_ptr<YoYInflationIndex> index,
+                                           CPI::InterpolationType interpolation,
+                                           Rate strike,
+                                           Size n,
+                                           ext::shared_ptr<YoYInflationCapFloorEngine> pricer)
+    : BootstrapHelper<YoYOptionletVolatilitySurface>(price), notional_(notional),
+      capFloorType_(capFloorType), lag_(lag), fixingDays_(fixingDays), index_(std::move(index)),
+      strike_(strike), n_(n), yoyDayCounter_(std::move(yoyDayCounter)),
+      calendar_(std::move(paymentCalendar)), pricer_(std::move(pricer)) {
 
         // build the instrument to reprice (only need do this once)
-        yoyCapFloor_ = ext::make_shared<YoYInflationCapFloor>(
-                 
-                     MakeYoYInflationCapFloor(capFloorType_, n_, calendar_,
-                                              index_, lag_, strike_)
-                    .withNominal(notional)
-                    .withFixingDays(fixingDays_)
-                    .withPaymentDayCounter(yoyDayCounter_)
-                                          );
+        yoyCapFloor_ =
+            MakeYoYInflationCapFloor(capFloorType_, index_,
+                                     n_, calendar_, lag_, interpolation)
+            .withNominal(notional)
+            .withFixingDays(fixingDays_)
+            .withPaymentDayCounter(yoyDayCounter_)
+            .withStrike(strike_);
+
         // dates already build in lag of index/instrument
         // these are the dates of the values of the index
         // that fix the capfloor
@@ -66,7 +66,7 @@ namespace QuantLib {
 
 
     Real YoYOptionletHelper::impliedQuote() const {
-        yoyCapFloor_->recalculate();
+        yoyCapFloor_->deepUpdate();
         return yoyCapFloor_->NPV();
     }
 

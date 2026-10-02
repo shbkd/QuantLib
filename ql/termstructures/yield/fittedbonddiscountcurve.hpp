@@ -12,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -31,6 +31,7 @@
 #include <ql/patterns/lazyobject.hpp>
 #include <ql/math/array.hpp>
 #include <ql/utilities/clone.hpp>
+#include <ql/math/optimization/constraint.hpp>
 
 namespace QuantLib {
 
@@ -81,33 +82,46 @@ namespace QuantLib {
                                     public LazyObject {
       public:
         class FittingMethod;
-        friend class FittingMethod;
 
         //! \name Constructors
         //@{
         //! reference date based on current evaluation date
-        FittedBondDiscountCurve(
-                 Natural settlementDays,
-                 const Calendar& calendar,
-                 const std::vector<ext::shared_ptr<BondHelper> >& bonds,
-                 const DayCounter& dayCounter,
-                 const FittingMethod& fittingMethod,
-                 Real accuracy = 1.0e-10,
-                 Size maxEvaluations = 10000,
-                 const Array& guess = Array(),
-                 Real simplexLambda = 1.0,
-                 Size maxStationaryStateIterations = 100);
+        FittedBondDiscountCurve(Natural settlementDays,
+                                const Calendar& calendar,
+                                std::vector<ext::shared_ptr<BondHelper> > bonds,
+                                const DayCounter& dayCounter,
+                                const FittingMethod& fittingMethod,
+                                Real accuracy = 1.0e-10,
+                                Size maxEvaluations = 10000,
+                                Array guess = Array(),
+                                Real simplexLambda = 1.0,
+                                Size maxStationaryStateIterations = 100);
+
         //! curve reference date fixed for life of curve
-        FittedBondDiscountCurve(
-                 const Date &referenceDate,
-                 const std::vector<ext::shared_ptr<BondHelper> >& bonds,
-                 const DayCounter& dayCounter,
-                 const FittingMethod& fittingMethod,
-                 Real accuracy = 1.0e-10,
-                 Size maxEvaluations = 10000,
-                 const Array &guess = Array(),
-                 Real simplexLambda = 1.0,
-                 Size maxStationaryStateIterations = 100);
+        FittedBondDiscountCurve(const Date& referenceDate,
+                                std::vector<ext::shared_ptr<BondHelper> > bonds,
+                                const DayCounter& dayCounter,
+                                const FittingMethod& fittingMethod,
+                                Real accuracy = 1.0e-10,
+                                Size maxEvaluations = 10000,
+                                Array guess = Array(),
+                                Real simplexLambda = 1.0,
+                                Size maxStationaryStateIterations = 100);
+
+        //! don't fit, use precalculated parameters
+        FittedBondDiscountCurve(Natural settlementDays,
+                                const Calendar& calendar,
+                                const FittingMethod& fittingMethod,
+                                Array parameters,
+                                Date maxDate,
+                                const DayCounter& dayCounter);
+
+        //! don't fit, use precalculated parameters
+        FittedBondDiscountCurve(const Date& referenceDate,
+                                const FittingMethod& fittingMethod,
+                                Array parameters,
+                                Date maxDate,
+                                const DayCounter& dayCounter);
         //@}
 
         //! \name Inspectors
@@ -115,20 +129,26 @@ namespace QuantLib {
         //! total number of bonds used to fit the yield curve
         Size numberOfBonds() const;
         //! the latest date for which the curve can return values
-        Date maxDate() const;
+        Date maxDate() const override;
         //! class holding the results of the fit
         const FittingMethod& fitResults() const;
         //@}
 
+        //! \name Other utilities
+        //@{
+        /*! This allows to try out multiple guesses and avoid local minima */
+        void resetGuess(const Array& guess);
+        //@}
+
         //! \name Observer interface
         //@{
-        void update();
+        void update() override;
         //@}
 
       private:
         void setup();
-        void performCalculations() const;
-        DiscountFactor discountImpl(Time) const;
+        void performCalculations() const override;
+        DiscountFactor discountImpl(Time) const override;
         // target accuracy level to be used in the optimization routine
         Real accuracy_;
         // max number of evaluations to be used in the optimization routine
@@ -185,7 +205,7 @@ namespace QuantLib {
         // internal class
         class FittingCost;
       public:
-        virtual ~FittingMethod() {}
+        virtual ~FittingMethod() = default;
         //! total number of coefficients to fit/solve for
         virtual Size size() const = 0;
         //! output array of results of optimization problem
@@ -194,12 +214,10 @@ namespace QuantLib {
         Integer numberOfIterations() const;
         //! final value of cost function after optimization
         Real minimumCostValue() const;
+        //! error code of the optimization
+        EndCriteria::Type errorCode() const;
         //! clone of the current object
-        #if defined(QL_USE_STD_UNIQUE_PTR)
         virtual std::unique_ptr<FittingMethod> clone() const = 0;
-        #else
-        virtual std::auto_ptr<FittingMethod> clone() const = 0;
-        #endif
         //! return whether there is a constraint at zero
         bool constrainAtZero() const;
         //! return weights being used
@@ -208,14 +226,20 @@ namespace QuantLib {
         Array l2() const;
         //! return optimization method being used
         ext::shared_ptr<OptimizationMethod> optimizationMethod() const;
+        //! return optimization contraint
+        const Constraint& constraint() const;
         //! open discountFunction to public
         DiscountFactor discount(const Array& x, Time t) const;
       protected:
         //! constructors
-        FittingMethod(bool constrainAtZero = true, const Array& weights = Array(),
-                      ext::shared_ptr<OptimizationMethod> optimizationMethod
-                                          = ext::shared_ptr<OptimizationMethod>(),
-                      const Array& l2 = Array());
+        FittingMethod(bool constrainAtZero = true,
+                      const Array& weights = Array(),
+                      ext::shared_ptr<OptimizationMethod> optimizationMethod =
+                          ext::shared_ptr<OptimizationMethod>(),
+                      Array l2 = Array(),
+                      Real minCutoffTime = 0.0,
+                      Real maxCutoffTime = QL_MAX_REAL,
+                      Constraint constraint = NoConstraint());
         //! rerun every time instruments/referenceDate changes
         virtual void init();
         //! discount function called by FittedBondDiscountCurve
@@ -249,8 +273,14 @@ namespace QuantLib {
         Integer numberOfIterations_;
         // final value for the minimized cost function
         Real costValue_;
+        // error code returned by OptimizationMethod::minimize()
+        EndCriteria::Type errorCode_ = EndCriteria::None;
         // optimization method to be used, if none provided use Simplex
         ext::shared_ptr<OptimizationMethod> optimizationMethod_;
+        // optimization constraint, if none provided use NoConstraint
+        Constraint constraint_;
+        // flat extrapolation of instantaneous forward before / after cutoff
+        Real minCutoffTime_, maxCutoffTime_;
     };
 
     // inline
@@ -271,18 +301,18 @@ namespace QuantLib {
     }
 
     inline void FittedBondDiscountCurve::update() {
-        TermStructure::update();
+        YieldTermStructure::update();
         LazyObject::update();
     }
 
     inline void FittedBondDiscountCurve::setup() {
-        for (Size i=0; i<bondHelpers_.size(); ++i)
-            registerWith(bondHelpers_[i]);
+        for (auto& bondHelper : bondHelpers_)
+            registerWith(bondHelper);
     }
 
     inline DiscountFactor FittedBondDiscountCurve::discountImpl(Time t) const {
         calculate();
-        return fittingMethod_->discountFunction(fittingMethod_->solution_, t);
+        return fittingMethod_->discount(fittingMethod_->solution_, t);
     }
 
     inline Integer
@@ -293,6 +323,11 @@ namespace QuantLib {
     inline
     Real FittedBondDiscountCurve::FittingMethod::minimumCostValue() const {
         return costValue_;
+    }
+
+    inline 
+    EndCriteria::Type FittedBondDiscountCurve::FittingMethod::errorCode() const {
+        return errorCode_;
     }
 
     inline Array FittedBondDiscountCurve::FittingMethod::solution() const {
@@ -316,11 +351,24 @@ namespace QuantLib {
         return optimizationMethod_;
     }
 
-    inline DiscountFactor 
-    FittedBondDiscountCurve::FittingMethod::discount(const Array& x, Time t) const {
-        return discountFunction(x, t);
+    inline const Constraint& FittedBondDiscountCurve::FittingMethod::constraint() const {
+        return constraint_;
     }
 
+    inline DiscountFactor FittedBondDiscountCurve::FittingMethod::discount(const Array& x, Time t) const {
+        if (t < minCutoffTime_) {
+            // flat fwd extrapolation before min cutoff time
+            return std::exp(std::log(discountFunction(x, minCutoffTime_)) / minCutoffTime_ * t);
+        } else if (t > maxCutoffTime_) {
+            // flat fwd extrapolation after max cutoff time
+            return discountFunction(x, maxCutoffTime_) *
+                   std::exp((std::log(discountFunction(x, maxCutoffTime_ + 1E-4)) -
+                             std::log(discountFunction(x, maxCutoffTime_))) *
+                            1E4 * (t - maxCutoffTime_));
+        } else {
+            return discountFunction(x, t);
+        }
+    }
 }
 
 #endif

@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -32,18 +32,14 @@ namespace QuantLib {
                          Size doneIndex = 0);
         //! \name MarketModelMultiProduct interface
         //@{
-        std::vector<Time> possibleCashFlowTimes() const;
-        Size numberOfProducts() const;
-        Size maxNumberOfCashFlowsPerProductPerStep() const;
-        void reset();
+        std::vector<Time> possibleCashFlowTimes() const override;
+        Size numberOfProducts() const override;
+        Size maxNumberOfCashFlowsPerProductPerStep() const override;
+        void reset() override;
         bool nextTimeStep(const CurveState&,
                           std::vector<Size>&,
-                          std::vector<std::vector<CashFlow> >&);
-        #if defined(QL_USE_STD_UNIQUE_PTR)
-        std::unique_ptr<MarketModelMultiProduct> clone() const;
-        #else
-        std::auto_ptr<MarketModelMultiProduct> clone() const;
-        #endif
+                          std::vector<std::vector<CashFlow> >&) override;
+        std::unique_ptr<MarketModelMultiProduct> clone() const override;
         //@}
       private:
         Size numberOfProducts_, doneIndex_;

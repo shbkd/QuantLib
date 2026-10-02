@@ -10,7 +10,7 @@ QuantLib is free software: you can redistribute it and/or modify it
 under the terms of the QuantLib license.  You should have received a
 copy of the license along with this program; if not, please email
 <quantlib-dev@lists.sf.net>. The license is also available online at
-<http://quantlib.org/license.shtml>.
+<https://www.quantlib.org/license.shtml>.
 
 This program is distributed in the hope that it will be useful, but WITHOUT
 ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -20,7 +20,6 @@ FOR A PARTICULAR PURPOSE.  See the license for more details.
 #include <ql/experimental/variancegamma/fftvanillaengine.hpp>
 #include <ql/exercise.hpp>
 #include <ql/termstructures/volatility/equityfx/blackconstantvol.hpp>
-#include <ql/auto_ptr.hpp>
 #include <complex>
 
 namespace QuantLib {
@@ -31,12 +30,11 @@ namespace QuantLib {
     {
     }
 
-    QL_UNIQUE_OR_AUTO_PTR<FFTEngine> FFTVanillaEngine::clone() const
+    std::unique_ptr<FFTEngine> FFTVanillaEngine::clone() const
     {
         ext::shared_ptr<GeneralizedBlackScholesProcess> process =
             ext::dynamic_pointer_cast<GeneralizedBlackScholesProcess>(process_);
-        return QL_UNIQUE_OR_AUTO_PTR<FFTEngine>(
-                                      new FFTVanillaEngine(process, lambda_));
+        return std::make_unique<FFTVanillaEngine>(process, lambda_);
     }
 
     void FFTVanillaEngine::precalculateExpiry(Date d)

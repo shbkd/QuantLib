@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -24,13 +24,14 @@
 #ifndef quantlib_binomial_double_barrier_engine_hpp
 #define quantlib_binomial_double_barrier_engine_hpp
 
+#include <ql/experimental/barrieroption/discretizeddoublebarrieroption.hpp>
+#include <ql/math/distributions/normaldistribution.hpp>
 #include <ql/methods/lattices/binomialtree.hpp>
 #include <ql/methods/lattices/bsmlattice.hpp>
-#include <ql/math/distributions/normaldistribution.hpp>
-#include <ql/experimental/barrieroption/discretizeddoublebarrieroption.hpp>
 #include <ql/processes/blackscholesprocess.hpp>
-#include <ql/termstructures/yield/flatforward.hpp>
 #include <ql/termstructures/volatility/equityfx/blackconstantvol.hpp>
+#include <ql/termstructures/yield/flatforward.hpp>
+#include <utility>
 
 namespace QuantLib {
 
@@ -48,16 +49,16 @@ namespace QuantLib {
     template <class T, class D = DiscretizedDoubleBarrierOption>
     class BinomialDoubleBarrierEngine : public DoubleBarrierOption::engine {
       public:
-        BinomialDoubleBarrierEngine(
-             const ext::shared_ptr<GeneralizedBlackScholesProcess>& process,
-             Size timeSteps)
-        : process_(process), timeSteps_(timeSteps) {
+        BinomialDoubleBarrierEngine(ext::shared_ptr<GeneralizedBlackScholesProcess> process,
+                                    Size timeSteps)
+        : process_(std::move(process)), timeSteps_(timeSteps) {
             QL_REQUIRE(timeSteps>0,
                        "timeSteps must be positive, " << timeSteps <<
                        " not allowed");
             registerWith(process_);
         }
-        void calculate() const;
+        void calculate() const override;
+
       private:
         ext::shared_ptr<GeneralizedBlackScholesProcess> process_;
         Size timeSteps_;

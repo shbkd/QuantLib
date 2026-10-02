@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -38,15 +38,15 @@ namespace QuantLib {
                        const Date& date);
         //! \name Event interface
         //@{
-        Date date() const { return date_; }
+        Date date() const override { return date_; }
         //@}
         //! \name CashFlow interface
         //@{
-        Real amount() const { return amount_; }
+        Real amount() const override { return amount_; }
         //@}
         //! \name Visitability
         //@{
-        virtual void accept(AcyclicVisitor&);
+        void accept(AcyclicVisitor&) override;
         //@}
       private:
         Real amount_;
@@ -65,7 +65,7 @@ namespace QuantLib {
         : SimpleCashFlow(amount, date) {}
         //! \name Visitability
         //@{
-        virtual void accept(AcyclicVisitor&);
+        void accept(AcyclicVisitor&) override;
         //@}
     };
 
@@ -80,7 +80,7 @@ namespace QuantLib {
         : SimpleCashFlow(amount, date) {}
         //! \name Visitability
         //@{
-        virtual void accept(AcyclicVisitor&);
+        void accept(AcyclicVisitor&) override;
         //@}
     };
 
@@ -88,27 +88,24 @@ namespace QuantLib {
     // inline definitions
 
     inline void SimpleCashFlow::accept(AcyclicVisitor& v) {
-        Visitor<SimpleCashFlow>* v1 =
-            dynamic_cast<Visitor<SimpleCashFlow>*>(&v);
-        if (v1 != 0)
+        auto* v1 = dynamic_cast<Visitor<SimpleCashFlow>*>(&v);
+        if (v1 != nullptr)
             v1->visit(*this);
         else
             CashFlow::accept(v);
     }
 
     inline void Redemption::accept(AcyclicVisitor& v) {
-        Visitor<Redemption>* v1 =
-            dynamic_cast<Visitor<Redemption>*>(&v);
-        if (v1 != 0)
+        auto* v1 = dynamic_cast<Visitor<Redemption>*>(&v);
+        if (v1 != nullptr)
             v1->visit(*this);
         else
             SimpleCashFlow::accept(v);
     }
 
     inline void AmortizingPayment::accept(AcyclicVisitor& v) {
-        Visitor<AmortizingPayment>* v1 =
-            dynamic_cast<Visitor<AmortizingPayment>*>(&v);
-        if (v1 != 0)
+        auto* v1 = dynamic_cast<Visitor<AmortizingPayment>*>(&v);
+        if (v1 != nullptr)
             v1->visit(*this);
         else
             SimpleCashFlow::accept(v);

@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -33,7 +33,7 @@ namespace QuantLib {
     }
 
 
-    Disposable<Array> LmExtLinearExponentialVolModel::volatility(
+    Array LmExtLinearExponentialVolModel::volatility(
                                                Time t, const Array& x) const {
         Array tmp = LmLinearExponentialVolatilityModel::volatility(t, x);
         for (Size i=0; i<size_; ++i) {

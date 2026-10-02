@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -35,13 +35,13 @@ namespace QuantLib {
         : public GenericModelEngine<HullWhite, 
                                     Swaption::arguments, Swaption::results> {
       public:
-        FdHullWhiteSwaptionEngine(
+        explicit FdHullWhiteSwaptionEngine(
             const ext::shared_ptr<HullWhite>& model,
             Size tGrid = 100, Size xGrid = 100,
             Size dampingSteps = 0, Real invEps = 1e-5,
             const FdmSchemeDesc& schemeDesc = FdmSchemeDesc::Douglas());
 
-        void calculate() const;
+        void calculate() const override;
 
       private:
         const Size tGrid_, xGrid_, dampingSteps_;

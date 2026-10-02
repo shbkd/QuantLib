@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -34,19 +34,19 @@ namespace QuantLib {
     class AndreasenHugeLocalVolAdapter : public LocalVolTermStructure {
       public:
         explicit AndreasenHugeLocalVolAdapter(
-            const ext::shared_ptr<AndreasenHugeVolatilityInterpl>& localVol);
+            ext::shared_ptr<AndreasenHugeVolatilityInterpl> localVol);
 
-        Date maxDate() const;
-        Real minStrike() const;
-        Real maxStrike() const;
+        Date maxDate() const override;
+        Real minStrike() const override;
+        Real maxStrike() const override;
 
-        Calendar calendar() const;
-        DayCounter dayCounter() const;
-        Natural settlementDays() const;
-        const Date& referenceDate() const;
+        Calendar calendar() const override;
+        DayCounter dayCounter() const override;
+        Natural settlementDays() const override;
+        const Date& referenceDate() const override;
 
       protected:
-        Volatility localVolImpl(Time t, Real strike) const;
+        Volatility localVolImpl(Time t, Real strike) const override;
 
       private:
         const ext::shared_ptr<AndreasenHugeVolatilityInterpl> localVol_;

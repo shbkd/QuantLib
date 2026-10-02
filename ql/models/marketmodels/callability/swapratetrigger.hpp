@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -29,18 +29,14 @@ namespace QuantLib {
     class SwapRateTrigger : public ExerciseStrategy<CurveState> {
       public:
         SwapRateTrigger(const std::vector<Time>& rateTimes,
-                        const std::vector<Rate>& swapTriggers,
+                        std::vector<Rate> swapTriggers,
                         const std::vector<Time>& exerciseTimes);
-        std::vector<Time> exerciseTimes() const;
-        std::vector<Time> relevantTimes() const;
-        void reset();
-        bool exercise(const CurveState& currentState) const;
-        void nextStep(const CurveState& currentState);
-        #if defined(QL_USE_STD_UNIQUE_PTR)
-        std::unique_ptr<ExerciseStrategy<CurveState> > clone() const;
-        #else
-        std::auto_ptr<ExerciseStrategy<CurveState> > clone() const;
-        #endif
+        std::vector<Time> exerciseTimes() const override;
+        std::vector<Time> relevantTimes() const override;
+        void reset() override;
+        bool exercise(const CurveState& currentState) const override;
+        void nextStep(const CurveState& currentState) override;
+        std::unique_ptr<ExerciseStrategy<CurveState> > clone() const override;
       private:
         std::vector<Time> rateTimes_;
         std::vector<Rate> swapTriggers_;

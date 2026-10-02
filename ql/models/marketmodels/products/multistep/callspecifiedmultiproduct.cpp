@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -20,20 +20,15 @@
 #include <ql/models/marketmodels/products/multistep/callspecifiedmultiproduct.hpp>
 #include <ql/models/marketmodels/products/multistep/cashrebate.hpp>
 #include <ql/models/marketmodels/utilities.hpp>
-#include <ql/auto_ptr.hpp>
+#include <utility>
 
 namespace QuantLib {
 
     CallSpecifiedMultiProduct::CallSpecifiedMultiProduct(
-                         const Clone<MarketModelMultiProduct>& underlying,
-                         const Clone<ExerciseStrategy<CurveState> >& strategy,
-                         const Clone<MarketModelMultiProduct>& rebate)
-                    : underlying_(underlying), 
-                    strategy_(strategy), 
-                    rebate_(rebate),
-                    callable_(true) 
-    {
-
+        const Clone<MarketModelMultiProduct>& underlying,
+        const Clone<ExerciseStrategy<CurveState> >& strategy,
+        Clone<MarketModelMultiProduct> rebate)
+    : underlying_(underlying), strategy_(strategy), rebate_(std::move(rebate)) {
         Size products = underlying_->numberOfProducts();
         EvolutionDescription d1 = underlying->evolution();
         const std::vector<Time>& rateTimes1 = d1.rateTimes();
@@ -172,11 +167,10 @@ namespace QuantLib {
         return done || currentIndex_ == evolution_.evolutionTimes().size();
     }
 
-    QL_UNIQUE_OR_AUTO_PTR<MarketModelMultiProduct>
+    std::unique_ptr<MarketModelMultiProduct>
     CallSpecifiedMultiProduct::clone() const 
     {
-        return QL_UNIQUE_OR_AUTO_PTR<MarketModelMultiProduct>(
-                                        new CallSpecifiedMultiProduct(*this));
+        return std::make_unique<CallSpecifiedMultiProduct>(*this);
     }
 
     const MarketModelMultiProduct&

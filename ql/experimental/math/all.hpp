@@ -3,7 +3,6 @@
 
 #include <ql/experimental/math/claytoncopularng.hpp>
 #include <ql/experimental/math/convolvedstudentt.hpp>
-#include <ql/experimental/math/expm.hpp>
 #include <ql/experimental/math/farliegumbelmorgensterncopularng.hpp>
 #include <ql/experimental/math/fireflyalgorithm.hpp>
 #include <ql/experimental/math/frankcopularng.hpp>
@@ -18,7 +17,6 @@
 #include <ql/experimental/math/moorepenroseinverse.hpp>
 #include <ql/experimental/math/multidimintegrator.hpp>
 #include <ql/experimental/math/multidimquadrature.hpp>
-#include <ql/experimental/math/numericaldifferentiation.hpp>
 #include <ql/experimental/math/particleswarmoptimization.hpp>
 #include <ql/experimental/math/piecewisefunction.hpp>
 #include <ql/experimental/math/piecewiseintegral.hpp>

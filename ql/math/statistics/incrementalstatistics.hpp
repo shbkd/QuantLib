@@ -12,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -30,11 +30,6 @@
 
 #include <ql/utilities/null.hpp>
 #include <ql/errors.hpp>
-
-#if defined(__clang__)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wc++11-extensions"
-#endif
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/statistics/stats.hpp>
 #include <boost/accumulators/statistics/count.hpp>
@@ -46,9 +41,6 @@
 #include <boost/accumulators/statistics/weighted_skewness.hpp>
 #include <boost/accumulators/statistics/weighted_kurtosis.hpp>
 #include <boost/accumulators/statistics/weighted_moment.hpp>
-#if defined(__clang__)
-#pragma clang diagnostic pop
-#endif
 
 namespace QuantLib {
 

@@ -10,28 +10,25 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "tqreigendecomposition.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
 #include <ql/math/matrixutilities/tqreigendecomposition.hpp>
 
 using namespace QuantLib;
 using boost::unit_test_framework::test_suite;
 
-namespace {
+BOOST_FIXTURE_TEST_SUITE(QuantLibTests, TopLevelFixture)
 
-    Real tolerance = 1.0e-10;
+BOOST_AUTO_TEST_SUITE(TqrEigenDecompositionTests)
 
-}
-
-
-void TqrEigenDecompositionTest::testEigenValueDecomposition() {
+BOOST_AUTO_TEST_CASE(testEigenValueDecomposition) {
     BOOST_TEST_MESSAGE("Testing TQR eigenvalue decomposition...");
 
     Array diag(5);
@@ -48,6 +45,7 @@ void TqrEigenDecompositionTest::testEigenValueDecomposition() {
     for (Size i=0; i < diag.size(); ++i) {
         const Real expected(ev[i]);
         const Real calculated(tqre.eigenvalues()[i]);
+        Real tolerance = 1.0e-10;
         if (std::fabs(expected-calculated) > tolerance) {
             BOOST_FAIL(std::string("wrong eigenvalue \n")
                        << "calculated: "
@@ -58,7 +56,7 @@ void TqrEigenDecompositionTest::testEigenValueDecomposition() {
     }
 }
 
-void TqrEigenDecompositionTest::testZeroOffDiagEigenValues() {
+BOOST_AUTO_TEST_CASE(testZeroOffDiagEigenValues) {
     BOOST_TEST_MESSAGE("Testing TQR zero-off-diagonal eigenvalues...");
 
     Array diag(5);
@@ -74,6 +72,7 @@ void TqrEigenDecompositionTest::testZeroOffDiagEigenValues() {
     for (Size i=0; i < diag.size(); ++i) {
         const Real expected(tqre2.eigenvalues()[i]);
         const Real calculated(tqre1.eigenvalues()[i]);
+        Real tolerance = 1.0e-10;
         if (std::fabs(expected-calculated) > tolerance) {
             BOOST_FAIL(std::string("wrong eigenvalue \n")
                        << "calculated: "
@@ -84,13 +83,14 @@ void TqrEigenDecompositionTest::testZeroOffDiagEigenValues() {
     }
 }
 
-void TqrEigenDecompositionTest::testEigenVectorDecomposition() {
+BOOST_AUTO_TEST_CASE(testEigenVectorDecomposition) {
     BOOST_TEST_MESSAGE("Testing TQR eigenvector decomposition...");
 
     Array diag(2,1);
     Array sub(1,1);
 
     TqrEigenDecomposition tqre(diag, sub);
+    Real tolerance = 1.0e-10;
 
     if (std::fabs(0.25 + tqre.eigenvectors()[0][0]
                        * tqre.eigenvectors()[0][1]
@@ -100,14 +100,6 @@ void TqrEigenDecompositionTest::testEigenVectorDecomposition() {
     }
 }
 
-test_suite* TqrEigenDecompositionTest::suite() {
-    test_suite* suite = BOOST_TEST_SUITE("TQR eigendecomposition tests");
-    suite->add(QUANTLIB_TEST_CASE(
-                   &TqrEigenDecompositionTest::testEigenValueDecomposition));
-    suite->add(QUANTLIB_TEST_CASE(
-                   &TqrEigenDecompositionTest::testZeroOffDiagEigenValues));
-    suite->add(QUANTLIB_TEST_CASE(
-                   &TqrEigenDecompositionTest::testEigenVectorDecomposition));
-    return suite;
-}
+BOOST_AUTO_TEST_SUITE_END()
 
+BOOST_AUTO_TEST_SUITE_END()

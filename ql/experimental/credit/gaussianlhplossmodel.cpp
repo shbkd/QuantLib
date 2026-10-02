@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -44,8 +44,8 @@ namespace QuantLib {
           biphi_(-sqrt(correlQuote->value()))
         {
             registerWith(correl_);
-            for(Size i=0; i<quotes.size(); i++)
-                registerWith(quotes[i]);
+            for (const auto& quote : quotes)
+                registerWith(quote);
     }
 
     GaussianLHPLossModel::GaussianLHPLossModel(
@@ -60,9 +60,8 @@ namespace QuantLib {
           beta_(sqrt(correlation)),
           biphi_(-sqrt(correlation))
         {
-            for(Size i=0; i<recoveries.size(); i++)
-                rrQuotes_.push_back(Handle<RecoveryRateQuote>(
-                ext::make_shared<RecoveryRateQuote>(recoveries[i])));
+        for (Real recoverie : recoveries)
+            rrQuotes_.emplace_back(ext::make_shared<RecoveryRateQuote>(recoverie));
         }
 
         GaussianLHPLossModel::GaussianLHPLossModel(
@@ -78,9 +77,8 @@ namespace QuantLib {
           biphi_(-sqrt(correlQuote->value()))
         {
             registerWith(correl_);
-            for(Size i=0; i<recoveries.size(); i++)
-                rrQuotes_.push_back(Handle<RecoveryRateQuote>(
-                ext::make_shared<RecoveryRateQuote>(recoveries[i])));
+            for (Real recoverie : recoveries)
+                rrQuotes_.emplace_back(ext::make_shared<RecoveryRateQuote>(recoverie));
         }
 
 

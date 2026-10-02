@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -21,13 +21,7 @@
 
 namespace QuantLib {
 
-    NewZealand::NewZealand() {
-        // all calendar instances share the same implementation instance
-        static ext::shared_ptr<Calendar::Impl> impl(new NewZealand::Impl);
-        impl_ = impl;
-    }
-
-    bool NewZealand::Impl::isBusinessDay(const Date& date) const {
+    bool NewZealand::CommonImpl::isBusinessDay(const Date& date) const {
         Weekday w = date.weekday();
         Day d = date.dayOfMonth(), dd = date.dayOfYear();
         Month m = date.month();
@@ -40,16 +34,16 @@ namespace QuantLib {
             // Day after New Year's Day (possibly moved to Mon or Tuesday)
             || ((d == 2 || (d == 4 && (w == Monday || w == Tuesday))) &&
                 m == January)
-            // Anniversary Day, Monday nearest January 22nd
-            || ((d >= 19 && d <= 25) && w == Monday && m == January)
-            // Waitangi Day. February 6th
+            // Waitangi Day. February 6th (possibly moved to Monday since 2013)
             || (d == 6 && m == February)
+            || ((d == 7 || d == 8) && w == Monday && m == February && y > 2013)
             // Good Friday
             || (dd == em-3)
             // Easter Monday
             || (dd == em)
-            // ANZAC Day. April 25th
+            // ANZAC Day. April 25th (possibly moved to Monday since 2013) 
             || (d == 25 && m == April)
+            || ((d == 26 || d == 27) && w == Monday && m == April && y > 2013)
             // Queen's Birthday, first Monday in June
             || (d <= 7 && w == Monday && m == June)
             // Labour Day, fourth Monday in October
@@ -59,9 +53,74 @@ namespace QuantLib {
                 && m == December)
             // Boxing Day, December 26th (possibly Monday or Tuesday)
             || ((d == 26 || (d == 28 && (w == Monday || w == Tuesday)))
-                && m == December))
-            return false;
+                && m == December)
+            // Matariki, it happens on Friday in June or July
+            // official calendar released by the NZ government for the
+            // next 30 years
+            || (d == 20 && m == June && y == 2025)
+            || (d == 21 && m == June && (y == 2030 || y == 2052))
+            || (d == 24 && m == June && (y == 2022 || y == 2033 || y == 2044))
+            || (d == 25 && m == June && (y == 2027 || y == 2038 || y == 2049))
+            || (d == 28 && m == June && y == 2024)
+            || (d == 29 && m == June && (y == 2035 || y == 2046))
+            || (d == 30 && m == June && y == 2051)
+            || (d == 2  && m == July && y == 2032)
+            || (d == 3  && m == July && (y == 2043 || y == 2048))
+            || (d == 6  && m == July && (y == 2029 || y == 2040))
+            || (d == 7  && m == July && (y == 2034 || y == 2045))
+            || (d == 10 && m == July && (y == 2026 || y == 2037))
+            || (d == 11 && m == July && (y == 2031 || y == 2042))
+            || (d == 14 && m == July && (y == 2023 || y == 2028))
+            || (d == 15 && m == July && (y == 2039 || y == 2050))
+            || (d == 18 && m == July && y == 2036)
+            || (d == 19 && m == July && (y == 2041 || y == 2047))
+            // Queen Elizabeth's funeral
+            || (d == 26 && m == September && y == 2022))
+            return false; // NOLINT(readability-simplify-boolean-expr)
         return true;
+    }
+
+    bool NewZealand::WellingtonImpl::isBusinessDay(const Date& date) const {
+        if (!NewZealand::CommonImpl::isBusinessDay(date))
+            return false;
+        Weekday w = date.weekday();
+        Day d = date.dayOfMonth();
+        Month m = date.month();
+        // Anniversary Day, Monday nearest January 22nd
+        if ((d >= 19 && d <= 25) && w == Monday && m == January)
+            return false; // NOLINT(readability-simplify-boolean-expr)
+        return true;
+    }
+
+    bool NewZealand::AucklandImpl::isBusinessDay(const Date& date) const {
+        if (!NewZealand::CommonImpl::isBusinessDay(date))
+            return false;
+        Weekday w = date.weekday();
+        Day d = date.dayOfMonth();
+        Month m = date.month();
+        // Anniversary Day, Monday nearest January 29nd
+        if ((d >= 26 && w == Monday && m == January)
+            || (d == 1 && w == Monday && m == February))
+            return false; // NOLINT(readability-simplify-boolean-expr)
+        return true;
+    }
+        
+
+    NewZealand::NewZealand(Market market) {
+        // all calendar instances for a given market share the same implementation instance
+        static auto wellingtonImpl = ext::make_shared<NewZealand::WellingtonImpl>();
+        static auto aucklandImpl = ext::make_shared<NewZealand::AucklandImpl>();
+
+        switch (market) {
+          case Wellington:
+            impl_ = wellingtonImpl;
+            break;
+          case Auckland:
+            impl_ = aucklandImpl;
+            break;
+          default:
+            QL_FAIL("unknown market");
+        }
     }
 
 }

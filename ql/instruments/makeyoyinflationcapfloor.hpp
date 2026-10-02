@@ -12,14 +12,14 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
  */
 
-/*! \file makecapfloor.hpp
+/*! \file makeyoyinflationcapfloor.hpp
  \brief Helper class to instantiate standard yoy inflation cap/floor.
  */
 
@@ -36,43 +36,48 @@ namespace QuantLib {
         standard yoy inflation cap and floor.
      */
     class MakeYoYInflationCapFloor {
-    public:
+      public:
         MakeYoYInflationCapFloor(YoYInflationCapFloor::Type capFloorType,
-                        const Size& length, const Calendar& cal,
-                        const ext::shared_ptr<YoYInflationIndex>& index,
-                        const Period& observationLag, Rate strike = Null<Rate>(),
-                        const Period& forwardStart=0*Days);
+                                 ext::shared_ptr<YoYInflationIndex> index,
+                                 const Size& length,
+                                 Calendar cal,
+                                 const Period& observationLag,
+                                 CPI::InterpolationType interpolation);
+
         MakeYoYInflationCapFloor& withNominal(Real n);
         MakeYoYInflationCapFloor& withEffectiveDate(const Date& effectiveDate);
         MakeYoYInflationCapFloor& withFirstCapletExcluded();
         MakeYoYInflationCapFloor& withPaymentDayCounter(const DayCounter&);
         MakeYoYInflationCapFloor& withPaymentAdjustment(BusinessDayConvention);
         MakeYoYInflationCapFloor& withFixingDays(Natural fixingDays);
-
+        MakeYoYInflationCapFloor& withPricingEngine(
+                const ext::shared_ptr<PricingEngine>& engine);
+        //! only get last coupon
+        MakeYoYInflationCapFloor& asOptionlet(bool b = true);
+        MakeYoYInflationCapFloor& withStrike(Rate strike);
+        MakeYoYInflationCapFloor& withAtmStrike(
+                      const Handle<YieldTermStructure>& nominalTermStructure);
+        MakeYoYInflationCapFloor& withForwardStart(Period forwardStart);
 
         operator YoYInflationCapFloor() const;
         operator ext::shared_ptr<YoYInflationCapFloor>() const ;
 
-        //! only get last coupon
-        MakeYoYInflationCapFloor& asOptionlet(bool b = true);
-
-        MakeYoYInflationCapFloor& withPricingEngine(
-                const ext::shared_ptr<PricingEngine>& engine);
-    private:
+      private:
         YoYInflationCapFloor::Type capFloorType_;
         Size length_;
         Calendar calendar_;
         ext::shared_ptr<YoYInflationIndex> index_;
         Period observationLag_;
+        CPI::InterpolationType interpolation_;
         Rate strike_;
-        bool firstCapletExcluded_, asOptionlet_;
+        bool firstCapletExcluded_ = false, asOptionlet_ = false;
         Date effectiveDate_;
         Period forwardStart_;
         DayCounter dayCounter_;
-        BusinessDayConvention roll_;
-        Natural fixingDays_;
-        Real nominal_;
-
+        BusinessDayConvention roll_ = ModifiedFollowing;
+        Natural fixingDays_ = 0;
+        Real nominal_ = 1000000.0;
+        Handle<YieldTermStructure> nominalTermStructure_;
 
         ext::shared_ptr<PricingEngine> engine_;
     };

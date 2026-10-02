@@ -2,6 +2,7 @@
 
 /*
  Copyright (C) 2013, 2016 Peter Caspers
+ Copyright (C) 2026 Kyrylo Protsenko
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -10,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -25,10 +26,12 @@
 #define quantlib_nonstandard_swap_hpp
 
 #include <ql/instruments/swap.hpp>
-#include <ql/instruments/vanillaswap.hpp>
+#include <ql/instruments/fixedvsfloatingswap.hpp>
+#include <ql/cashflows/rateaveraging.hpp>
 #include <ql/time/daycounter.hpp>
 #include <ql/time/schedule.hpp>
-#include <boost/optional.hpp>
+#include <ql/utilities/null.hpp>
+#include <ql/optional.hpp>
 
 namespace QuantLib {
 
@@ -42,33 +45,42 @@ namespace QuantLib {
         class arguments;
         class results;
         class engine;
-        NonstandardSwap(const VanillaSwap &fromVanilla);
-        NonstandardSwap(
-            const VanillaSwap::Type type, const std::vector<Real> &fixedNominal,
-            const std::vector<Real> &floatingNominal,
-            const Schedule &fixedSchedule, const std::vector<Real> &fixedRate,
-            const DayCounter &fixedDayCount, const Schedule &floatingSchedule,
-            const ext::shared_ptr<IborIndex> &iborIndex, const Real gearing,
-            const Spread spread, const DayCounter &floatingDayCount,
-            const bool intermediateCapitalExchange = false,
-            const bool finalCapitalExchange = false,
-            boost::optional<BusinessDayConvention> paymentConvention =
-                boost::none);
-        NonstandardSwap(
-            const VanillaSwap::Type type, const std::vector<Real> &fixedNominal,
-            const std::vector<Real> &floatingNominal,
-            const Schedule &fixedSchedule, const std::vector<Real> &fixedRate,
-            const DayCounter &fixedDayCount, const Schedule &floatingSchedule,
-            const ext::shared_ptr<IborIndex> &iborIndex,
-            const std::vector<Real> &gearing, const std::vector<Spread> &spread,
-            const DayCounter &floatingDayCount,
-            const bool intermediateCapitalExchange = false,
-            const bool finalCapitalExchange = false,
-            boost::optional<BusinessDayConvention> paymentConvention =
-                boost::none);
+        explicit NonstandardSwap(const FixedVsFloatingSwap &fromVanilla);
+        NonstandardSwap(Swap::Type type,
+                        std::vector<Real> fixedNominal,
+                        const std::vector<Real>& floatingNominal,
+                        Schedule fixedSchedule,
+                        std::vector<Real> fixedRate,
+                        DayCounter fixedDayCount,
+                        Schedule floatingSchedule,
+                        ext::shared_ptr<IborIndex> iborIndex,
+                        Real gearing,
+                        Spread spread,
+                        DayCounter floatingDayCount,
+                        bool intermediateCapitalExchange = false,
+                        bool finalCapitalExchange = false,
+                        std::optional<BusinessDayConvention> paymentConvention = std::nullopt,
+                        Integer paymentLag = 0,
+                        Calendar paymentCalendar = Calendar());
+        NonstandardSwap(Swap::Type type,
+                        std::vector<Real> fixedNominal,
+                        std::vector<Real> floatingNominal,
+                        Schedule fixedSchedule,
+                        std::vector<Real> fixedRate,
+                        DayCounter fixedDayCount,
+                        Schedule floatingSchedule,
+                        ext::shared_ptr<IborIndex> iborIndex,
+                        std::vector<Real> gearing,
+                        std::vector<Spread> spread,
+                        DayCounter floatingDayCount,
+                        bool intermediateCapitalExchange = false,
+                        bool finalCapitalExchange = false,
+                        std::optional<BusinessDayConvention> paymentConvention = std::nullopt,
+                        Integer paymentLag = 0,
+                        Calendar paymentCalendar = Calendar());
         //! \name Inspectors
         //@{
-        VanillaSwap::Type type() const;
+        Swap::Type type() const;
         const std::vector<Real> &fixedNominal() const;
         const std::vector<Real> &floatingNominal() const;
 
@@ -85,6 +97,8 @@ namespace QuantLib {
         const DayCounter &floatingDayCount() const;
 
         BusinessDayConvention paymentConvention() const;
+        Integer paymentLag() const;
+        const Calendar& paymentCalendar() const;
 
         const Leg &fixedLeg() const;
         const Leg &floatingLeg() const;
@@ -94,13 +108,13 @@ namespace QuantLib {
         //@{
         //@}
         // other
-        void setupArguments(PricingEngine::arguments *args) const;
-        void fetchResults(const PricingEngine::results *) const;
+        void setupArguments(PricingEngine::arguments* args) const override;
+        void fetchResults(const PricingEngine::results*) const override;
 
       private:
         void init();
-        void setupExpired() const;
-        VanillaSwap::Type type_;
+        void setupExpired() const override;
+        Swap::Type type_;
         std::vector<Real> fixedNominal_, floatingNominal_;
         Schedule fixedSchedule_;
         std::vector<Real> fixedRate_;
@@ -112,6 +126,13 @@ namespace QuantLib {
         bool singleSpreadAndGearing_;
         DayCounter floatingDayCount_;
         BusinessDayConvention paymentConvention_;
+        Integer paymentLag_;
+        Calendar paymentCalendar_;
+        bool telescopicValueDates_ = false;
+        RateAveraging::Type averagingMethod_ = RateAveraging::Compound;
+        Natural lookbackDays_ = Null<Natural>();
+        Natural lockoutDays_ = 0;
+        bool applyObservationShift_ = false;
         const bool intermediateCapitalExchange_;
         const bool finalCapitalExchange_;
         // results
@@ -120,8 +141,8 @@ namespace QuantLib {
     //! %Arguments for nonstandard swap calculation
     class NonstandardSwap::arguments : public Swap::arguments {
       public:
-        arguments() : type(VanillaSwap::Receiver) {}
-        VanillaSwap::Type type;
+        arguments() = default;
+        Swap::Type type = Swap::Receiver;
         std::vector<Real> fixedNominal, floatingNominal;
 
         std::vector<Date> fixedResetDates;
@@ -142,13 +163,13 @@ namespace QuantLib {
         std::vector<bool> fixedIsRedemptionFlow;
         std::vector<bool> floatingIsRedemptionFlow;
 
-        void validate() const;
+        void validate() const override;
     };
 
     //! %Results from nonstandard swap calculation
     class NonstandardSwap::results : public Swap::results {
       public:
-        void reset();
+        void reset() override;
     };
 
     class NonstandardSwap::engine
@@ -157,7 +178,7 @@ namespace QuantLib {
 
     // inline definitions
 
-    inline VanillaSwap::Type NonstandardSwap::type() const { return type_; }
+    inline Swap::Type NonstandardSwap::type() const { return type_; }
 
     inline const std::vector<Real> &NonstandardSwap::fixedNominal() const {
         return fixedNominal_;
@@ -214,6 +235,12 @@ namespace QuantLib {
 
     inline BusinessDayConvention NonstandardSwap::paymentConvention() const {
         return paymentConvention_;
+    }
+
+    inline Integer NonstandardSwap::paymentLag() const { return paymentLag_; }
+
+    inline const Calendar& NonstandardSwap::paymentCalendar() const {
+        return paymentCalendar_;
     }
 
     inline const Leg &NonstandardSwap::fixedLeg() const { return legs_[0]; }

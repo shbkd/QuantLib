@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -29,7 +29,7 @@
 #include <ql/pricingengine.hpp>
 #include <ql/utilities/null.hpp>
 #include <ql/time/date.hpp>
-#include <boost/any.hpp>
+#include <ql/any.hpp>
 #include <map>
 #include <string>
 
@@ -55,10 +55,11 @@ namespace QuantLib {
         //! returns the date the net present value refers to.
         const Date& valuationDate() const;
 
+        const ext::shared_ptr<PricingEngine>& pricingEngine() const;
         //! returns any additional result returned by the pricing engine.
         template <typename T> T result(const std::string& tag) const;
         //! returns all additional result returned by the pricing engine.
-        const std::map<std::string,boost::any>& additionalResults() const;
+        const std::map<std::string, std::any>& additionalResults() const;
 
         //! returns whether the instrument might have value greater than zero.
         virtual bool isExpired() const = 0;
@@ -85,7 +86,7 @@ namespace QuantLib {
       protected:
         //! \name Calculations
         //@{
-        void calculate() const;
+        void calculate() const override;
         /*! This method must leave the instrument in a consistent
             state when the expiration condition is met.
         */
@@ -96,7 +97,7 @@ namespace QuantLib {
             a pricing engine is used, the default implementation
             can be used.
         */
-        virtual void performCalculations() const;
+        void performCalculations() const override;
         //@}
         /*! \name Results
             The value of this attribute and any other that derived
@@ -105,14 +106,14 @@ namespace QuantLib {
         //@{
         mutable Real NPV_, errorEstimate_;
         mutable Date valuationDate_;
-        mutable std::map<std::string,boost::any> additionalResults_;
+        mutable std::map<std::string, std::any> additionalResults_;
         //@}
         ext::shared_ptr<PricingEngine> engine_;
     };
 
     class Instrument::results : public virtual PricingEngine::results {
       public:
-        void reset() {
+        void reset() override {
             value = errorEstimate = Null<Real>();
             valuationDate = Date();
             additionalResults.clear();
@@ -120,37 +121,20 @@ namespace QuantLib {
         Real value;
         Real errorEstimate;
         Date valuationDate;
-        std::map<std::string,boost::any> additionalResults;
+        std::map<std::string, std::any> additionalResults;
     };
 
 
     // inline definitions
 
-    inline Instrument::Instrument()
-    : NPV_(Null<Real>()), errorEstimate_(Null<Real>()),
-      valuationDate_(Date()) {}
-
-    inline void Instrument::setPricingEngine(
-                                  const ext::shared_ptr<PricingEngine>& e) {
-        if (engine_)
-            unregisterWith(engine_);
-        engine_ = e;
-        if (engine_)
-            registerWith(engine_);
-        // trigger (lazy) recalculation and notify observers
-        update();
-    }
-
-    inline void Instrument::setupArguments(PricingEngine::arguments*) const {
-        QL_FAIL("Instrument::setupArguments() not implemented");
-    }
-
     inline void Instrument::calculate() const {
-        if (isExpired()) {
-            setupExpired();
-            calculated_ = true;
-        } else {
-            LazyObject::calculate();
+        if (!calculated_) {
+            if (isExpired()) {
+                setupExpired();
+                calculated_ = true;
+            } else {
+                LazyObject::calculate();
+            }
         }
     }
 
@@ -171,10 +155,8 @@ namespace QuantLib {
 
     inline void Instrument::fetchResults(
                                       const PricingEngine::results* r) const {
-        const Instrument::results* results =
-            dynamic_cast<const Instrument::results*>(r);
-        QL_ENSURE(results != 0,
-                  "no results returned from pricing engine");
+        const auto* results = dynamic_cast<const Instrument::results*>(r);
+        QL_ENSURE(results != nullptr, "no results returned from pricing engine");
 
         NPV_ = results->value;
         errorEstimate_ = results->errorEstimate;
@@ -203,18 +185,23 @@ namespace QuantLib {
         return valuationDate_;
     }
 
+    inline const ext::shared_ptr<PricingEngine>& Instrument::pricingEngine() const {
+        return engine_;
+    }
+
     template <class T>
     inline T Instrument::result(const std::string& tag) const {
         calculate();
-        std::map<std::string,boost::any>::const_iterator value =
+        auto value =
             additionalResults_.find(tag);
         QL_REQUIRE(value != additionalResults_.end(),
                    tag << " not provided");
-        return boost::any_cast<T>(value->second);
+        return std::any_cast<T>(value->second);
     }
 
-    inline const std::map<std::string,boost::any>&
+    inline const std::map<std::string, std::any>&
     Instrument::additionalResults() const {
+        calculate();
         return additionalResults_;
     }
 

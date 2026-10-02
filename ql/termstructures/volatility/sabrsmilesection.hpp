@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -36,20 +36,30 @@ namespace QuantLib {
         SabrSmileSection(Time timeToExpiry,
                          Rate forward,
                          const std::vector<Real>& sabrParameters,
-                         const Real shift = 0.0);
+                         Real shift = 0.0,
+                         VolatilityType volatilityType = VolatilityType::ShiftedLognormal);
         SabrSmileSection(const Date& d,
                          Rate forward,
                          const std::vector<Real>& sabrParameters,
+                         const Date& referenceDate = Date(),
                          const DayCounter& dc = Actual365Fixed(),
-                         const Real shift = 0.0);
-        Real minStrike () const { return -shift_; }
-        Real maxStrike () const { return QL_MAX_REAL; }
-        Real atmLevel() const { return forward_; }
+                         Real shift = 0.0,
+                         VolatilityType volatilityType = VolatilityType::ShiftedLognormal);
+
+        Real minStrike() const override { return -shift_; }
+        Real maxStrike() const override { return QL_MAX_REAL; }
+        Real atmLevel() const override { return forward_; }
+        Real alpha() const { return alpha_; }
+        Real beta() const { return beta_; }
+        Real nu() const { return nu_; }
+        Real rho() const { return rho_; }
       protected:
-        Real varianceImpl(Rate strike) const;
-        Volatility volatilityImpl(Rate strike) const;
+        Real varianceImpl(Rate strike) const override;
+        Volatility volatilityImpl(Rate strike) const override;
+
       private:
         Real alpha_, beta_, nu_, rho_, forward_, shift_;
+        void initialise(const std::vector<Real>& sabrParameters);
     };
 
 

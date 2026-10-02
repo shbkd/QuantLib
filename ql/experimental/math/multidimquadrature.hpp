@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -30,16 +30,9 @@
 #ifndef QL_PATCH_SOLARIS
 
 #include <ql/math/integrals/gaussianquadratures.hpp>
-#include <ql/math/functional.hpp>
-#include <boost/function.hpp>
-#include <boost/bind.hpp>
-#include <boost/lambda/bind.hpp>
+#include <functional>
 
 namespace QuantLib {
-
-    namespace detail {
-        typedef Disposable<std::vector<Real> > DispArray;
-    }
 
     /*! \brief Integrates a vector or scalar function of vector domain. 
         
@@ -58,25 +51,24 @@ namespace QuantLib {
         // real numbers, turns 1D quadratures into ND
         class VectorIntegrator : public GaussHermiteIntegration {
         public:
-            VectorIntegrator(Size n, Real mu = 0.0) 
+            explicit VectorIntegrator(Size n, Real mu = 0.0) 
             : GaussHermiteIntegration(n, mu) {}
 
             template <class F> // todo: fix copies.
-            detail::DispArray operator()(const F& f) const {
+            std::vector<Real> operator()(const F& f) const {
                 //first one, we do not know the size of the vector returned by f
                 Integer i = order()-1;
                 std::vector<Real> term = f(x_[i]);// potential copy! @#$%^!!!
-                std::for_each(term.begin(), term.end(), 
-                              multiply_by<Real>(w_[i]));
+                std::for_each(term.begin(), term.end(),
+                              [&](Real x) -> Real { return x * w_[i]; });
                 std::vector<Real> sum = term;
            
                 for (i--; i >= 0; --i) {
                     term = f(x_[i]);// potential copy! @#$%^!!!
                     // sum[j] += term[j] * w_[i];
                     std::transform(term.begin(), term.end(), sum.begin(), 
-                        sum.begin(), 
-                        boost::bind(std::plus<Real>(), _2,
-                            boost::bind(std::multiplies<Real>(), w_[i], _1)));
+                                   sum.begin(),
+                                   [&](Real x, Real y) -> Real { return w_[i]*x + y; });
                 }
                 return sum;
             }
@@ -101,12 +93,10 @@ namespace QuantLib {
         cost... up to the compiler. It can not be templated all the way since
         the integration entries functions can not be templates.
         Most times integrands will return a scalar or vector but could be a 
-        matrix too. Also vectors might be returned as vector or Disposable 
-        wrapped (which is preferred and I have removed the plain vector
-        version).
+        matrix too.
          */
         template<class RetType_T>
-        RetType_T operator()(const boost::function<RetType_T (
+        RetType_T operator()(const std::function<RetType_T (
             const std::vector<Real>& arg)>& f) const 
         {
             return integrate<RetType_T>(f);
@@ -119,7 +109,7 @@ namespace QuantLib {
 
         // Declare, spezializations follow.
         template<class RetType_T>
-        RetType_T integrate(const boost::function<RetType_T (
+        RetType_T integrate(const std::function<RetType_T (
             const std::vector<Real>& v1)>& f) const;
 
     private:
@@ -137,14 +127,14 @@ namespace QuantLib {
         //    class construction time) handles to the integration entry points
         template<Size levelSpawn>
         void spawnFcts() const {
-            integrationEntries_[levelSpawn-1] = 
-                boost::bind(
-                &GaussianQuadMultidimIntegrator::scalarIntegrator<levelSpawn>, 
-                    this, _1, _2);
-            integrationEntriesVR_[levelSpawn-1] = 
-                boost::bind(
-                &GaussianQuadMultidimIntegrator::vectorIntegratorVR<levelSpawn>, 
-                    this, _1, _2);
+            integrationEntries_[levelSpawn-1] =
+                [&](const std::function<Real (const std::vector<Real>&)>& f, Real x){
+                    return scalarIntegrator<levelSpawn>(f, x);
+                };
+            integrationEntriesVR_[levelSpawn-1] =
+                [&](const std::function<std::vector<Real>(const std::vector<Real>&)>& f, Real x){
+                    return vectorIntegratorVR<levelSpawn>(f, x);
+                };
             spawnFcts<levelSpawn-1>();
         }
         //@}
@@ -153,33 +143,22 @@ namespace QuantLib {
 
         template <int intgDepth>
         Real scalarIntegrator(
-            boost::function<Real (const std::vector<Real>& arg1)> f, 
+            const std::function<Real (const std::vector<Real>& arg1)>& f,
             const Real mFctr) const 
         {
             varBuffer_[intgDepth-1] = mFctr;
-            return integral_(boost::bind(
-                &GaussianQuadMultidimIntegrator::scalarIntegrator<intgDepth-1>,
-                this,
-                f,
-                _1)
-            );
+            return integral_([&](Real x){ return scalarIntegrator<intgDepth-1>(f, x); });
         }
 
         template <int intgDepth>
-        detail::DispArray vectorIntegratorVR(
-            const boost::function<detail::DispArray(const std::vector<Real>& arg1)>& f,
+        std::vector<Real> vectorIntegratorVR(
+            const std::function<std::vector<Real>(const std::vector<Real>& arg1)>& f,
             const Real mFctr) const 
         {
             varBuffer_[intgDepth-1] = mFctr;
-            return 
-              integralV_(boost::bind(
-               &GaussianQuadMultidimIntegrator::vectorIntegratorVR<intgDepth-1>,
-               this,
-               f,
-               _1)
-            );
+            return integralV_([&](Real x){ return vectorIntegratorVR<intgDepth-1>(f, x); });
         }
-    private:
+
         // Same object for all dimensions poses problems when using the 
         //   parallelized integrals version.
         //! The actual integrators.
@@ -190,11 +169,11 @@ namespace QuantLib {
         //    level/dimension we are going to start integration
         // \todo Declare typedefs for traits
         mutable std::vector<
-        boost::function<Real (boost::function<Real (
+        std::function<Real (std::function<Real (
             const std::vector<Real>& varg2)> f1, 
             const Real r3)> > integrationEntries_;
         mutable std::vector<
-        boost::function<detail::DispArray (const boost::function<detail::DispArray(
+        std::function<std::vector<Real> (const std::function<std::vector<Real>(
             const std::vector<Real>& vvarg2)>& vf1, 
             const Real vr3)> > integrationEntriesVR_;
 
@@ -208,60 +187,47 @@ namespace QuantLib {
 
     template<>
     inline Real GaussianQuadMultidimIntegrator::operator()(
-        const boost::function<Real (const std::vector<Real>& v1)>& f) const
+        const std::function<Real (const std::vector<Real>& v1)>& f) const
     {
-        return integral_(boost::bind(
-                   // integration entry level is selected now
-                   integrationEntries_[dimension_-1],
-                   boost::cref(f),
-                   _1)
-                   );
+        // integration entry level is selected now
+        return integral_([&](Real x){ return integrationEntries_[dimension_-1](std::cref(f), x); });
     }
 
     // Scalar integrand version (merge with vector case?)
     template<>
     inline Real GaussianQuadMultidimIntegrator::integrate<Real>(
-        const boost::function<Real (const std::vector<Real>& v1)>& f) const 
+        const std::function<Real (const std::vector<Real>& v1)>& f) const 
     {
         // integration variables
         // call vector quadrature integration with the function and start 
         // values, kicks in recursion over the dimensions of the integration
         // variable.
-        return integral_(boost::bind(
-                   // integration entry level is selected now
-                   integrationEntries_[dimension_-1],
-                   boost::cref(f),
-                   _1)
-                   );
+        return integral_([&](Real x){ return integrationEntries_[dimension_-1](std::cref(f), x); });
     }
 
     // Vector integrand version
     template<>
-    inline detail::DispArray GaussianQuadMultidimIntegrator::integrate<detail::DispArray>(
-        const boost::function<detail::DispArray (const std::vector<Real>& v1)>& f) const
+    inline std::vector<Real> GaussianQuadMultidimIntegrator::integrate<std::vector<Real>>(
+        const std::function<std::vector<Real> (const std::vector<Real>& v1)>& f) const
     {
-        return integralV_(boost::bind(
-                   boost::cref(integrationEntriesVR_[dimension_-1]),
-                   boost::cref(f),
-                   _1)
-                   );
+        return integralV_([&](Real x){ return integrationEntriesVR_[dimension_-1](std::cref(f), x); });
     } 
 
     //! Terminal integrand; scalar function version
     template<> 
     inline Real GaussianQuadMultidimIntegrator::scalarIntegrator<1>(
-        boost::function<Real (const std::vector<Real>& arg1)> f,
+        const std::function<Real (const std::vector<Real>& arg1)>& f,
         const Real mFctr) const
     {
         varBuffer_[0] = mFctr;
         return f(varBuffer_);
     }
 
-    //! Terminal integrand; disposable vector function version
+    //! Terminal integrand; vector function version
     template<>
-    inline detail::DispArray
+    inline std::vector<Real>
         GaussianQuadMultidimIntegrator::vectorIntegratorVR<1>(
-        const boost::function<detail::DispArray (const std::vector<Real>& arg1)>& f,
+        const std::function<std::vector<Real> (const std::vector<Real>& arg1)>& f,
         const Real mFctr) const 
     {
         varBuffer_[0] = mFctr;
@@ -271,12 +237,12 @@ namespace QuantLib {
     //! Terminal level:
     template<>
     inline void GaussianQuadMultidimIntegrator::spawnFcts<1>() const {
-        integrationEntries_[0] = 
-          boost::bind(&GaussianQuadMultidimIntegrator::scalarIntegrator<1>, 
-          this, _1, _2);
-        integrationEntriesVR_[0] = 
-         boost::bind(&GaussianQuadMultidimIntegrator::vectorIntegratorVR<1>, 
-         this, _1, _2);
+        integrationEntries_[0] = [&](const std::function<Real(const std::vector<Real>&)>& f,
+                                     Real x) { return scalarIntegrator<1>(f, x); };
+        integrationEntriesVR_[0] =
+            [&](const std::function<std::vector<Real>(const std::vector<Real>&)>& f, Real x) {
+                return vectorIntegratorVR<1>(f, x);
+            };
     }
 
 }

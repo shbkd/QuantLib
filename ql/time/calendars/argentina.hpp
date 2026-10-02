@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -47,17 +47,17 @@ namespace QuantLib {
             or Friday)</li>
         <li>Immaculate Conception, December 8th</li>
         <li>Christmas Eve, December 24th</li>
-        <li>New Year's Eve, December 31th</li>
+        <li>New Year's Eve, December 31st</li>
         </ul>
 
         \ingroup calendars
     */
     class Argentina : public Calendar {
       private:
-        class MervalImpl : public Calendar::WesternImpl {
+        class MervalImpl final : public Calendar::WesternImpl {
           public:
-            std::string name() const { return "Buenos Aires stock exchange"; }
-            bool isBusinessDay(const Date&) const;
+            std::string name() const override { return "Buenos Aires stock exchange"; }
+            bool isBusinessDay(const Date&) const override;
         };
       public:
         enum Market { Merval   //!< Buenos Aires stock exchange calendar

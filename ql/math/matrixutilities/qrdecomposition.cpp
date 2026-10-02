@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -23,19 +23,21 @@
 
 #include <ql/math/optimization/lmdif.hpp>
 #include <ql/math/matrixutilities/qrdecomposition.hpp>
+#include <memory>
 
 namespace QuantLib {
 
-    Disposable<std::vector<Size> > qrDecomposition(const Matrix& M,
-                                                   Matrix& q, Matrix& r,
-                                                   bool pivot) {
+    std::vector<Size> qrDecomposition(const Matrix& M,
+                                      Matrix& q,
+                                      Matrix& r,
+                                      bool pivot) {
         Matrix mT = transpose(M);
         const Size m = M.rows();
         const Size n = M.columns();
 
-        boost::scoped_array<int> lipvt(new int[n]);
-        boost::scoped_array<Real> rdiag(new Real[n]);
-        boost::scoped_array<Real> wa(new Real[n]);
+        auto lipvt = std::make_unique<int[]>(n);
+        auto rdiag = std::make_unique<Real[]>(n);
+        auto wa = std::make_unique<Real[]>(n);
 
         MINPACK::qrfac(m, n, mT.begin(), 0, (pivot)?1:0,
                        lipvt.get(), n, rdiag.get(), rdiag.get(), wa.get());
@@ -75,7 +77,7 @@ namespace QuantLib {
                     Array w(n, 0.0);
                     for (Size l=0; l < n; ++l)
                         w[l] += std::inner_product(
-                            v.begin()+i, v.end(), q.column_begin(l)+i, 0.0);
+                            v.begin()+i, v.end(), q.column_begin(l)+i, Real(0.0));
 
                     for (Size k=i; k < m; ++k) {
                         const Real a = tau*v[k];
@@ -96,7 +98,7 @@ namespace QuantLib {
                     if (t3 != 0.0) {
                         const Real t
                             = std::inner_product(mT.row_begin(j)+j, mT.row_end(j),
-                                                 w.begin()+j, 0.0)/t3;
+                                                 w.begin()+j, Real(0.0))/t3;
                         for (Size i=j; i<m; ++i) {
                             w[i]-=mT[j][i]*t;
                         }
@@ -120,8 +122,8 @@ namespace QuantLib {
         return ipvt;
     }
 
-    Disposable<Array> qrSolve(const Matrix& a, const Array& b,
-                              bool pivot, const Array& d) {
+    Array qrSolve(const Matrix& a, const Array& b,
+                  bool pivot, const Array& d) {
         const Size m = a.rows();
         const Size n = a.columns();
 
@@ -133,13 +135,13 @@ namespace QuantLib {
 
         std::vector<Size> lipvt = qrDecomposition(a, q, r, pivot);
 
-        boost::scoped_array<int> ipvt(new int[n]);
+        auto ipvt = std::make_unique<int[]>(n);
         std::copy(lipvt.begin(), lipvt.end(), ipvt.get());
 
         Matrix rT = transpose(r);
 
-        boost::scoped_array<Real> sdiag(new Real[n]);
-        boost::scoped_array<Real> wa(new Real[n]);
+        auto sdiag = std::make_unique<Real[]>(n);
+        auto wa = std::make_unique<Real[]>(n);
 
         Array ld(n, 0.0);
         if (!d.empty()) {

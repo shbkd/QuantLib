@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -40,7 +40,8 @@ namespace QuantLib {
         <li>Whit(Pentecost) Monday </li>
         <li>New Year's Day, January 1st</li>
         <li>May Day, May 1st</li>
-        <li>National Independence Day, May 17st</li>
+        <li>National Independence Day, May 17th</li>
+        <li>Christmas Eve, December 24th</li>
         <li>Christmas, December 25th</li>
         <li>Boxing Day, December 26th</li>
         </ul>
@@ -49,10 +50,10 @@ namespace QuantLib {
     */
     class Norway : public Calendar {
       private:
-        class Impl : public Calendar::WesternImpl {
+        class Impl final : public Calendar::WesternImpl {
           public:
-            std::string name() const { return "Norway"; }
-            bool isBusinessDay(const Date&) const;
+            std::string name() const override { return "Norway"; }
+            bool isBusinessDay(const Date&) const override;
         };
       public:
         Norway();

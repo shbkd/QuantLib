@@ -12,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -20,7 +20,7 @@
 */
 
 /*! \file fdblackscholesrebateengine.hpp
-    \brief Finite-Differences Black Scholes barrier option rebate helper engine
+    \brief Finite-differences Black/Scholes barrier option rebate helper engine
 */
 
 #ifndef quantlib_fd_black_scholes_rebate_engine_hpp
@@ -28,36 +28,44 @@
 
 #include <ql/processes/blackscholesprocess.hpp>
 #include <ql/methods/finitedifferences/solvers/fdmbackwardsolver.hpp>
-#include <ql/instruments/dividendbarrieroption.hpp>
+#include <ql/instruments/barrieroption.hpp>
 
 namespace QuantLib {
 
-    //! Finite-Differences Black Scholes barrier option rebate helper engine
-
-    /*!
-        \ingroup barrierengines
-    */
-    class FdBlackScholesRebateEngine : public DividendBarrierOption::engine {
+    //! Finite-differences Black/Scholes barrier-option rebate helper engine
+    /*! \ingroup barrierengines */
+    class FdBlackScholesRebateEngine : public BarrierOption::engine {
       public:
-        // Constructor
-          FdBlackScholesRebateEngine(
-                const ext::shared_ptr<GeneralizedBlackScholesProcess>& process,
-                Size tGrid = 100, Size xGrid = 100, Size dampingSteps = 0,
-                const FdmSchemeDesc& schemeDesc = FdmSchemeDesc::Douglas(),
-                bool localVol = false, 
-                Real illegalLocalVolOverwrite = -Null<Real>());
+        explicit FdBlackScholesRebateEngine(
+            ext::shared_ptr<GeneralizedBlackScholesProcess> process,
+            Size tGrid = 100,
+            Size xGrid = 100,
+            Size dampingSteps = 0,
+            const FdmSchemeDesc& schemeDesc = FdmSchemeDesc::Douglas(),
+            bool localVol = false,
+            Real illegalLocalVolOverwrite = -Null<Real>());
 
-        void calculate() const;
+        explicit FdBlackScholesRebateEngine(
+            ext::shared_ptr<GeneralizedBlackScholesProcess> process,
+            DividendSchedule dividends,
+            Size tGrid = 100,
+            Size xGrid = 100,
+            Size dampingSteps = 0,
+            const FdmSchemeDesc& schemeDesc = FdmSchemeDesc::Douglas(),
+            bool localVol = false,
+            Real illegalLocalVolOverwrite = -Null<Real>());
+
+        void calculate() const override;
 
       private:
-        const ext::shared_ptr<GeneralizedBlackScholesProcess> process_;
-        const Size tGrid_, xGrid_, dampingSteps_;
-        const FdmSchemeDesc schemeDesc_;
-        const bool localVol_;
-        const Real illegalLocalVolOverwrite_;
-};
-
+        ext::shared_ptr<GeneralizedBlackScholesProcess> process_;
+        DividendSchedule dividends_;
+        Size tGrid_, xGrid_, dampingSteps_;
+        FdmSchemeDesc schemeDesc_;
+        bool localVol_;
+        Real illegalLocalVolOverwrite_;
+    };
 
 }
 
-#endif /*quantlib_fd_black_scholes_rebate_engine_hpp*/
+#endif

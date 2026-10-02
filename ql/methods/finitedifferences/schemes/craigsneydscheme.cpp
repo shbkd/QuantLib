@@ -12,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -20,19 +20,15 @@
 */
 
 #include <ql/methods/finitedifferences/schemes/craigsneydscheme.hpp>
+#include <utility>
 
 namespace QuantLib {
 
-    CraigSneydScheme::CraigSneydScheme(
-        Real theta, Real mu,
-        const ext::shared_ptr<FdmLinearOpComposite> & map,
-        const bc_set& bcSet)
-        : dt_(Null<Real>()),
-        theta_(theta),
-        mu_   (mu),
-        map_  (map),
-        bcSet_(bcSet) {
-    }
+    CraigSneydScheme::CraigSneydScheme(Real theta,
+                                       Real mu,
+                                       ext::shared_ptr<FdmLinearOpComposite> map,
+                                       const bc_set& bcSet)
+    : dt_(Null<Real>()), theta_(theta), mu_(mu), map_(std::move(map)), bcSet_(bcSet) {}
 
     void CraigSneydScheme::step(array_type& a, Time t) {
         QL_REQUIRE(t-dt_ > -1e-8, "a step towards negative time given");
@@ -44,24 +40,24 @@ namespace QuantLib {
         Array y = a + dt_*map_->apply(a);
         bcSet_.applyAfterApplying(y);
 
-        Array y0 = y;
+        auto y0 = y;
 
-        for (Size i=0; i < map_->size(); ++i) {
-            Array rhs = y - theta_*dt_*map_->apply_direction(i, a);
+        for (auto i=0U; i < map_->size(); ++i) {
+            auto rhs = y - theta_*dt_*map_->apply_direction(i, a);
             y = map_->solve_splitting(i, rhs, -theta_*dt_);
         }
 
         bcSet_.applyBeforeApplying(*map_);
-        Array yt = y0 + mu_*dt_*map_->apply_mixed(y-a);
+        auto yt = y0 + mu_*dt_*map_->apply_mixed(y-a);
         bcSet_.applyAfterApplying(yt);
 
-        for (Size i=0; i < map_->size(); ++i) {
-            Array rhs = yt - theta_*dt_*map_->apply_direction(i, a);
+        for (auto i=0U; i < map_->size(); ++i) {
+            auto rhs = yt - theta_*dt_*map_->apply_direction(i, a);
             yt = map_->solve_splitting(i, rhs, -theta_*dt_);
         }
         bcSet_.applyAfterSolving(yt);
 
-        a = yt;
+        a = std::move(yt);
     }
 
     void CraigSneydScheme::setStep(Time dt) {

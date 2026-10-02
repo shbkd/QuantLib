@@ -10,14 +10,14 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-/*! \file fdsimplebsswingengine.hpp
+/*! \file fdextoujumpvanillaengine.hpp
     \brief Finite Differences Ornstein Uhlenbeck plus exponential jumps engine 
            for vanilla options
 */
@@ -28,6 +28,7 @@
 #include <ql/pricingengine.hpp>
 #include <ql/instruments/vanillaoption.hpp>
 #include <ql/methods/finitedifferences/solvers/fdmbackwardsolver.hpp>
+#include <ql/experimental/finitedifferences/fdmextoujumpmodelinnervalue.hpp>
 
 namespace QuantLib {
 
@@ -38,17 +39,21 @@ namespace QuantLib {
         : public GenericEngine<VanillaOption::arguments,
                                VanillaOption::results> {
       public:
-          FdExtOUJumpVanillaEngine(
-                  const ext::shared_ptr<ExtOUWithJumpsProcess>& p,
-                  const ext::shared_ptr<YieldTermStructure>& rTS,
-                  Size tGrid = 50, Size xGrid = 200, Size yGrid = 50,
-                  const FdmSchemeDesc& schemeDesc=FdmSchemeDesc::Hundsdorfer());
-    
-        void calculate() const;
-    
+        typedef FdmExtOUJumpModelInnerValue::Shape Shape;
+        FdExtOUJumpVanillaEngine(ext::shared_ptr<ExtOUWithJumpsProcess> p,
+                                 ext::shared_ptr<YieldTermStructure> rTS,
+                                 Size tGrid = 50,
+                                 Size xGrid = 200,
+                                 Size yGrid = 50,
+                                 ext::shared_ptr<Shape> shape = ext::shared_ptr<Shape>(),
+                                 const FdmSchemeDesc& schemeDesc = FdmSchemeDesc::Hundsdorfer());
+
+        void calculate() const override;
+
       private:
         const ext::shared_ptr<ExtOUWithJumpsProcess> process_;
         const ext::shared_ptr<YieldTermStructure> rTS_;
+        const ext::shared_ptr<Shape> shape_;
         const Size tGrid_, xGrid_, yGrid_;
         const FdmSchemeDesc schemeDesc_;
     };

@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -26,13 +26,14 @@
 
 #include <ql/time/date.hpp>
 #include <map>
+#include <utility>
 
 namespace QuantLib {
 
     class ExchangeContract {
       public:
-        ExchangeContract();
-        ExchangeContract(const std::string& code,
+        ExchangeContract() = default;
+        ExchangeContract(std::string code,
                          Date expirationDate,
                          Date underlyingStartDate,
                          Date underlyingEndDate);
@@ -48,15 +49,12 @@ namespace QuantLib {
         Date underlyingEndDate_;
     };
 
-    inline ExchangeContract::ExchangeContract() {}
-
-    inline ExchangeContract::ExchangeContract(const std::string& code,
+    inline ExchangeContract::ExchangeContract(std::string code,
                                               Date expirationDate,
                                               Date underlyingStartDate,
                                               Date underlyingEndDate)
-    : code_(code), expirationDate_(expirationDate),
-      underlyingStartDate_(underlyingStartDate),
-      underlyingEndDate_(underlyingEndDate) {}
+    : code_(std::move(code)), expirationDate_(expirationDate),
+      underlyingStartDate_(underlyingStartDate), underlyingEndDate_(underlyingEndDate) {}
 
     inline const std::string& ExchangeContract::code() const {
         return code_;

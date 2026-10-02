@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -30,7 +30,7 @@
 namespace QuantLib {
 
     //! Numerical lattice engine for callable fixed rate bonds
-    /*! \ingroup callablebondengines */
+    /*! \ingroup bondengines */
     class TreeCallableFixedRateBondEngine
         : public LatticeShortRateModelEngine<CallableBond::arguments,
                                              CallableBond::results> {
@@ -41,24 +41,23 @@ namespace QuantLib {
         */
         //@{
         TreeCallableFixedRateBondEngine(
-                           const ext::shared_ptr<ShortRateModel>&,
-                           const Size timeSteps,
-                           const Handle<YieldTermStructure>& termStructure =
-                                                 Handle<YieldTermStructure>());
+            const ext::shared_ptr<ShortRateModel>&,
+            Size timeSteps,
+            Handle<YieldTermStructure> termStructure = Handle<YieldTermStructure>());
         TreeCallableFixedRateBondEngine(
-                           const ext::shared_ptr<ShortRateModel>&,
-                           const TimeGrid& timeGrid,
-                           const Handle<YieldTermStructure>& termStructure =
-                                                 Handle<YieldTermStructure>()) ;
+            const ext::shared_ptr<ShortRateModel>&,
+            const TimeGrid& timeGrid,
+            Handle<YieldTermStructure> termStructure = Handle<YieldTermStructure>());
         //@}
-        void calculate() const;
+        void calculate() const override;
+
       private:
         void calculateWithSpread(Spread s) const;
         Handle<YieldTermStructure> termStructure_;
     };
 
     //! Numerical lattice engine for callable zero coupon bonds
-    /*! \ingroup callablebondengines */
+    /*! \ingroup bondengines */
     class TreeCallableZeroCouponBondEngine
         : public TreeCallableFixedRateBondEngine {
 

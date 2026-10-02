@@ -11,23 +11,23 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
+#include <ql/math/optimization/armijo.hpp>
+#include <ql/math/optimization/linesearch.hpp>
 #include <ql/math/optimization/linesearchbasedmethod.hpp>
 #include <ql/math/optimization/problem.hpp>
-#include <ql/math/optimization/linesearch.hpp>
-#include <ql/math/optimization/armijo.hpp>
+#include <utility>
 
 namespace QuantLib {
 
-    LineSearchBasedMethod::LineSearchBasedMethod(
-                           const ext::shared_ptr<LineSearch>& lineSearch)
-    : lineSearch_(lineSearch) {
+    LineSearchBasedMethod::LineSearchBasedMethod(ext::shared_ptr<LineSearch> lineSearch)
+    : lineSearch_(std::move(lineSearch)) {
         if (!lineSearch_)
            lineSearch_ = ext::shared_ptr<LineSearch>(new ArmijoLineSearch);
     }

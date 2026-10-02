@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -28,6 +28,7 @@
 #include <ql/instruments/creditdefaultswap.hpp>
 #include <ql/termstructures/yieldtermstructure.hpp>
 #include <ql/termstructures/defaulttermstructure.hpp>
+#include <ql/optional.hpp>
 
 namespace QuantLib {
 
@@ -86,37 +87,32 @@ namespace QuantLib {
             specifications.
 
             To be precisely consistent with the ISDA specification
-            QL_USE_INDEXED_COUPON
-            must not be defined. This is not checked in order not to
+                bool IborCoupon::Settings::usingAtParCoupons();
+            must be true. This is not checked in order not to
             kill the engine completely in this case.
 
             Furthermore, the ibor index in the swap rate helpers should not
             provide the evaluation date's fixing.
         */
 
-        IsdaCdsEngine(
-            const Handle<DefaultProbabilityTermStructure> &probability,
-            Real recoveryRate,
-            const Handle<YieldTermStructure> &discountCurve,
-            boost::optional<bool> includeSettlementDateFlows = boost::none,
-            const NumericalFix numericalFix = Taylor,
-            const AccrualBias accrualBias = HalfDayBias,
-            const ForwardsInCouponPeriod forwardsInCouponPeriod = Piecewise);
+        IsdaCdsEngine(Handle<DefaultProbabilityTermStructure> probability,
+                      Real recoveryRate,
+                      Handle<YieldTermStructure> discountCurve,
+                      const std::optional<bool>& includeSettlementDateFlows = std::nullopt,
+                      NumericalFix numericalFix = Taylor,
+                      AccrualBias accrualBias = HalfDayBias,
+                      ForwardsInCouponPeriod forwardsInCouponPeriod = Piecewise);
 
-        const Handle<YieldTermStructure> isdaRateCurve() const {
-            return discountCurve_;
-        }
-        const Handle<DefaultProbabilityTermStructure> isdaCreditCurve() const {
-            return probability_;
-        }
+        const Handle<YieldTermStructure>& isdaRateCurve() const { return discountCurve_; }
+        const Handle<DefaultProbabilityTermStructure>& isdaCreditCurve() const { return probability_; }
 
-        void calculate() const;
+        void calculate() const override;
 
       private:
         Handle<DefaultProbabilityTermStructure> probability_;
         const Real recoveryRate_;
         Handle<YieldTermStructure> discountCurve_;
-        const boost::optional<bool> includeSettlementDateFlows_;
+        const std::optional<bool> includeSettlementDateFlows_;
         const NumericalFix numericalFix_;
         const AccrualBias accrualBias_;
         const ForwardsInCouponPeriod forwardsInCouponPeriod_;

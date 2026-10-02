@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -49,7 +49,7 @@ namespace QuantLib {
             || (d >= 15 && d <= 21 && w == Monday && m == June)
             // Independence Day
             || (d == 9 && m == July)
-            // Death of General José de San Martín
+            // Death of General JosÃ© de San MartÃ­n
             || (d >= 15 && d <= 21 && w == Monday && m == August)
             // Columbus Day
             || ((d == 10 || d == 11 || d == 12 || d == 15 || d == 16)
@@ -60,7 +60,7 @@ namespace QuantLib {
             || (d == 24 && m == December)
             // New Year's Eve
             || ((d == 31 || (d == 30 && w == Friday)) && m == December))
-            return false;
+            return false; // NOLINT(readability-simplify-boolean-expr)
         return true;
     }
 

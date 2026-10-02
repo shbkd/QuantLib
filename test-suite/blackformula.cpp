@@ -2,8 +2,9 @@
 
 /*
  Copyright (C) 2013 Gary Kennedy
- Copyright (C) 2015 Peter Caspers
+ Copyright (C) 2015, 2024 Peter Caspers
  Copyright (C) 2017 Klaus Spanderen
+ Copyright (C) 2020 Marcin Rybacki
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -12,7 +13,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -20,46 +21,55 @@
 */
 
 
-#include "blackformula.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
 #include <ql/pricingengines/blackformula.hpp>
-
-#include <boost/math/special_functions/fpclassify.hpp>
+#include <cmath>
+#include <iomanip>
 
 using namespace QuantLib;
 using namespace boost::unit_test_framework;
 
+BOOST_FIXTURE_TEST_SUITE(QuantLibTests, TopLevelFixture)
 
-void BlackFormulaTest::testBachelierImpliedVol(){
+BOOST_AUTO_TEST_SUITE(BlackFormulaTests)
 
+BOOST_AUTO_TEST_CASE(testBachelierImpliedVol) {
 
     BOOST_TEST_MESSAGE("Testing Bachelier implied vol...");
 
     Real forward = 1.0;
     Real bpvol = 0.01;
     Real tte = 10.0;
-    Real stdDev = bpvol*std::sqrt(tte);
+    Real stdDev = bpvol * std::sqrt(tte);
     Option::Type optionType = Option::Call;
     Real discount = 0.95;
 
     Real d[] = {-3.0, -2.0, -1.0, -0.5, 0.0, 0.5, 1.0, 2.0, 3.0};
-    for(Size i=0;i<LENGTH(d);++i){
+    for (Real i : d) {
 
 
-        Real strike = forward - d[i] * bpvol * std::sqrt(tte);
+        Real strike = forward - i * bpvol * std::sqrt(tte);
 
         Real callPrem = bachelierBlackFormula(optionType, strike, forward, stdDev, discount);
 
-        Real impliedBpVol = bachelierBlackFormulaImpliedVol(optionType,strike, forward, tte, callPrem, discount);
+        Real impliedBpVol = bachelierBlackFormulaImpliedVolChoi(optionType, strike, forward, tte,
+                                                                callPrem, discount);
 
-        if (std::fabs(bpvol-impliedBpVol)>1.0e-12){
-            BOOST_ERROR("Failed, expected " << bpvol << " realised " << impliedBpVol );
+        if (std::fabs(bpvol - impliedBpVol) > 1.0e-12) {
+            BOOST_ERROR("Failed, expected " << bpvol << " realised " << impliedBpVol);
+        }
+
+        Real impliedBpVolExact =
+            bachelierBlackFormulaImpliedVol(optionType, strike, forward, tte, callPrem, discount);
+
+        if (std::fabs(bpvol - impliedBpVolExact) > 1.0e-15) {
+            BOOST_ERROR("Failed, expected " << bpvol << " realised " << impliedBpVolExact);
         }
     }
-    return;
 }
 
-void BlackFormulaTest::testChambersImpliedVol() {
+BOOST_AUTO_TEST_CASE(testChambersImpliedVol) {
 
     BOOST_TEST_MESSAGE("Testing Chambers-Nawalkha implied vol approximation...");
 
@@ -74,43 +84,31 @@ void BlackFormulaTest::testChambersImpliedVol() {
 
     Real tol = 5.0E-4;
 
-    for (Size i1 = 0; i1 < LENGTH(types); ++i1) {
-        for (Size i2 = 0; i2 < LENGTH(displacements); ++i2) {
-            for (Size i3 = 0; i3 < LENGTH(forwards); ++i3) {
-                for (Size i4 = 0; i4 < LENGTH(strikes); ++i4) {
-                    for (Size i5 = 0; i5 < LENGTH(stdDevs); ++i5) {
-                        for (Size i6 = 0; i6 < LENGTH(discounts); ++i6) {
-                            if (forwards[i3] + displacements[i2] > 0.0 &&
-                                strikes[i4] + displacements[i2] > 0.0) {
-                                Real premium = blackFormula(
-                                    types[i1], strikes[i4], forwards[i3],
-                                    stdDevs[i5], discounts[i6],
-                                    displacements[i2]);
-                                Real atmPremium = blackFormula(
-                                    types[i1], forwards[i3], forwards[i3],
-                                    stdDevs[i5], discounts[i6],
-                                    displacements[i2]);
-                                Real iStdDev =
-                                    blackFormulaImpliedStdDevChambers(
-                                        types[i1], strikes[i4], forwards[i3],
-                                        premium, atmPremium, discounts[i6],
-                                        displacements[i2]);
-                                Real moneyness = (strikes[i4] + displacements[i2]) /
-                                             (forwards[i3] + displacements[i2]);
+    for (auto& type : types) {
+        for (Real& displacement : displacements) {
+            for (Real& forward : forwards) {
+                for (Real& strike : strikes) {
+                    for (Real& stdDev : stdDevs) {
+                        for (Real& discount : discounts) {
+                            if (forward + displacement > 0.0 && strike + displacement > 0.0) {
+                                Real premium = blackFormula(type, strike, forward, stdDev, discount,
+                                                            displacement);
+                                Real atmPremium = blackFormula(type, forward, forward, stdDev,
+                                                               discount, displacement);
+                                Real iStdDev = blackFormulaImpliedStdDevChambers(
+                                    type, strike, forward, premium, atmPremium, discount,
+                                    displacement);
+                                Real moneyness = (strike + displacement) / (forward + displacement);
                                 if(moneyness > 1.0) moneyness = 1.0 / moneyness;
-                                Real error = (iStdDev - stdDevs[i5]) / stdDevs[i5] * moneyness;
+                                Real error = (iStdDev - stdDev) / stdDev * moneyness;
                                 if(error > tol)
-                                    BOOST_ERROR(
-                                        "Failed to verify Chambers-Nawalkha "
-                                        "approximation for "
-                                        << types[i1]
-                                        << " displacement=" << displacements[i2]
-                                        << " forward=" << forwards[i3]
-                                        << " strike=" << strikes[i4]
-                                        << " discount=" << discounts[i6]
-                                        << " stddev=" << stdDevs[i5]
-                                        << " result=" << iStdDev
-                                        << " exceeds maximum error tolerance");
+                                    BOOST_ERROR("Failed to verify Chambers-Nawalkha "
+                                                "approximation for "
+                                                << type << " displacement=" << displacement
+                                                << " forward=" << forward << " strike=" << strike
+                                                << " discount=" << discount << " stddev=" << stdDev
+                                                << " result=" << iStdDev
+                                                << " exceeds maximum error tolerance");
                             }
                         }
                     }
@@ -120,7 +118,7 @@ void BlackFormulaTest::testChambersImpliedVol() {
     }
 }
 
-void BlackFormulaTest::testRadoicicStefanicaImpliedVol() {
+BOOST_AUTO_TEST_CASE(testRadoicicStefanicaImpliedVol) {
 
     BOOST_TEST_MESSAGE(
         "Testing Radoicic-Stefanica implied vol approximation...");
@@ -140,11 +138,8 @@ void BlackFormulaTest::testRadoicicStefanicaImpliedVol() {
 
     const Real tol = 0.02;
 
-    for (Size i=0; i < LENGTH(strikes); ++i) {
-        const Real strike = strikes[i];
-        for (Size j=0; j < LENGTH(types); ++j) {
-            const Option::Type type = types[j];
-
+    for (Real strike : strikes) {
+        for (auto type : types) {
             const ext::shared_ptr<PlainVanillaPayoff> payoff(
                 ext::make_shared<PlainVanillaPayoff>(type, strike));
 
@@ -170,7 +165,7 @@ void BlackFormulaTest::testRadoicicStefanicaImpliedVol() {
     }
 }
 
-void BlackFormulaTest::testRadoicicStefanicaLowerBound() {
+BOOST_AUTO_TEST_CASE(testRadoicicStefanicaLowerBound) {
 
     BOOST_TEST_MESSAGE("Testing Radoicic-Stefanica lower bound...");
 
@@ -189,7 +184,7 @@ void BlackFormulaTest::testRadoicicStefanicaLowerBound() {
             Option::Call, strike, forward, c);
 
         const Real error = s - estimate;
-        if (boost::math::isnan(estimate) || std::fabs(error) > 0.05) {
+        if (std::isnan(estimate) || std::fabs(error) > 0.05) {
             BOOST_ERROR("Failed to lower bound Radoicic-Stefanica"
                 "approximation for "
                 << "\n forward     :" << forward
@@ -211,11 +206,9 @@ void BlackFormulaTest::testRadoicicStefanicaLowerBound() {
     }
 }
 
-void BlackFormulaTest::testImpliedVolAdaptiveSuccessiveOverRelaxation() {
+BOOST_AUTO_TEST_CASE(testImpliedVolAdaptiveSuccessiveOverRelaxation) {
     BOOST_TEST_MESSAGE("Testing implied volatility calculation via "
         "adaptive successive over-relaxation...");
-
-    SavedSettings backup;
 
     const DayCounter dc = Actual365Fixed();
     const Date today = Date(12, July, 2017);
@@ -241,20 +234,14 @@ void BlackFormulaTest::testImpliedVolAdaptiveSuccessiveOverRelaxation() {
 
     const Real tol = 1e-8;
 
-    for (Size i=0; i < LENGTH(strikes); ++i) {
-        const Real strike = strikes[i];
-
-        for (Size j=0; j < LENGTH(types); ++j) {
-            const Option::Type type = types[j];
-
+    for (Real strike : strikes) {
+        for (auto type : types) {
             const ext::shared_ptr<PlainVanillaPayoff> payoff(
                 ext::make_shared<PlainVanillaPayoff>(type, strike));
 
-            for (Size k=0; k < LENGTH(displacements); ++k) {
+            for (Real displacement : displacements) {
 
-                const Real displacement = displacements[k];
-                const Real marketValue = blackFormula(
-                    payoff, forward, stdDev, df, displacement);
+                const Real marketValue = blackFormula(payoff, forward, stdDev, df, displacement);
 
                 const Real impliedStdDev = blackFormulaImpliedStdDevLiRS(
                     payoff, forward, marketValue, df, displacement,
@@ -277,20 +264,379 @@ void BlackFormulaTest::testImpliedVolAdaptiveSuccessiveOverRelaxation() {
     }
 }
 
+void assertBlackFormulaForwardDerivative(
+    Option::Type optionType,
+    const std::vector<Real> &strikes,
+    Real bpvol)
+{
+    Real forward = 1.0;
+    Real tte = 10.0;
+    Real stdDev = bpvol * std::sqrt(tte);
+    Real discount = 0.95;
+    Real displacement = 0.01;
+    Real bump = 0.0001;
+    Real epsilon = 1.e-10;
+    std::string type = optionType == Option::Call ? "Call" : "Put";
 
-test_suite* BlackFormulaTest::suite() {
-    test_suite* suite = BOOST_TEST_SUITE("Black formula tests");
+    for (Real strike : strikes) {
+        Real delta = blackFormulaForwardDerivative(optionType, strike, forward, stdDev, discount,
+                                                   displacement);
+        Real bumpedDelta = blackFormulaForwardDerivative(
+            optionType, strike, forward + bump, stdDev, discount, displacement);
 
-    suite->add(QUANTLIB_TEST_CASE(
-        &BlackFormulaTest::testBachelierImpliedVol));
-    suite->add(QUANTLIB_TEST_CASE(
-        &BlackFormulaTest::testChambersImpliedVol));
-    suite->add(QUANTLIB_TEST_CASE(
-        &BlackFormulaTest::testRadoicicStefanicaImpliedVol));
-    suite->add(QUANTLIB_TEST_CASE(
-        &BlackFormulaTest::testRadoicicStefanicaLowerBound));
-    suite->add(QUANTLIB_TEST_CASE(
-        &BlackFormulaTest::testImpliedVolAdaptiveSuccessiveOverRelaxation));
+        Real basePremium = blackFormula(
+            optionType, strike, forward, stdDev, discount, displacement);
+        Real bumpedPremium = blackFormula(
+            optionType, strike, forward + bump, stdDev, discount, displacement);
+        Real deltaApprox = (bumpedPremium - basePremium) / bump;
 
-    return suite;
+        /*! Based on the Mean Value Theorem, the below inequality
+            should hold for any function that is monotonic in the
+            area of the bump.
+         */
+        bool success =
+            (std::max(delta, bumpedDelta) + epsilon > deltaApprox)
+            &&  (deltaApprox > std::min(delta, bumpedDelta) - epsilon);
+
+        if (!success)
+        {
+            BOOST_ERROR("Failed to calculate the derivative of the"
+                        " Black formula w.r.t. forward"
+                        << "\n option type       :" << type
+                        << "\n forward           :" << forward
+                        << "\n strike            :" << strike
+                        << "\n stdDev            :" << stdDev
+                        << "\n displacement      :" << displacement
+                        << "\n analytical delta  :" << delta
+                        << "\n approximated delta:" << deltaApprox);
+        }
+    }
 }
+
+BOOST_AUTO_TEST_CASE(testBlackFormulaForwardDerivative) {
+
+    BOOST_TEST_MESSAGE("Testing forward derivative of the Black formula...");
+
+    std::vector<Real> strikes;
+    strikes.push_back(0.1);
+    strikes.push_back(0.5);
+    strikes.push_back(1.0);
+    strikes.push_back(2.0);
+    strikes.push_back(3.0);
+    const Real vol = 0.1;
+    assertBlackFormulaForwardDerivative(Option::Call, strikes, vol);
+    assertBlackFormulaForwardDerivative(Option::Put, strikes, vol);
+}
+
+BOOST_AUTO_TEST_CASE(testBlackFormulaForwardDerivativeWithZeroStrike) {
+
+    BOOST_TEST_MESSAGE("Testing forward derivative of the Black formula "
+        "with zero strike...");
+
+    std::vector<Real> strikes;
+    strikes.push_back(0.0);
+    const Real vol = 0.1;
+    assertBlackFormulaForwardDerivative(Option::Call, strikes, vol);
+    assertBlackFormulaForwardDerivative(Option::Put, strikes, vol);
+}
+
+BOOST_AUTO_TEST_CASE(testBlackFormulaForwardDerivativeWithZeroVolatility) {
+
+    BOOST_TEST_MESSAGE("Testing forward derivative of the Black formula "
+        "with zero volatility...");
+
+    std::vector<Real> strikes;
+    strikes.push_back(0.1);
+    strikes.push_back(0.5);
+    strikes.push_back(1.0);
+    strikes.push_back(2.0);
+    strikes.push_back(3.0);
+    const Real vol = 0.0;
+    assertBlackFormulaForwardDerivative(Option::Call, strikes, vol);
+    assertBlackFormulaForwardDerivative(Option::Put, strikes, vol);
+}
+
+void assertBachelierBlackFormulaForwardDerivative(
+    Option::Type optionType,
+    const std::vector<Real> &strikes,
+    Real bpvol)
+{
+    Real forward = 1.0;
+    Real tte = 10.0;
+    Real stdDev = bpvol * std::sqrt(tte);
+    Real discount = 0.95;
+    Real bump = 0.0001;
+    Real epsilon = 1.e-10;
+    std::string type = optionType == Option::Call ? "Call" : "Put";
+
+    for (Real strike : strikes) {
+        Real delta =
+            bachelierBlackFormulaForwardDerivative(optionType, strike, forward, stdDev, discount);
+        Real bumpedDelta = bachelierBlackFormulaForwardDerivative(
+            optionType, strike, forward + bump, stdDev, discount);
+
+        Real basePremium = bachelierBlackFormula(
+            optionType, strike, forward, stdDev, discount);
+        Real bumpedPremium = bachelierBlackFormula(
+            optionType, strike, forward + bump, stdDev, discount);
+        Real deltaApprox = (bumpedPremium - basePremium) / bump;
+
+        /*! Based on the Mean Value Theorem, the below inequality
+            should hold for any function that is monotonic in the
+            area of the bump.
+         */
+        bool success =
+            (std::max(delta, bumpedDelta) + epsilon > deltaApprox)
+            &&  (deltaApprox > std::min(delta, bumpedDelta) - epsilon);
+
+        if (!success)
+        {
+            BOOST_ERROR("Failed to calculate the derivative of the"
+                        " Bachelier Black formula w.r.t. forward"
+                        << "\n option type       :" << type
+                        << "\n forward           :" << forward
+                        << "\n strike            :" << strike
+                        << "\n stdDev            :" << stdDev
+                        << "\n analytical delta  :" << delta
+                        << "\n approximated delta:" << deltaApprox);
+        }
+    }
+}
+
+BOOST_AUTO_TEST_CASE(testBachelierBlackFormulaForwardDerivative) {
+
+    BOOST_TEST_MESSAGE("Testing forward derivative of the "
+        "Bachelier Black formula...");
+
+    std::vector<Real> strikes;
+    strikes.push_back(-3.0);
+    strikes.push_back(-2.0);
+    strikes.push_back(-1.0);
+    strikes.push_back(-0.5);
+    strikes.push_back(0.0);
+    strikes.push_back(0.5);
+    strikes.push_back(1.0);
+    strikes.push_back(2.0);
+    strikes.push_back(3.0);
+    const Real vol = 0.001;
+    assertBachelierBlackFormulaForwardDerivative(Option::Call, strikes, vol);
+    assertBachelierBlackFormulaForwardDerivative(Option::Put, strikes, vol);
+}
+
+BOOST_AUTO_TEST_CASE(testBachelierBlackFormulaForwardDerivativeWithZeroVolatility) {
+
+    BOOST_TEST_MESSAGE("Testing forward derivative of the Bachelier Black formula "
+        "with zero volatility...");
+
+    std::vector<Real> strikes;
+    strikes.push_back(-3.0);
+    strikes.push_back(-2.0);
+    strikes.push_back(-1.0);
+    strikes.push_back(-0.5);
+    strikes.push_back(0.0);
+    strikes.push_back(0.5);
+    strikes.push_back(1.0);
+    strikes.push_back(2.0);
+    strikes.push_back(3.0);
+    const Real vol = 0.0;
+    assertBachelierBlackFormulaForwardDerivative(Option::Call, strikes, vol);
+    assertBachelierBlackFormulaForwardDerivative(Option::Put, strikes, vol);
+}
+
+BOOST_AUTO_TEST_CASE(testItmProbabilitiesWithZeroVolatility) {
+
+    BOOST_TEST_MESSAGE("Testing in-the-money probabilities with zero volatility...");
+
+    // With zero standard deviation the probabilities must be the limit of the
+    // formulas as the standard deviation goes to zero, i.e. 1 if the option is
+    // in the money and 0 if it is out of the money.
+    struct Case {
+        Option::Type type;
+        Real strike, forward;
+    };
+    const Case cases[] = {{Option::Call, 0.03, 0.05}, {Option::Call, 0.05, 0.03},
+                          {Option::Put, 0.03, 0.05},  {Option::Put, 0.05, 0.03},
+                          {Option::Call, 90.0, 100.0}, {Option::Put, 90.0, 100.0}};
+
+    const Real tinyStdDev = 1.0e-8;
+    for (const Case& c : cases) {
+        Real theta = (c.type == Option::Call) ? 1.0 : -1.0;
+        Real expected = (theta * (c.forward - c.strike) > 0.0) ? 1.0 : 0.0;
+
+        Real results[] = {
+            blackFormulaCashItmProbability(c.type, c.strike, c.forward, 0.0),
+            blackFormulaAssetItmProbability(c.type, c.strike, c.forward, 0.0),
+            bachelierBlackFormulaAssetItmProbability(c.type, c.strike, c.forward, 0.0)};
+        Real limits[] = {
+            blackFormulaCashItmProbability(c.type, c.strike, c.forward, tinyStdDev),
+            blackFormulaAssetItmProbability(c.type, c.strike, c.forward, tinyStdDev),
+            bachelierBlackFormulaAssetItmProbability(c.type, c.strike, c.forward, tinyStdDev)};
+        const char* names[] = {"Black cash", "Black asset", "Bachelier asset"};
+
+        for (Size i = 0; i < 3; ++i) {
+            if (std::fabs(limits[i] - expected) > 1.0e-12)
+                BOOST_FAIL("unexpected " << names[i] << " probability with tiny std dev");
+            if (std::fabs(results[i] - expected) > 1.0e-12)
+                BOOST_ERROR(names[i] << " in-the-money probability with zero std dev"
+                            << "\n option type: " << c.type
+                            << "\n strike:      " << c.strike
+                            << "\n forward:     " << c.forward
+                            << "\n calculated:  " << results[i]
+                            << "\n expected:    " << expected);
+        }
+    }
+}
+
+BOOST_AUTO_TEST_CASE(testBachelierImpliedVolAtIntrinsic) {
+
+    BOOST_TEST_MESSAGE("Testing Bachelier implied volatility for prices at intrinsic value...");
+
+    // For a deep in-the-money option the Bachelier price rounds to the
+    // intrinsic value, so the time value computed by the inversion can come
+    // out a few ulps below zero.  Such a price must still invert instead of
+    // being rejected as arbitrageable.
+    const Real tte = 0.01;
+    const Real vol = 1e-5;
+
+    for (Real forward : {-0.01, 0.005, 0.05, 1.0}) {
+        for (Real offset : {0.01, 0.03, 0.07}) {
+            for (auto type : {Option::Call, Option::Put}) {
+                const Real strike =
+                    (type == Option::Call) ? forward - offset : forward + offset;
+                const Real price = bachelierBlackFormula(
+                    type, strike, forward, vol * std::sqrt(tte));
+
+                Real impliedVol = -1.0;
+                BOOST_CHECK_NO_THROW(
+                    impliedVol = bachelierBlackFormulaImpliedVol(
+                        type, strike, forward, tte, price));
+                BOOST_CHECK(impliedVol >= 0.0);
+            }
+        }
+    }
+}
+
+BOOST_AUTO_TEST_CASE(testDeepInTheMoneyPricesNotBelowIntrinsic) {
+
+    BOOST_TEST_MESSAGE("Testing that deep in-the-money Black and Bachelier prices "
+                       "are not below their intrinsic value...");
+
+    // With a small enough standard deviation the cumulative normal
+    // saturates and the price has to reduce to the discounted intrinsic
+    // value exactly; a result a few ulps below it is rejected by the
+    // no-arbitrage checks of the implied-volatility inversions.
+    struct Case {
+        Option::Type type;
+        Real strike, forward;
+    };
+    const Case cases[] = {{Option::Call, 50.0, 100.0},    {Option::Put, 100.0, 50.0},
+                          {Option::Call, 0.03, 0.05},     {Option::Put, 0.05, 0.03},
+                          {Option::Call, 1000.0, 1234.5}, {Option::Put, 1234.5, 1000.0}};
+
+    for (const Case& c : cases) {
+        Real theta = (c.type == Option::Call) ? 1.0 : -1.0;
+        Real moneyness = theta * (c.forward - c.strike);
+        for (Real discount : {1.0, 0.97}) {
+            Real intrinsic = discount * std::max(moneyness, 0.0);
+
+            // both d1 and d2 are above 20
+            Real black = blackFormula(c.type, c.strike, c.forward, 0.01, discount);
+            if (black < intrinsic)
+                BOOST_ERROR("Black price for strike " << c.strike << ", forward " << c.forward
+                            << ", discount " << discount << " is below intrinsic by "
+                            << intrinsic - black);
+
+            // (forward - strike)/stdDev is 20
+            Real bachelier =
+                bachelierBlackFormula(c.type, c.strike, c.forward, moneyness / 20.0, discount);
+            if (bachelier < intrinsic)
+                BOOST_ERROR("Bachelier price for strike " << c.strike << ", forward "
+                            << c.forward << ", discount " << discount
+                            << " is below intrinsic by " << intrinsic - bachelier);
+        }
+    }
+}
+
+
+BOOST_AUTO_TEST_CASE(testImpliedStdDevApproximationRSStaysFinite) {
+    BOOST_TEST_MESSAGE(
+        "Testing RS implied-standard-deviation approximation away from the money...");
+
+    const Real forward = 1.0;
+    const Real discount = 1.0;
+
+    for (Real ratio: {1.01, 1.1, 1.5, 2.0, 3.0, 5.0, 10.0}) {
+        const Real strike = forward / ratio;
+        for (Real stdDev: {0.01, 0.05, 0.1, 0.2, 0.4, 0.8, 1.5}) {
+            for (auto type: {Option::Call, Option::Put}) {
+                const Real price = blackFormula(type, strike, forward, stdDev, discount);
+                const Real approx = blackFormulaImpliedStdDevApproximationRS(
+                    type, strike, forward, price, discount);
+
+                if (!std::isfinite(approx))
+                    BOOST_ERROR("RS approximation is not finite"
+                                << std::setprecision(16)
+                                << "\n    forward:    " << forward
+                                << "\n    strike:     " << strike
+                                << "\n    std dev:    " << stdDev
+                                << "\n    price:      " << price
+                                << "\n    calculated: " << approx);
+
+                if (approx < 0.0)
+                    BOOST_ERROR("RS approximation is negative"
+                                << std::setprecision(16)
+                                << "\n    forward:    " << forward
+                                << "\n    strike:     " << strike
+                                << "\n    std dev:    " << stdDev
+                                << "\n    calculated: " << approx);
+            }
+        }
+    }
+}
+
+
+BOOST_AUTO_TEST_CASE(testImpliedStdDevLiRSAtIntrinsic) {
+    BOOST_TEST_MESSAGE("Testing Li-RS implied standard deviation at intrinsic...");
+
+    const Real forward = 1.0;
+    const Real discount = 1.0;
+
+    for (Real ratio: {1.5, 2.0, 5.0, 10.0}) {
+        const Real strike = forward / ratio;
+        for (Real stdDev: {1e-7, 1e-4, 0.01}) {
+            const Real price = blackFormula(Option::Call, strike, forward, stdDev, discount);
+            const Real expected = blackFormulaImpliedStdDev(Option::Call, strike, forward,
+                                                            price, discount);
+            if (expected != 0.0)
+                continue;
+
+            Real calculated;
+            try {
+                calculated = blackFormulaImpliedStdDevLiRS(Option::Call, strike, forward,
+                                                           price, discount);
+            } catch (const std::exception& e) {
+                BOOST_ERROR("Li-RS threw where the price sits on intrinsic"
+                            << std::setprecision(16)
+                            << "\n    forward: " << forward
+                            << "\n    strike:  " << strike
+                            << "\n    std dev: " << stdDev
+                            << "\n    price:   " << price
+                            << "\n    error:   " << e.what());
+                continue;
+            }
+
+            if (calculated != expected)
+                BOOST_ERROR("failed to reproduce Li-RS implied standard deviation"
+                            << std::setprecision(16)
+                            << "\n    forward:    " << forward
+                            << "\n    strike:     " << strike
+                            << "\n    std dev:    " << stdDev
+                            << "\n    calculated: " << calculated
+                            << "\n    expected:   " << expected);
+        }
+    }
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_AUTO_TEST_SUITE_END()

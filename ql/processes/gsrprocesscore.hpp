@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -34,48 +34,52 @@
 
 namespace QuantLib {
 
+class GsrProcess;
+
 namespace detail {
 
 class GsrProcessCore {
   public:
-    GsrProcessCore(const Array &times, const Array &vols,
-                   const Array &reversions,
-                   const Real T = 60.0);
+    GsrProcessCore(Array times, Array vols, Array reversions, Real T = 60.0);
 
     // conditional expectation, x0 dependent part
-    Real expectation_x0dep_part(const Time w, const Real xw,
-                                const Time dt) const;
+    Real expectation_x0dep_part(Time w, Real xw, Time dt) const;
 
     // conditional expectation, x0 independent part
     // in the risk neutral measure
-    Real expectation_rn_part(const Time w, const Time dt) const;
+    Real expectation_rn_part(Time w, Time dt) const;
 
     // conditional expectation, drift adjustment for
     // the T-forward measure
-    Real expectation_tf_part(const Time w, const Time dt) const;
+    Real expectation_tf_part(Time w, Time dt) const;
 
     // conditional variance
-    Real variance(const Time w, const Time dt) const;
+    Real variance(Time w, Time dt) const;
 
     // y(t)
-    Real y(const Time t) const;
+    Real y(Time t) const;
 
     // G(t,w)
-    Real G(const Time t, const Time w) const;
+    Real G(Time t, Time w) const;
 
     // sigma
-    Real sigma(const Time t) const;
+    Real sigma(Time t) const;
 
     // reversion
-    Real reversion(const Time t) const;
+    Real reversion(Time t) const;
 
     // reset cache
     void flushCache() const;
 
   protected:
-    const Array &times_, &vols_, &reversions_;
+    Array times_, vols_, reversions_;
 
   private:
+    friend class QuantLib::GsrProcess;
+    void setTimes(Array times);
+    void setVols(Array vols);
+    void setReversions(Array reversions);
+    void checkTimesVolsReversions() const;
     int lowerIndex(Time t) const;
     int upperIndex(Time t) const;
     Real time2(Size index) const;
@@ -103,7 +107,6 @@ inline Real GsrProcessCore::reversion(const Time t) const {
 }
 
 } // namespace detail
-
 } // namespace QuantLib
 
 #endif

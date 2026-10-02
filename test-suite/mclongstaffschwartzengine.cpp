@@ -12,120 +12,116 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "mclongstaffschwartzengine.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
 #include <ql/instruments/vanillaoption.hpp>
-#include <ql/termstructures/yield/flatforward.hpp>
-#include <ql/termstructures/volatility/equityfx/blackconstantvol.hpp>
-#include <ql/processes/stochasticprocessarray.hpp>
 #include <ql/methods/montecarlo/lsmbasissystem.hpp>
 #include <ql/pricingengines/mclongstaffschwartzengine.hpp>
-#include <ql/pricingengines/vanilla/fdamericanengine.hpp>
+#include <ql/pricingengines/vanilla/fdblackscholesvanillaengine.hpp>
 #include <ql/pricingengines/vanilla/mcamericanengine.hpp>
+#include <ql/processes/stochasticprocessarray.hpp>
+#include <ql/termstructures/volatility/equityfx/blackconstantvol.hpp>
+#include <ql/termstructures/yield/flatforward.hpp>
 #include <ql/time/calendars/nullcalendar.hpp>
+#include <utility>
 
 using namespace QuantLib;
 using namespace boost::unit_test_framework;
 
-namespace {
+BOOST_FIXTURE_TEST_SUITE(QuantLibTests, TopLevelFixture)
 
-    class AmericanMaxPathPricer : public EarlyExercisePathPricer<MultiPath>  {
-      public:
-        explicit AmericanMaxPathPricer(const ext::shared_ptr<Payoff>& payoff)
-        : payoff_(payoff) {
+BOOST_AUTO_TEST_SUITE(MCLongstaffSchwartzEngineTests)
+
+class AmericanMaxPathPricer : public EarlyExercisePathPricer<MultiPath>  {
+  public:
+    explicit AmericanMaxPathPricer(ext::shared_ptr<Payoff> payoff)
+    : payoff_(std::move(payoff)) {}
+
+    StateType state(const MultiPath& path, Size t) const override {
+        Array tmp(path.assetNumber());
+        for (Size i=0; i<path.assetNumber(); ++i) {
+            tmp[i]=path[i][t];
         }
 
-        StateType state(const MultiPath& path, Size t) const {
-            Array tmp(path.assetNumber());
-            for (Size i=0; i<path.assetNumber(); ++i) {
-                tmp[i]=path[i][t];
-            }
+        return tmp;
+    }
 
-            return tmp;
-        }
+    Real operator()(const MultiPath& path, Size t) const override {
+        const Array tmp = state(path, t);
+        return (*payoff_)(*std::max_element(tmp.begin(), tmp.end()));
+    }
 
-        Real operator()(const MultiPath& path, Size t) const {
-            const Array tmp = state(path, t);
-            return (*payoff_)(*std::max_element(tmp.begin(), tmp.end()));
-        }
+    std::vector<std::function<Real(StateType)> > basisSystem() const override {
+        return LsmBasisSystem::multiPathBasisSystem(2, 2,
+                                                    LsmBasisSystem::Monomial);
+    }
 
-        std::vector<boost::function1<Real, StateType> > basisSystem() const {
-            return LsmBasisSystem::multiPathBasisSystem(2, 2,
-                                                        LsmBasisSystem::Monomial);
-        }
+  protected:
+    const ext::shared_ptr<Payoff> payoff_;
+};
 
-      protected:
-        const ext::shared_ptr<Payoff> payoff_;
-    };
+template <class RNG>
+class MCAmericanMaxEngine
+    : public MCLongstaffSchwartzEngine<VanillaOption::engine,
+                                       MultiVariate,RNG>{
+  public:
+    MCAmericanMaxEngine(const ext::shared_ptr<StochasticProcessArray>& processes,
+                        Size timeSteps,
+                        Size timeStepsPerYear,
+                        bool brownianbridge,
+                        bool antitheticVariate,
+                        bool controlVariate,
+                        Size requiredSamples,
+                        Real requiredTolerance,
+                        Size maxSamples,
+                        BigNatural seed,
+                        Size nCalibrationSamples = Null<Size>())
+    : MCLongstaffSchwartzEngine<VanillaOption::engine,
+                                MultiVariate,RNG>(processes,
+                                                  timeSteps,
+                                                  timeStepsPerYear,
+                                                  brownianbridge,
+                                                  antitheticVariate,
+                                                  controlVariate,
+                                                  requiredSamples,
+                                                  requiredTolerance,
+                                                  maxSamples,
+                                                  seed, nCalibrationSamples)
+    { }
 
-    template <class RNG>
-    class MCAmericanMaxEngine
-        : public MCLongstaffSchwartzEngine<VanillaOption::engine,
-                                           MultiVariate,RNG>{
-      public:
-        MCAmericanMaxEngine(
-                            const ext::shared_ptr<StochasticProcessArray>& processes,
-                            Size timeSteps,
-                            Size timeStepsPerYear,
-                            bool brownianbridge,
-                            bool antitheticVariate,
-                            bool controlVariate,
-                            Size requiredSamples,
-                            Real requiredTolerance,
-                            Size maxSamples,
-                            BigNatural seed,
-                            Size nCalibrationSamples = Null<Size>())
-        : MCLongstaffSchwartzEngine<VanillaOption::engine,
-                                    MultiVariate,RNG>(processes,
-                                                      timeSteps,
-                                                      timeStepsPerYear,
-                                                      brownianbridge,
-                                                      antitheticVariate,
-                                                      controlVariate,
-                                                      requiredSamples,
-                                                      requiredTolerance,
-                                                      maxSamples,
-                                                      seed, nCalibrationSamples)
-        { }
-
-      protected:
-        ext::shared_ptr<LongstaffSchwartzPathPricer<MultiPath> >
-        lsmPathPricer() const {
-            ext::shared_ptr<StochasticProcessArray> processArray =
+  protected:
+    ext::shared_ptr<LongstaffSchwartzPathPricer<MultiPath> > lsmPathPricer() const override {
+        ext::shared_ptr<StochasticProcessArray> processArray =
             ext::dynamic_pointer_cast<StochasticProcessArray>(this->process_);
-            QL_REQUIRE(processArray && processArray->size() > 0,
-                       "Stochastic process array required");
+        QL_REQUIRE(processArray && processArray->size() > 0,
+                   "Stochastic process array required");
 
-            ext::shared_ptr<GeneralizedBlackScholesProcess> process =
-                ext::dynamic_pointer_cast<GeneralizedBlackScholesProcess>(
+        ext::shared_ptr<GeneralizedBlackScholesProcess> process =
+            ext::dynamic_pointer_cast<GeneralizedBlackScholesProcess>(
                                                     processArray->process(0));
-            QL_REQUIRE(process, "generalized Black-Scholes proces required");
+        QL_REQUIRE(process, "generalized Black-Scholes proces required");
 
-            ext::shared_ptr<AmericanMaxPathPricer> earlyExercisePathPricer(
+        ext::shared_ptr<AmericanMaxPathPricer> earlyExercisePathPricer(
                           new AmericanMaxPathPricer(this->arguments_.payoff));
 
-            return ext::make_shared<LongstaffSchwartzPathPricer<MultiPath> > (
+        return ext::make_shared<LongstaffSchwartzPathPricer<MultiPath> > (
                 
                     this->timeGrid(),
                     earlyExercisePathPricer,
                     process->riskFreeRate().currentLink());
-        }
-    };
-
-}
+    }
+};
 
 
-void MCLongstaffSchwartzEngineTest::testAmericanOption() {
+BOOST_AUTO_TEST_CASE(testAmericanOption) {
     BOOST_TEST_MESSAGE("Testing Monte-Carlo pricing of American options...");
-
-    SavedSettings backup;
 
     // most of the example taken from the EquityOption.cpp
     const Option::Type type(Option::Put);
@@ -162,7 +158,7 @@ void MCLongstaffSchwartzEngineTest::testAmericanOption() {
     expectedExProb[1][1] = 0.67569; // (price: 5.764)
     expectedExProb[1][2] = 0.65562; // (price: 7.138)
 
-    LsmBasisSystem::PolynomType polynomTypes[]
+    LsmBasisSystem::PolynomialType polynomialTypes[]
         = { LsmBasisSystem::Monomial, LsmBasisSystem::Laguerre,
             LsmBasisSystem::Hermite, LsmBasisSystem::Hyperbolic,
             LsmBasisSystem::Chebyshev2nd };
@@ -193,20 +189,17 @@ void MCLongstaffSchwartzEngineTest::testAmericanOption() {
                   .withAntitheticVariate()
                   .withAbsoluteTolerance(0.02)
                   .withSeed(42)
-                  .withPolynomOrder(3)
-                  .withBasisSystem(
-                       polynomTypes[0*(i*3+j)%LENGTH(polynomTypes)]);
+                  .withPolynomialOrder(3)
+                  .withBasisSystem(polynomialTypes[0*(i*3+j)%std::size(polynomialTypes)]);
 
             americanOption.setPricingEngine(mcengine);
-            // FLOATING_POINT_EXCEPTION
             const Real calculated = americanOption.NPV();
             const Real errorEstimate = americanOption.errorEstimate();
             const Real exerciseProbability =
                 americanOption.result<QuantLib::Real>("exerciseProbability");
 
             americanOption.setPricingEngine(ext::shared_ptr<PricingEngine>(
-                        new FDAmericanEngine<CrankNicolson>(stochasticProcess,
-                                                            401, 200)));
+                        new FdBlackScholesVanillaEngine(stochasticProcess, 401, 200)));
             const Real expected = americanOption.NPV();
 
             // Check price
@@ -228,15 +221,13 @@ void MCLongstaffSchwartzEngineTest::testAmericanOption() {
     }
 }
 
-void MCLongstaffSchwartzEngineTest::testAmericanMaxOption() {
+BOOST_AUTO_TEST_CASE(testAmericanMaxOption) {
 
     // reference values taken from
     // "Monte Carlo Methods in Financial Engineering",
     // by Paul Glasserman, 2004 Springer Verlag, p. 462
 
     BOOST_TEST_MESSAGE("Testing Monte-Carlo pricing of American max options...");
-
-    SavedSettings backup;
 
     // most of the example taken from the EquityOption.cpp
     const Option::Type type(Option::Call);
@@ -315,13 +306,6 @@ void MCLongstaffSchwartzEngineTest::testAmericanMaxOption() {
     }
 }
 
-test_suite* MCLongstaffSchwartzEngineTest::suite() {
-    test_suite* suite = BOOST_TEST_SUITE("Longstaff Schwartz MC engine tests");
-    // FLOATING_POINT_EXCEPTION
-    suite->add(QUANTLIB_TEST_CASE(
-         &MCLongstaffSchwartzEngineTest::testAmericanOption));
-    suite->add(QUANTLIB_TEST_CASE(
-         &MCLongstaffSchwartzEngineTest::testAmericanMaxOption));
-    return suite;
-}
+BOOST_AUTO_TEST_SUITE_END()
 
+BOOST_AUTO_TEST_SUITE_END()

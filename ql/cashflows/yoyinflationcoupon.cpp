@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -18,41 +18,40 @@
  */
 
 
-#include <ql/cashflows/inflationcouponpricer.hpp>
-#include <ql/cashflows/inflationcoupon.hpp>
 #include <ql/cashflows/capflooredinflationcoupon.hpp>
 #include <ql/cashflows/cashflowvectors.hpp>
+#include <ql/cashflows/inflationcoupon.hpp>
+#include <ql/cashflows/inflationcouponpricer.hpp>
+#include <utility>
 
 namespace QuantLib {
 
     YoYInflationCoupon::
     YoYInflationCoupon(const Date& paymentDate,
-                   Real nominal,
-                   const Date& startDate,
-                   const Date& endDate,
-                   Natural fixingDays,
-                   const ext::shared_ptr<YoYInflationIndex>& yoyIndex,
-                   const Period& observationLag,
-                   const DayCounter& dayCounter,
-                   Real gearing,
-                   Spread spread,
-                   const Date& refPeriodStart,
-                   const Date& refPeriodEnd)
+                       Real nominal,
+                       const Date& startDate,
+                       const Date& endDate,
+                       Natural fixingDays,
+                       const ext::shared_ptr<YoYInflationIndex>& yoyIndex,
+                       const Period& observationLag,
+                       CPI::InterpolationType interpolation,
+                       const DayCounter& dayCounter,
+                       Real gearing,
+                       Spread spread,
+                       const Date& refPeriodStart,
+                       const Date& refPeriodEnd)
     : InflationCoupon(paymentDate, nominal, startDate, endDate,
-                  fixingDays, yoyIndex, observationLag,
-                  dayCounter, refPeriodStart, refPeriodEnd),
-    yoyIndex_(yoyIndex), gearing_(gearing), spread_(spread) {}
-
+                      fixingDays, yoyIndex, observationLag,
+                      dayCounter, refPeriodStart, refPeriodEnd),
+      yoyIndex_(yoyIndex), interpolation_(interpolation), gearing_(gearing), spread_(spread) {}
 
     void YoYInflationCoupon::accept(AcyclicVisitor& v) {
-        Visitor<YoYInflationCoupon>* v1 =
-        dynamic_cast<Visitor<YoYInflationCoupon>*>(&v);
-        if (v1 != 0)
+        auto* v1 = dynamic_cast<Visitor<YoYInflationCoupon>*>(&v);
+        if (v1 != nullptr)
             v1->visit(*this);
         else
             InflationCoupon::accept(v);
     }
-
 
     bool YoYInflationCoupon::checkPricerImpl(
             const ext::shared_ptr<InflationCouponPricer>&pricer) const {
@@ -60,17 +59,18 @@ namespace QuantLib {
                ext::dynamic_pointer_cast<YoYInflationCouponPricer>(pricer));
     }
 
+    Rate YoYInflationCoupon::indexFixing() const {
+        return CPI::laggedYoYRate(yoyIndex(), accrualEndDate(), observationLag(), interpolation_);
+    }
 
 
-    yoyInflationLeg::
-    yoyInflationLeg(const Schedule& schedule, const Calendar& paymentCalendar,
-                    const ext::shared_ptr<YoYInflationIndex>& index,
-                    const Period& observationLag)
-    : schedule_(schedule), index_(index),
-      observationLag_(observationLag),
-      paymentAdjustment_(ModifiedFollowing),
-      paymentCalendar_(paymentCalendar) {}
-
+    yoyInflationLeg::yoyInflationLeg(Schedule schedule,
+                                     Calendar paymentCalendar,
+                                     ext::shared_ptr<YoYInflationIndex> index,
+                                     const Period& observationLag,
+                                     CPI::InterpolationType interpolation)
+    : schedule_(std::move(schedule)), index_(std::move(index)), observationLag_(observationLag),
+      interpolation_(interpolation), paymentCalendar_(std::move(paymentCalendar)) {}
 
     yoyInflationLeg& yoyInflationLeg::withNotionals(Real notional) {
         notionals_ = std::vector<Real>(1,notional);
@@ -146,6 +146,7 @@ namespace QuantLib {
     yoyInflationLeg::operator Leg() const {
 
         Size n = schedule_.size()-1;
+        QL_REQUIRE(!paymentDayCounter_.empty(), "no payment daycounter given");
         QL_REQUIRE(!notionals_.empty(), "no notional given");
         QL_REQUIRE(notionals_.size() <= n,
                    "too many nominals (" << notionals_.size() <<
@@ -182,63 +183,53 @@ namespace QuantLib {
                 refEnd = schedule_.calendar().adjust(start + schedule_.tenor(), bdc);
             }
             if (detail::get(gearings_, i, 1.0) == 0.0) { // fixed coupon
-                leg.push_back(ext::shared_ptr<CashFlow>(new
-                            FixedRateCoupon(paymentDate,
+                leg.push_back(ext::make_shared<FixedRateCoupon>(
+                            paymentDate,
                             detail::get(notionals_, i, 1.0),
                             detail::effectiveFixedRate(spreads_,caps_,
-                                    floors_,i),
-                                    paymentDayCounter_,
-                                    start, end, refStart, refEnd)));
+                                                       floors_,i),
+                            paymentDayCounter_,
+                            start, end, refStart, refEnd));
             } else { // yoy inflation coupon
                 if (detail::noOption(caps_, floors_, i)) { // just swaplet
-                    ext::shared_ptr<YoYInflationCoupon> coup(new
-                            YoYInflationCoupon(
+                    leg.push_back(ext::make_shared<YoYInflationCoupon>(
                             paymentDate,
                             detail::get(notionals_, i, 1.0),
                             start, end,
                             detail::get(fixingDays_, i, 0),
                             index_,
                             observationLag_,
+                            interpolation_,
                             paymentDayCounter_,
                             detail::get(gearings_, i, 1.0),
                             detail::get(spreads_, i, 0.0),
                             refStart, refEnd));
-
-                    // in this case you can set a pricer
-                    // straight away because it only provides computation - not data
-                    ext::shared_ptr<YoYInflationCouponPricer> pricer(
-                                            new YoYInflationCouponPricer);
-                    coup->setPricer(pricer);
-                    leg.push_back(ext::dynamic_pointer_cast<CashFlow>(coup));
-
-
-
                 } else {    // cap/floorlet
-                    leg.push_back(ext::shared_ptr<CashFlow>(new
-                            CappedFlooredYoYInflationCoupon(
+                    leg.push_back(ext::make_shared<CappedFlooredYoYInflationCoupon>(
                             paymentDate,
                             detail::get(notionals_, i, 1.0),
                             start, end,
                             detail::get(fixingDays_, i, 0),
                             index_,
                             observationLag_,
+                            interpolation_,
                             paymentDayCounter_,
                             detail::get(gearings_, i, 1.0),
                             detail::get(spreads_, i, 0.0),
                             detail::get(caps_,   i, Null<Rate>()),
                             detail::get(floors_, i, Null<Rate>()),
-                            refStart, refEnd)));
+                            refStart, refEnd));
                 }
             }
         }
 
+        // Without caps or floors, this is enough; otherwise, a more
+        // specific pricer will need to be set in client code.
+        if (caps_.empty() && floors_.empty())
+            setCouponPricer(leg, ext::make_shared<YoYInflationCouponPricer>());
+
         return leg;
     }
-
-
-
-
-
 
 }
 

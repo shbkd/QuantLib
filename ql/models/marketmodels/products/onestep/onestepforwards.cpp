@@ -10,26 +10,26 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include <ql/models/marketmodels/products/onestep/onestepforwards.hpp>
 #include <ql/models/marketmodels/curvestate.hpp>
+#include <ql/models/marketmodels/products/onestep/onestepforwards.hpp>
 #include <ql/models/marketmodels/utilities.hpp>
-#include <ql/auto_ptr.hpp>
+#include <utility>
 
 namespace QuantLib {
 
     OneStepForwards::OneStepForwards(const std::vector<Time>& rateTimes,
-                                     const std::vector<Real>& accruals,
+                                     std::vector<Real> accruals,
                                      const std::vector<Time>& paymentTimes,
-                                     const std::vector<Rate>& strikes)
-    : MultiProductOneStep(rateTimes), accruals_(accruals),
-      paymentTimes_(paymentTimes), strikes_(strikes) {
+                                     std::vector<Rate> strikes)
+    : MultiProductOneStep(rateTimes), accruals_(std::move(accruals)), paymentTimes_(paymentTimes),
+      strikes_(std::move(strikes)) {
         checkIncreasingTimes(paymentTimes);
     }
 
@@ -50,10 +50,9 @@ namespace QuantLib {
         return true;
     }
 
-    QL_UNIQUE_OR_AUTO_PTR<MarketModelMultiProduct>
+    std::unique_ptr<MarketModelMultiProduct>
     OneStepForwards::clone() const {
-        return QL_UNIQUE_OR_AUTO_PTR<MarketModelMultiProduct>(
-                                                  new OneStepForwards(*this));
+        return std::make_unique<OneStepForwards>(*this);
     }
 
 }

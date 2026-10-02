@@ -8,7 +8,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
 
  This program is distributed in the hope that it will be useful, but
@@ -16,9 +16,10 @@
  or FITNESS FOR A PARTICULAR PURPOSE. See the license for more details.
 */
 
-#include <ql/experimental/coupons/cmsspreadcoupon.hpp>
-#include <ql/cashflows/cashflowvectors.hpp>
 #include <ql/cashflows/capflooredcoupon.hpp>
+#include <ql/cashflows/cashflowvectors.hpp>
+#include <ql/experimental/coupons/cmsspreadcoupon.hpp>
+#include <utility>
 
 namespace QuantLib {
 
@@ -28,26 +29,26 @@ namespace QuantLib {
         const ext::shared_ptr<SwapSpreadIndex> &index, Real gearing,
         Spread spread, const Date &refPeriodStart,
         const Date &refPeriodEnd,
-        const DayCounter &dayCounter, bool isInArrears)
+        const DayCounter &dayCounter, bool isInArrears, const Date &exCouponDate,
+        BusinessDayConvention fixingConvention)
         : FloatingRateCoupon(paymentDate, nominal, startDate, endDate,
                              fixingDays, index, gearing, spread,
                              refPeriodStart, refPeriodEnd, dayCounter,
-                             isInArrears),
+                             isInArrears, exCouponDate, fixingConvention),
           index_(index) {}
 
     void CmsSpreadCoupon::accept(AcyclicVisitor &v) {
-        Visitor<CmsSpreadCoupon> *v1 = dynamic_cast<Visitor<CmsSpreadCoupon> *>(&v);
-        if (v1 != 0)
+        auto* v1 = dynamic_cast<Visitor<CmsSpreadCoupon>*>(&v);
+        if (v1 != nullptr)
             v1->visit(*this);
         else
             FloatingRateCoupon::accept(v);
     }
 
-    CmsSpreadLeg::CmsSpreadLeg(const Schedule &schedule,
-                               const ext::shared_ptr<SwapSpreadIndex> &index)
-        : schedule_(schedule), swapSpreadIndex_(index),
-          paymentAdjustment_(Following), inArrears_(false),
-          zeroPayments_(false) {}
+    CmsSpreadLeg::CmsSpreadLeg(Schedule schedule, ext::shared_ptr<SwapSpreadIndex> index)
+    : schedule_(std::move(schedule)), swapSpreadIndex_(std::move(index)) {
+        QL_REQUIRE(swapSpreadIndex_, "no index provided");
+    }
 
     CmsSpreadLeg &CmsSpreadLeg::withNotionals(Real notional) {
         notionals_ = std::vector<Real>(1, notional);

@@ -12,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -66,7 +66,7 @@ namespace QuantLib {
     }
 
     // smart but sometimes too slow
-    Disposable<FdmLinearOpIterator> FdmLinearOpLayout::iter_neighbourhood(
+    FdmLinearOpIterator FdmLinearOpLayout::iter_neighbourhood(
         const FdmLinearOpIterator& iterator, Size i, Integer offset) const {
 
         std::vector<Size> coordinates = iterator.coordinates();
@@ -80,9 +80,8 @@ namespace QuantLib {
         }
         coordinates[i] = Size(coorOffset);
 
-        FdmLinearOpIterator retVal(dim_, coordinates,
+        return FdmLinearOpIterator(dim_, coordinates,
                                    index(coordinates));
-
-        return retVal;
     }
+
 }

@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -55,23 +55,20 @@ namespace QuantLib {
 
     class KlugeExtOUProcess : public StochasticProcess {
       public:
-        KlugeExtOUProcess(
-            Real rho,
-            const ext::shared_ptr<ExtOUWithJumpsProcess>& kluge,
-            const ext::shared_ptr<ExtendedOrnsteinUhlenbeckProcess>& extOU);
+        KlugeExtOUProcess(Real rho,
+                          ext::shared_ptr<ExtOUWithJumpsProcess> kluge,
+                          ext::shared_ptr<ExtendedOrnsteinUhlenbeckProcess> extOU);
 
-        Size size() const;
-        Size factors() const;
+        Size size() const override;
+        Size factors() const override;
 
-        Disposable<Array> initialValues() const;
-        Disposable<Array> drift(Time t, const Array& x) const;
-        Disposable<Matrix> diffusion(Time t, const Array& x) const;
-        Disposable<Array> evolve(Time t0, const Array& x0,
-                                 Time dt, const Array& dw) const;
+        Array initialValues() const override;
+        Array drift(Time t, const Array& x) const override;
+        Matrix diffusion(Time t, const Array& x) const override;
+        Array evolve(Time t0, const Array& x0, Time dt, const Array& dw) const override;
 
         ext::shared_ptr<ExtOUWithJumpsProcess> getKlugeProcess() const;
-        ext::shared_ptr<ExtendedOrnsteinUhlenbeckProcess>
-                                                 getExtOUProcess() const;
+        ext::shared_ptr<ExtendedOrnsteinUhlenbeckProcess> getExtOUProcess() const;
 
         Real rho() const;
 

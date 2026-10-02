@@ -10,64 +10,53 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
-#include "normalclvmodel.hpp"
-
-#include <ql/quotes/simplequote.hpp>
-#include <ql/time/daycounters/actual360.hpp>
-#include <ql/time/daycounters/actualactual.hpp>
-#include <ql/time/daycounters/actual365fixed.hpp>
-#include <ql/time/calendars/nullcalendar.hpp>
-#include <ql/instruments/impliedvolatility.hpp>
+#include <ql/experimental/finitedifferences/fdornsteinuhlenbeckvanillaengine.hpp>
+#include <ql/experimental/models/normalclvmodel.hpp>
+#include <ql/experimental/volatility/sabrvoltermstructure.hpp>
+#include <ql/instruments/doublebarrieroption.hpp>
 #include <ql/instruments/forwardvanillaoption.hpp>
-#include <ql/math/statistics/statistics.hpp>
+#include <ql/instruments/impliedvolatility.hpp>
 #include <ql/math/integrals/gausslobattointegral.hpp>
 #include <ql/math/randomnumbers/rngtraits.hpp>
 #include <ql/math/randomnumbers/sobolbrownianbridgersg.hpp>
+#include <ql/math/statistics/statistics.hpp>
+#include <ql/methods/finitedifferences/utilities/bsmrndcalculator.hpp>
+#include <ql/methods/finitedifferences/utilities/hestonrndcalculator.hpp>
+#include <ql/methods/montecarlo/pathgenerator.hpp>
+#include <ql/pricingengines/barrier/analyticdoublebarrierbinaryengine.hpp>
+#include <ql/pricingengines/blackcalculator.hpp>
+#include <ql/pricingengines/forward/forwardengine.hpp>
+#include <ql/pricingengines/vanilla/analyticeuropeanengine.hpp>
 #include <ql/processes/blackscholesprocess.hpp>
 #include <ql/processes/ornsteinuhlenbeckprocess.hpp>
-#include <ql/pricingengines/blackcalculator.hpp>
-#include <ql/pricingengines/vanilla/analyticeuropeanengine.hpp>
-#include <ql/pricingengines/forward/forwardengine.hpp>
-#include <ql/methods/montecarlo/pathgenerator.hpp>
+#include <ql/quotes/simplequote.hpp>
 #include <ql/termstructures/volatility/equityfx/hestonblackvolsurface.hpp>
-
-#include <ql/experimental/models/normalclvmodel.hpp>
-#include <ql/experimental/volatility/sabrvoltermstructure.hpp>
-#include <ql/experimental/finitedifferences/bsmrndcalculator.hpp>
-#include <ql/experimental/finitedifferences/hestonrndcalculator.hpp>
-#include <ql/experimental/finitedifferences/fdornsteinuhlenbeckvanillaengine.hpp>
-#include <ql/experimental/barrieroption/doublebarrieroption.hpp>
-#include <ql/experimental/barrieroption/analyticdoublebarrierbinaryengine.hpp>
-
-#if defined(__GNUC__) && (((__GNUC__ == 4) && (__GNUC_MINOR__ >= 8)) || (__GNUC__ > 4))
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-local-typedefs"
-#endif
-#include <boost/bind.hpp>
-#if defined(__GNUC__) && (((__GNUC__ == 4) && (__GNUC_MINOR__ >= 8)) || (__GNUC__ > 4))
-#pragma GCC diagnostic pop
-#endif
-
-#include <boost/assign/std/vector.hpp>
+#include <ql/time/calendars/nullcalendar.hpp>
+#include <ql/time/daycounters/actual360.hpp>
+#include <ql/time/daycounters/actual365fixed.hpp>
+#include <ql/time/daycounters/actualactual.hpp>
+#include <functional>
+#include <utility>
 
 using namespace QuantLib;
-using namespace boost::assign;
 using namespace boost::unit_test_framework;
 
-void NormalCLVModelTest::testBSCumlativeDistributionFunction() {
+BOOST_FIXTURE_TEST_SUITE(QuantLibTests, TopLevelFixture)
+
+BOOST_AUTO_TEST_SUITE(NormalCLVModelTests)
+
+BOOST_AUTO_TEST_CASE(testBSCumlativeDistributionFunction) {
     BOOST_TEST_MESSAGE("Testing Black-Scholes cumulative distribution function"
                        " with constant volatility...");
-
-    SavedSettings backup;
 
     const DayCounter dc = Actual365Fixed();
     const Date today = Date(22, June, 2016);
@@ -93,7 +82,7 @@ void NormalCLVModelTest::testBSCumlativeDistributionFunction() {
     const BSMRNDCalculator rndCalculator(bsProcess);
 
 
-    const Real tol = 1e5*QL_EPSILON;
+    constexpr double tol = 1e5 * QL_EPSILON;
     const Time t = dc.yearFraction(today, maturity);
     for (Real x=10; x < 400; x+=10) {
         const Real calculated = m.cdf(maturity, x);
@@ -108,10 +97,8 @@ void NormalCLVModelTest::testBSCumlativeDistributionFunction() {
     }
 }
 
-void NormalCLVModelTest::testHestonCumlativeDistributionFunction() {
+BOOST_AUTO_TEST_CASE(testHestonCumlativeDistributionFunction) {
     BOOST_TEST_MESSAGE("Testing Heston cumulative distribution function...");
-
-    SavedSettings backup;
 
     const DayCounter dc = Actual365Fixed();
     const Date today = Date(22, June, 2016);
@@ -161,13 +148,9 @@ void NormalCLVModelTest::testHestonCumlativeDistributionFunction() {
     }
 }
 
-
-
-void NormalCLVModelTest::testIllustrative1DExample() {
+BOOST_AUTO_TEST_CASE(testIllustrative1DExample) {
     BOOST_TEST_MESSAGE(
         "Testing illustrative 1D example of normal CLV model...");
-
-    SavedSettings backup;
 
     // example taken from:
     // A. Grzelak, 2015, The CLV Framework -
@@ -209,30 +192,33 @@ void NormalCLVModelTest::testIllustrative1DExample() {
         ext::make_shared<OrnsteinUhlenbeckProcess>(
             speed, vol, x0, level));
 
-    std::vector<Date> maturityDates;
-    maturityDates += (today + Period(18, Days)),
-        today + Period(90, Days)  , today + Period(180, Days),
-        today + Period(360, Days) , today + Period(720, Days);
+    std::vector<Date> maturityDates = {
+        today + Period(18, Days),
+        today + Period(90, Days),
+        today + Period(180, Days),
+        today + Period(360, Days),
+        today + Period(720, Days)
+    };
 
     const NormalCLVModel m(bsProcess, ouProcess, maturityDates, 4);
-    const boost::function<Real(Real, Real)> g = m.g();
+    const std::function<Real(Real, Real)> g = m.g();
 
     // test collocation points in x_ij
-    std::vector<Date> maturities;
-    maturities += maturityDates[0], maturityDates[2], maturityDates[4];
+    std::vector<Date> maturities = { maturityDates[0], maturityDates[2], maturityDates[4] };
 
-    std::vector<std::vector<Real> > x(3);
-    x[0] += 1.070, 0.984, 0.903, 0.817;
-    x[1] += 0.879, 0.668, 0.472, 0.261;
-    x[2] += 0.528, 0.282, 0.052,-0.194;
+    std::vector<std::vector<Real> > x = {
+        { 1.070, 0.984, 0.903, 0.817 },
+        { 0.879, 0.668, 0.472, 0.261 },
+        { 0.528, 0.282, 0.052,-0.194 }
+    };
 
-    std::vector<std::vector<Real> > s(3);
-    s[0] += 1.104, 1.035, 0.969, 0.895;
-    s[1] += 1.328, 1.122, 0.911, 0.668;
-    s[2] += 1.657, 1.283, 0.854, 0.339;
+    std::vector<std::vector<Real> > s = {
+        {1.104, 1.035, 0.969, 0.895},
+        {1.328, 1.122, 0.911, 0.668},
+        {1.657, 1.283, 0.854, 0.339}
+    };
 
-    std::vector<Real> c;
-    c += 2.3344, 0.7420, -0.7420, -2.3344;
+    std::vector<Real> c = { 2.3344, 0.7420, -0.7420, -2.3344 };
 
     const Real tol = 0.001;
     for (Size i=0; i < maturities.size(); ++i) {
@@ -278,27 +264,20 @@ void NormalCLVModelTest::testIllustrative1DExample() {
     }
 }
 
-namespace {
-    class CLVModelPayoff : public PlainVanillaPayoff {
-      public:
-        CLVModelPayoff(Option::Type type, Real strike,
-                             const boost::function<Real(Real)> g)
-        : PlainVanillaPayoff(type, strike),
-          g_(g) { }
+class CLVModelPayoff : public PlainVanillaPayoff {
+  public:
+    CLVModelPayoff(Option::Type type, Real strike, std::function<Real(Real)> g)
+    : PlainVanillaPayoff(type, strike), g_(std::move(g)) {}
 
-        Real operator()(Real x) const {
-            return PlainVanillaPayoff::operator()(g_(x));
-        }
+    Real operator()(Real x) const override { return PlainVanillaPayoff::operator()(g_(x)); }
 
-      private:
-        const boost::function<Real(Real)> g_;
-    };
-}
+  private:
+    const std::function<Real(Real)> g_;
+};
 
-void NormalCLVModelTest::testMonteCarloBSOptionPricing() {
+
+BOOST_AUTO_TEST_CASE(testMonteCarloBSOptionPricing) {
     BOOST_TEST_MESSAGE("Testing Monte Carlo BS option pricing...");
-
-    SavedSettings backup;
 
     const DayCounter dc = Actual365Fixed();
     const Date today = Date(22, June, 2016);
@@ -335,11 +314,10 @@ void NormalCLVModelTest::testMonteCarloBSOptionPricing() {
         ext::make_shared<OrnsteinUhlenbeckProcess>(
             speed, sigma, x0, level));
 
-    std::vector<Date> maturities;
-    maturities += today + Period(6, Months), maturity;
+    std::vector<Date> maturities = { today + Period(6, Months), maturity };
 
     const NormalCLVModel m(bsProcess, ouProcess, maturities, 8);
-    const boost::function<Real(Real, Real)> g = m.g();
+    const std::function<Real(Real, Real)> g = m.g();
 
     const Size nSims = 32767;
     const LowDiscrepancy::rsg_type ld
@@ -373,8 +351,8 @@ void NormalCLVModelTest::testMonteCarloBSOptionPricing() {
     }
 
     VanillaOption fdmOption(
-         ext::make_shared<CLVModelPayoff>(
-             payoff->optionType(), payoff->strike(), boost::bind(g, t, _1)),
+         ext::make_shared<CLVModelPayoff>(payoff->optionType(), payoff->strike(),
+                                          [&](Real _x) { return g(t, _x); }),
          exercise);
 
     fdmOption.setPricingEngine(
@@ -390,12 +368,9 @@ void NormalCLVModelTest::testMonteCarloBSOptionPricing() {
                    << "\n    expected:   " << expected);
     }
 }
-
-void NormalCLVModelTest::testMoustacheGraph() {
+BOOST_AUTO_TEST_CASE(testMoustacheGraph) {
     BOOST_TEST_MESSAGE(
         "Testing double no-touch pricing with normal CLV model...");
-
-    SavedSettings backup;
 
     /*
      The comparison of Black-Scholes and normal CLV prices is derived
@@ -403,7 +378,7 @@ void NormalCLVModelTest::testMoustacheGraph() {
      Foreign Exchange Option Pricing: A Practitioner’s Guide
     */
 
-    const DayCounter dc = ActualActual();
+    const DayCounter dc = ActualActual(ActualActual::ISDA);
     const Date todaysDate(5, Aug, 2016);
     const Date maturityDate = todaysDate + Period(1, Years);
     const Time maturityTime = dc.yearFraction(todaysDate, maturityDate);
@@ -475,7 +450,7 @@ void NormalCLVModelTest::testMoustacheGraph() {
         maturities.push_back(maturities.back() + Period(2, Weeks));
 
     const NormalCLVModel m(bsProcess, ouProcess, maturities, 8);
-    const boost::function<Real(Real, Real)> g = m.g();
+    const std::function<Real(Real, Real)> g = m.g();
 
     const Size n = 18;
     Array barrier_lo(n), barrier_hi(n), bsNPV(n);
@@ -539,10 +514,11 @@ void NormalCLVModelTest::testMoustacheGraph() {
     }
 
     const Real expected[] = {
-            0.00931214, 0.0901481, 0.138982, 0.112059, 0.0595901,
-            0.0167549, -0.00906787, -0.0206768, -0.0225628, -0.0203593,
-            -0.016036, -0.0116629, -0.00728792, -0.00328821,
-            -0.000158562, 0.00502041, 0.00347706, 0.00238216, };
+            0.0093023407, 0.090099067, 0.13903052, 0.11206888, 0.059511722,
+            0.016627484, -0.0091168814, -0.020725808, -0.022513829,
+            -0.020280851, -0.015967361, -0.011476705, -0.0071604902,
+            -0.003219595, -0.00014875974, 0.0049910036, 0.0034770584,
+            0.0023821554};
 
     const Real tol = 1e-5;
     for (Size u=0; u < n; ++u) {
@@ -558,22 +534,6 @@ void NormalCLVModelTest::testMoustacheGraph() {
         }
     }
 }
+BOOST_AUTO_TEST_SUITE_END()
 
-test_suite* NormalCLVModelTest::experimental(SpeedLevel speed) {
-    test_suite* suite = BOOST_TEST_SUITE("NormalCLVModel tests");
-
-    suite->add(QUANTLIB_TEST_CASE(
-        &NormalCLVModelTest::testBSCumlativeDistributionFunction));
-    suite->add(QUANTLIB_TEST_CASE(
-        &NormalCLVModelTest::testHestonCumlativeDistributionFunction));
-    suite->add(QUANTLIB_TEST_CASE(
-        &NormalCLVModelTest::testIllustrative1DExample));
-    suite->add(QUANTLIB_TEST_CASE(
-        &NormalCLVModelTest::testMonteCarloBSOptionPricing));
-
-    if (speed == Slow) {
-        suite->add(QUANTLIB_TEST_CASE(
-            &NormalCLVModelTest::testMoustacheGraph));
-    }
-    return suite;
-}
+BOOST_AUTO_TEST_SUITE_END()

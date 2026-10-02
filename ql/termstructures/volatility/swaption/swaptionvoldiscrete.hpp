@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -59,29 +59,32 @@ namespace QuantLib {
         //@}
         //! \name Observer interface
         //@{
-        void update();
+        void update() override;
         //@}
         //! \name LazyObject interface
         //@{
-        void performCalculations() const;
+        void performCalculations() const override;
         //@}
         //! additional inspectors
-        const Date optionDateFromTime(Time optionTime) const;
+        Date optionDateFromTime(Time optionTime) const;
+
       protected:
         Size nOptionTenors_;
         std::vector<Period> optionTenors_;
         mutable std::vector<Date> optionDates_;
         mutable std::vector<Time> optionTimes_;
-        mutable std::vector<Real> optionDatesAsReal_;
         mutable Interpolation optionInterpolator_;
+        mutable std::vector<Real> optionDatesAsReal_;
+        mutable std::vector<Time> optionInterpolatorTimes_;
+        mutable std::vector<Real> optionInterpolatorDatesAsReal_;
 
         Size nSwapTenors_;
         std::vector<Period> swapTenors_;
         mutable std::vector<Time> swapLengths_;
-        mutable Date evaluationDate_;
+        mutable Date cachedReferenceDate_;
       private:
         void checkOptionTenors() const;
-        void checkOptionDates() const;
+        void checkOptionDates(const Date& reference) const;
         void checkSwapTenors() const;
         void initializeOptionDatesAndTimes() const;
         void initializeOptionTimes() const;
@@ -115,11 +118,9 @@ namespace QuantLib {
         return swapLengths_;
     }
 
-    inline const Date
-    SwaptionVolatilityDiscrete::optionDateFromTime(Time optionTime) const {
+    inline Date SwaptionVolatilityDiscrete::optionDateFromTime(Time optionTime) const {
         return Date(static_cast<Date::serial_type>(optionInterpolator_(optionTime)));
     }
-
 }
 
 #endif

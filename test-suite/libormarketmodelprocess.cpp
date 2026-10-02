@@ -10,108 +10,101 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "libormarketmodelprocess.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
-#include <ql/timegrid.hpp>
-#include <ql/math/randomnumbers/rngtraits.hpp>
-#include <ql/methods/montecarlo/multipathgenerator.hpp>
 #include <ql/indexes/ibor/euribor.hpp>
-#include <ql/math/statistics/generalstatistics.hpp>
-#include <ql/termstructures/yield/zerocurve.hpp>
-#include <ql/time/daycounters/actualactual.hpp>
-#include <ql/time/daycounters/actual360.hpp>
-#include <ql/termstructures/volatility/optionlet/constantoptionletvol.hpp>
-#include <ql/termstructures/volatility/optionlet/capletvariancecurve.hpp>
 #include <ql/legacy/libormarketmodels/lfmhullwhiteparam.hpp>
+#include <ql/math/randomnumbers/rngtraits.hpp>
+#include <ql/math/statistics/generalstatistics.hpp>
+#include <ql/methods/montecarlo/multipathgenerator.hpp>
+#include <ql/termstructures/volatility/optionlet/capletvariancecurve.hpp>
+#include <ql/termstructures/volatility/optionlet/constantoptionletvol.hpp>
+#include <ql/termstructures/yield/zerocurve.hpp>
+#include <ql/time/daycounters/actual360.hpp>
+#include <ql/time/daycounters/actualactual.hpp>
+#include <ql/timegrid.hpp>
 
 using namespace QuantLib;
 using namespace boost::unit_test_framework;
 
-namespace {
+BOOST_FIXTURE_TEST_SUITE(QuantLibTests, TopLevelFixture)
 
-    Size len = 10;
+BOOST_AUTO_TEST_SUITE(LiborMarketModelProcessTests)
 
-    ext::shared_ptr<IborIndex> makeIndex() {
-        DayCounter dayCounter = Actual360();
-        std::vector<Date> dates;
-        std::vector<Rate> rates;
-        dates.push_back(Date(4,September,2005));
-        dates.push_back(Date(4,September,2018));
-        rates.push_back(0.01);
-        rates.push_back(0.08);
+Size len = 10;
 
-        RelinkableHandle<YieldTermStructure> termStructure(
+ext::shared_ptr<IborIndex> makeIndex() {
+    DayCounter dayCounter = Actual360();
+    std::vector<Date> dates = {{4,September,2005}, {4,September,2018}};
+    std::vector<Rate> rates = {0.01, 0.08};
+
+    RelinkableHandle<YieldTermStructure> termStructure(
                       ext::shared_ptr<YieldTermStructure>(
                                       new ZeroCurve(dates,rates,dayCounter)));
 
-        ext::shared_ptr<IborIndex> index(new Euribor1Y(termStructure));
+    ext::shared_ptr<IborIndex> index(new Euribor1Y(termStructure));
 
-        Date todaysDate =
-            index->fixingCalendar().adjust(Date(4,September,2005));
-        Settings::instance().evaluationDate() = todaysDate;
+    Date todaysDate =
+        index->fixingCalendar().adjust(Date(4,September,2005));
+    Settings::instance().evaluationDate() = todaysDate;
 
-        dates[0] = index->fixingCalendar().advance(todaysDate,
-                                                   index->fixingDays(), Days);
+    dates[0] = index->fixingCalendar().advance(todaysDate,
+                                               index->fixingDays(), Days);
 
-        termStructure.linkTo(ext::shared_ptr<YieldTermStructure>(
+    termStructure.linkTo(ext::shared_ptr<YieldTermStructure>(
                                     new ZeroCurve(dates, rates, dayCounter)));
 
-        return index;
-    }
+    return index;
+}
 
-    ext::shared_ptr<CapletVarianceCurve>
-    makeCapVolCurve(const Date& todaysDate) {
-        Volatility vols[] = {14.40, 17.15, 16.81, 16.64, 16.17,
-                             15.78, 15.40, 15.21, 14.86, 14.54};
+ext::shared_ptr<CapletVarianceCurve>
+makeCapVolCurve(const Date& todaysDate) {
+    Volatility vols[] = {14.40, 17.15, 16.81, 16.64, 16.17,
+                         15.78, 15.40, 15.21, 14.86, 14.54};
 
-        std::vector<Date> dates;
-        std::vector<Volatility> capletVols;
-        ext::shared_ptr<LiborForwardModelProcess> process(
+    std::vector<Date> dates;
+    std::vector<Volatility> capletVols;
+    ext::shared_ptr<LiborForwardModelProcess> process(
                             new LiborForwardModelProcess(len+1, makeIndex()));
 
-        for (Size i=0; i < len; ++i) {
-            capletVols.push_back(vols[i]/100);
-            dates.push_back(process->fixingDates()[i+1]);
-        }
-
-        return ext::make_shared<CapletVarianceCurve>(
-                         todaysDate, dates,
-                                                 capletVols, ActualActual());
+    for (Size i=0; i < len; ++i) {
+        capletVols.push_back(vols[i]/100);
+        dates.push_back(process->fixingDates()[i+1]);
     }
 
-    ext::shared_ptr<LiborForwardModelProcess>
-    makeProcess(const Matrix& volaComp = Matrix()) {
-        Size factors = (volaComp.empty() ? 1 : volaComp.columns());
+    return ext::make_shared<CapletVarianceCurve>(todaysDate, dates, capletVols,
+                                                 ActualActual(ActualActual::ISDA));
+}
 
-        ext::shared_ptr<IborIndex> index = makeIndex();
-        ext::shared_ptr<LiborForwardModelProcess> process(
+ext::shared_ptr<LiborForwardModelProcess>
+makeProcess(const Matrix& volaComp = Matrix()) {
+    Size factors = (volaComp.empty() ? 1 : volaComp.columns());
+
+    ext::shared_ptr<IborIndex> index = makeIndex();
+    ext::shared_ptr<LiborForwardModelProcess> process(
                                     new LiborForwardModelProcess(len, index));
 
-        ext::shared_ptr<LfmCovarianceParameterization> fct(
+    ext::shared_ptr<LfmCovarianceParameterization> fct(
                 new LfmHullWhiteParameterization(
                     process,
                     makeCapVolCurve(Settings::instance().evaluationDate()),
                     volaComp * transpose(volaComp), factors));
 
-        process->setCovarParam(fct);
+    process->setCovarParam(fct);
 
-        return process;
-    }
-
+    return process;
 }
 
 
-void LiborMarketModelProcessTest::testInitialisation() {
+BOOST_AUTO_TEST_CASE(testInitialisation) {
     BOOST_TEST_MESSAGE("Testing caplet LMM process initialisation...");
-
-    SavedSettings backup;
 
     DayCounter dayCounter = Actual360();
     RelinkableHandle<YieldTermStructure> termStructure(
@@ -137,7 +130,7 @@ void LiborMarketModelProcessTest::testInitialisation() {
 
         LiborForwardModelProcess process(60, index);
 
-        std::vector<Time> fixings = process.fixingTimes();
+        const std::vector<Time>& fixings = process.fixingTimes();
         for (Size i=1; i < fixings.size()-1; ++i) {
             Size ileft  = process.nextIndexReset(fixings[i]-0.000001);
             Size iright = process.nextIndexReset(fixings[i]+0.000001);
@@ -151,10 +144,8 @@ void LiborMarketModelProcessTest::testInitialisation() {
     }
 }
 
-void LiborMarketModelProcessTest::testLambdaBootstrapping() {
+BOOST_AUTO_TEST_CASE(testLambdaBootstrapping) {
     BOOST_TEST_MESSAGE("Testing caplet LMM lambda bootstrapping...");
-
-    SavedSettings backup;
 
     Real tolerance = 1e-10;
     Volatility lambdaExpected[]= {14.3010297550, 19.3821411939, 15.9816590141,
@@ -163,7 +154,7 @@ void LiborMarketModelProcessTest::testLambdaBootstrapping() {
 
     ext::shared_ptr<LiborForwardModelProcess> process = makeProcess();
 
-    Matrix covar = process->covariance(0.0, Null<Array>(), 1.0);
+    Matrix covar = process->covariance(0.0, {}, 1.0);
 
     for (Size i=0; i<9; ++i) {
         const Real calculated = std::sqrt(covar[i+1][i+1]);
@@ -181,9 +172,9 @@ void LiborMarketModelProcessTest::testLambdaBootstrapping() {
     std::vector<Time> tmp = process->fixingTimes();
     TimeGrid grid(tmp.begin(), tmp.end(), 14);
 
-    for (Size t=0; t<grid.size(); ++t) {
-        Matrix diff = (param->integratedCovariance(grid[t])
-        - param->LfmCovarianceParameterization::integratedCovariance(grid[t]));
+    for (Real t : grid) {
+        Matrix diff = (param->integratedCovariance(t) -
+                       param->LfmCovarianceParameterization::integratedCovariance(t));
 
         for (Size i=0; i<diff.rows(); ++i) {
             for (Size j=0; j<diff.columns(); ++j) {
@@ -198,10 +189,8 @@ void LiborMarketModelProcessTest::testLambdaBootstrapping() {
     }
 }
 
-void LiborMarketModelProcessTest::testMonteCarloCapletPricing() {
+BOOST_AUTO_TEST_CASE(testMonteCarloCapletPricing) {
     BOOST_TEST_MESSAGE("Testing caplet LMM Monte-Carlo caplet pricing...");
-
-    SavedSettings backup;
 
     /* factor loadings are taken from Hull & White article
        plus extra normalisation to get orthogonal eigenvectors
@@ -332,19 +321,6 @@ void LiborMarketModelProcessTest::testMonteCarloCapletPricing() {
     }
 }
 
-test_suite* LiborMarketModelProcessTest::suite(SpeedLevel speed) {
-    test_suite* suite = BOOST_TEST_SUITE("Libor market model process tests");
+BOOST_AUTO_TEST_SUITE_END()
 
-    suite->add(QUANTLIB_TEST_CASE(
-         &LiborMarketModelProcessTest::testInitialisation));
-    suite->add(QUANTLIB_TEST_CASE(
-         &LiborMarketModelProcessTest::testLambdaBootstrapping));
-
-    if (speed <= Fast) {
-        suite->add(QUANTLIB_TEST_CASE(
-            &LiborMarketModelProcessTest::testMonteCarloCapletPricing));
-    }
-
-    return suite;
-}
-
+BOOST_AUTO_TEST_SUITE_END()

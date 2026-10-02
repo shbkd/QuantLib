@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -58,25 +58,25 @@ namespace QuantLib {
      We do not inherit from Option, although this would be reasonable,
      because we do not have that degree of generality.
 
-     */
+    */
     class CPICapFloor : public Instrument {
-    public:
+      public:
         class arguments;
-        class results;
         class engine;
+
         CPICapFloor(Option::Type type,
                     Real nominal,
-                    const Date& startDate,   // start date of contract (only)
+                    const Date& startDate, // start date of contract (only)
                     Real baseCPI,
-                    const Date& maturity,    // this is pre-adjustment!
-                    const Calendar& fixCalendar,
+                    const Date& maturity, // this is pre-adjustment!
+                    Calendar fixCalendar,
                     BusinessDayConvention fixConvention,
-                    const Calendar& payCalendar,
+                    Calendar payCalendar,
                     BusinessDayConvention payConvention,
                     Rate strike,
-                    const Handle<ZeroInflationIndex> &infIndex,
+                    ext::shared_ptr<ZeroInflationIndex>  inflationIndex,
                     const Period& observationLag,
-                    CPI::InterpolationType observationInterpolation = CPI::AsIndex);
+                    CPI::InterpolationType observationInterpolation = CPI::Flat);
 
         //! \name Inspectors
         //@{
@@ -86,18 +86,17 @@ namespace QuantLib {
         Rate strike() const { return strike_; }
         Date fixingDate() const;
         Date payDate() const;
-        Handle<ZeroInflationIndex> inflationIndex() const { return infIndex_; }
+        const ext::shared_ptr<ZeroInflationIndex>& index() const { return index_; }
         Period observationLag() const { return observationLag_; }
         //@}
 
         //! \name Instrument interface
         //@{
-        bool isExpired() const;
-        void setupArguments(PricingEngine::arguments*) const;
-        void fetchResults(const PricingEngine::results* r) const;
+        bool isExpired() const override;
+        void setupArguments(PricingEngine::arguments*) const override;
         //@}
 
-    protected:
+      protected:
         Option::Type type_;
         Real nominal_;
         Date startDate_, fixDate_, payDate_;
@@ -108,14 +107,14 @@ namespace QuantLib {
         Calendar payCalendar_;
         BusinessDayConvention payConvention_;
         Rate strike_;
-        Handle<ZeroInflationIndex> infIndex_;
+        ext::shared_ptr<ZeroInflationIndex> index_;
         Period observationLag_;
         CPI::InterpolationType observationInterpolation_;
     };
 
 
-    class CPICapFloor::arguments : public virtual PricingEngine::arguments{
-    public:
+    class CPICapFloor::arguments : public virtual PricingEngine::arguments {
+      public:
         Option::Type type;
         Real nominal;
         Date startDate, fixDate, payDate;
@@ -124,23 +123,15 @@ namespace QuantLib {
         Calendar fixCalendar, payCalendar;
         BusinessDayConvention fixConvention, payConvention;
         Rate strike;
-        Handle<ZeroInflationIndex> infIndex;
+        ext::shared_ptr<ZeroInflationIndex> index;
         Period observationLag;
         CPI::InterpolationType observationInterpolation;
 
-        void validate() const;
+        void validate() const override;
     };
-
-
-    class CPICapFloor::results : public Instrument::results {
-    public:
-        void reset();
-    };
-
 
     class CPICapFloor::engine : public GenericEngine<CPICapFloor::arguments,
-                                                     CPICapFloor::results> {
-    };
+                                                     CPICapFloor::results> {};
 
 }
 

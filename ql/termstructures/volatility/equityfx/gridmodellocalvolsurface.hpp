@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -45,16 +45,16 @@ namespace QuantLib {
             Extrapolation upperExtrapolation
                 = FixedLocalVolSurface::ConstantExtrapolation);
 
-        void update();
+        void update() override;
 
-        Date maxDate() const;
-        Time maxTime() const;
-        Real minStrike() const;
-        Real maxStrike() const;
+        Date maxDate() const override;
+        Time maxTime() const override;
+        Real minStrike() const override;
+        Real maxStrike() const override;
 
       protected:
-        void generateArguments();
-        Volatility localVolImpl(Time t, Real strike) const;
+        void generateArguments() override;
+        Volatility localVolImpl(Time t, Real strike) const override;
 
         const Date referenceDate_;
         std::vector<Time> times_;

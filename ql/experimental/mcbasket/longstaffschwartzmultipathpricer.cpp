@@ -10,16 +10,17 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include <ql/math/generallinearleastsquares.hpp>
 #include <ql/experimental/mcbasket/longstaffschwartzmultipathpricer.hpp>
+#include <ql/math/generallinearleastsquares.hpp>
 #include <ql/utilities/tracing.hpp>
+#include <utility>
 
 namespace QuantLib {
 
@@ -36,27 +37,22 @@ namespace QuantLib {
 
     LongstaffSchwartzMultiPathPricer::LongstaffSchwartzMultiPathPricer(
         const ext::shared_ptr<PathPayoff>& payoff,
-        const std::vector<Size> & timePositions,
-        const std::vector<Handle<YieldTermStructure> > & forwardTermStructures,
-        const Array & discounts,
-        Size polynomOrder,
-        LsmBasisSystem::PolynomType polynomType)
-    : calibrationPhase_(true),
-      payoff_(payoff),
-      coeff_     (new Array[timePositions.size() - 1]),
-      lowerBounds_(new Real[timePositions.size()]),
-      timePositions_(timePositions),
-      forwardTermStructures_(forwardTermStructures),
-      dF_        (discounts),
-      v_         (LsmBasisSystem::multiPathBasisSystem(payoff->basisSystemDimension(),
-                                                       polynomOrder,
-                                                       polynomType)) {
-        QL_REQUIRE(   polynomType == LsmBasisSystem::Monomial
-                   || polynomType == LsmBasisSystem::Laguerre
-                   || polynomType == LsmBasisSystem::Hermite
-                   || polynomType == LsmBasisSystem::Hyperbolic
-                   || polynomType == LsmBasisSystem::Chebyshev2nd,
-                   "insufficient polynom type");
+        const std::vector<Size>& timePositions,
+        std::vector<Handle<YieldTermStructure> > forwardTermStructures,
+        Array discounts,
+        Size polynomialOrder,
+        LsmBasisSystem::PolynomialType polynomialType)
+    : payoff_(payoff), coeff_(new Array[timePositions.size() - 1]),
+      lowerBounds_(new Real[timePositions.size()]), timePositions_(timePositions),
+      forwardTermStructures_(std::move(forwardTermStructures)), dF_(std::move(discounts)),
+      v_(LsmBasisSystem::multiPathBasisSystem(
+          payoff->basisSystemDimension(), polynomialOrder, polynomialType)) {
+        QL_REQUIRE(   polynomialType == LsmBasisSystem::Monomial
+                   || polynomialType == LsmBasisSystem::Laguerre
+                   || polynomialType == LsmBasisSystem::Hermite
+                   || polynomialType == LsmBasisSystem::Hyperbolic
+                   || polynomialType == LsmBasisSystem::Chebyshev2nd,
+                   "insufficient polynomial type");
     }
 
     /*

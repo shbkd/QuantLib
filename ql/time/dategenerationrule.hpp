@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -44,9 +44,12 @@ namespace QuantLib {
                                  termination date. */
             Zero,           /*!< No intermediate dates between effective date
                                  and termination date. */
-            ThirdWednesday, /*!< All dates but effective date and termination
-                                 date are taken to be on the third wednesday
-                                 of their month (with forward calculation.) */
+            ThirdWednesday,  /*!< All dates but effective date and termination
+                                  date are taken to be on the third wednesday
+                                  of their month (with forward calculation.) */
+            ThirdWednesdayInclusive, /*!< All dates including effective date and termination
+                                          date are taken to be on the third wednesday
+                                          of their month (with forward calculation.) */
             Twentieth,      /*!< All dates but the effective date are
                                  taken to be the twentieth of their
                                  month (used for CDS schedules in

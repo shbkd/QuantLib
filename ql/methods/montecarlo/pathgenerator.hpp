@@ -12,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -28,6 +28,7 @@
 
 #include <ql/methods/montecarlo/brownianbridge.hpp>
 #include <ql/stochasticprocess.hpp>
+#include <utility>
 
 namespace QuantLib {
     class StochasticProcess;
@@ -48,11 +49,11 @@ namespace QuantLib {
         PathGenerator(const ext::shared_ptr<StochasticProcess>&,
                       Time length,
                       Size timeSteps,
-                      const GSG& generator,
+                      GSG generator,
                       bool brownianBridge);
         PathGenerator(const ext::shared_ptr<StochasticProcess>&,
-                      const TimeGrid& timeGrid,
-                      const GSG& generator,
+                      TimeGrid timeGrid,
+                      GSG generator,
                       bool brownianBridge);
         //! \name inspectors
         //@{
@@ -77,31 +78,29 @@ namespace QuantLib {
     // template definitions
 
     template <class GSG>
-    PathGenerator<GSG>::PathGenerator(
-                          const ext::shared_ptr<StochasticProcess>& process,
-                          Time length,
-                          Size timeSteps,
-                          const GSG& generator,
-                          bool brownianBridge)
-    : brownianBridge_(brownianBridge), generator_(generator),
+    PathGenerator<GSG>::PathGenerator(const ext::shared_ptr<StochasticProcess>& process,
+                                      Time length,
+                                      Size timeSteps,
+                                      GSG generator,
+                                      bool brownianBridge)
+    : brownianBridge_(brownianBridge), generator_(std::move(generator)),
       dimension_(generator_.dimension()), timeGrid_(length, timeSteps),
       process_(ext::dynamic_pointer_cast<StochasticProcess1D>(process)),
-      next_(Path(timeGrid_),1.0), temp_(dimension_), bb_(timeGrid_) {
+      next_(Path(timeGrid_), 1.0), temp_(dimension_), bb_(timeGrid_) {
         QL_REQUIRE(dimension_==timeSteps,
                    "sequence generator dimensionality (" << dimension_
                    << ") != timeSteps (" << timeSteps << ")");
     }
 
     template <class GSG>
-    PathGenerator<GSG>::PathGenerator(
-                          const ext::shared_ptr<StochasticProcess>& process,
-                          const TimeGrid& timeGrid,
-                          const GSG& generator,
-                          bool brownianBridge)
-    : brownianBridge_(brownianBridge), generator_(generator),
-      dimension_(generator_.dimension()), timeGrid_(timeGrid),
+    PathGenerator<GSG>::PathGenerator(const ext::shared_ptr<StochasticProcess>& process,
+                                      TimeGrid timeGrid,
+                                      GSG generator,
+                                      bool brownianBridge)
+    : brownianBridge_(brownianBridge), generator_(std::move(generator)),
+      dimension_(generator_.dimension()), timeGrid_(std::move(timeGrid)),
       process_(ext::dynamic_pointer_cast<StochasticProcess1D>(process)),
-      next_(Path(timeGrid_),1.0), temp_(dimension_), bb_(timeGrid_) {
+      next_(Path(timeGrid_), 1.0), temp_(dimension_), bb_(timeGrid_) {
         QL_REQUIRE(dimension_==timeGrid_.size()-1,
                    "sequence generator dimensionality (" << dimension_
                    << ") != timeSteps (" << timeGrid_.size()-1 << ")");
@@ -123,8 +122,7 @@ namespace QuantLib {
     const typename PathGenerator<GSG>::sample_type&
     PathGenerator<GSG>::next(bool antithetic) const {
 
-        typedef typename GSG::sample_type sequence_type;
-        const sequence_type& sequence_ =
+        const auto& sequence_ =
             antithetic ? generator_.lastSequence()
                        : generator_.nextSequence();
 
@@ -132,23 +130,21 @@ namespace QuantLib {
             bb_.transform(sequence_.value.begin(),
                           sequence_.value.end(),
                           temp_.begin());
-        } else {
-            std::copy(sequence_.value.begin(),
-                      sequence_.value.end(),
-                      temp_.begin());
         }
+        const auto& increments =
+            brownianBridge_ ? temp_ : sequence_.value;
 
         next_.weight = sequence_.weight;
 
         Path& path = next_.value;
         path.front() = process_->x0();
 
-        for (Size i=1; i<path.length(); i++) {
-            Time t = timeGrid_[i-1];
-            Time dt = timeGrid_.dt(i-1);
+        for (auto i=1U; i<path.length(); i++) {
+            auto t = timeGrid_[i-1];
+            auto dt = timeGrid_.dt(i-1);
             path[i] = process_->evolve(t, path[i-1], dt,
-                                       antithetic ? -temp_[i-1] :
-                                                     temp_[i-1]);
+                                       antithetic ? -increments[i-1] :
+                                                     increments[i-1]);
         }
 
         return next_;

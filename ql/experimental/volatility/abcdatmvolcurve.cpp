@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -19,32 +19,25 @@
 */
 
 #include <ql/experimental/volatility/abcdatmvolcurve.hpp>
-#include <ql/utilities/dataformatters.hpp>
 #include <ql/quote.hpp>
+#include <ql/utilities/dataformatters.hpp>
+#include <utility>
 
 namespace QuantLib {
 
     // floating reference date, floating market data
-    AbcdAtmVolCurve::AbcdAtmVolCurve(
-            Natural settlDays,
-            const Calendar& cal,
-            const std::vector<Period>& optionTenors,
-            const std::vector<Handle<Quote> >& volsHandles,
-            const std::vector<bool>& inclusionInInterpolationFlag,
-            BusinessDayConvention bdc,
-            const DayCounter& dc)
-    : BlackAtmVolCurve(settlDays, cal, bdc, dc),
-      nOptionTenors_(optionTenors.size()),
-      optionTenors_(optionTenors),
-      optionDates_(nOptionTenors_),
-      optionTimes_(nOptionTenors_),
-      actualOptionTimes_(nOptionTenors_),
-      volHandles_(volsHandles),
-      vols_(volsHandles.size()),
+    AbcdAtmVolCurve::AbcdAtmVolCurve(Natural settlDays,
+                                     const Calendar& cal,
+                                     const std::vector<Period>& optionTenors,
+                                     const std::vector<Handle<Quote> >& volsHandles,
+                                     std::vector<bool> inclusionInInterpolationFlag,
+                                     BusinessDayConvention bdc,
+                                     const DayCounter& dc)
+    : BlackAtmVolCurve(settlDays, cal, bdc, dc), nOptionTenors_(optionTenors.size()),
+      optionTenors_(optionTenors), optionDates_(nOptionTenors_), optionTimes_(nOptionTenors_),
+      actualOptionTimes_(nOptionTenors_), volHandles_(volsHandles), vols_(volsHandles.size()),
       actualVols_(volsHandles.size()),
-      inclusionInInterpolation_(inclusionInInterpolationFlag),
-      interpolation_(ext::shared_ptr<AbcdInterpolation>()) // do not initialize with nOptionTenors_
-    {
+      inclusionInInterpolation_(std::move(inclusionInInterpolationFlag)) {
         checkInputs();
         initializeOptionDatesAndTimes();
         initializeVolatilities();
@@ -81,8 +74,8 @@ namespace QuantLib {
 
     void AbcdAtmVolCurve::registerWithMarketData()
     {
-        for (Size i=0; i<volHandles_.size(); ++i)
-            registerWith(volHandles_[i]);
+        for (auto& volHandle : volHandles_)
+            registerWith(volHandle);
     }
 
     void AbcdAtmVolCurve::interpolate()
@@ -93,9 +86,8 @@ namespace QuantLib {
     }
 
     void AbcdAtmVolCurve::accept(AcyclicVisitor& v) {
-        Visitor<AbcdAtmVolCurve>* v1 =
-            dynamic_cast<Visitor<AbcdAtmVolCurve>*>(&v);
-        if (v1 != 0)
+        auto* v1 = dynamic_cast<Visitor<AbcdAtmVolCurve>*>(&v);
+        if (v1 != nullptr)
             v1->visit(*this);
         else
             QL_FAIL("not a AbcdAtmVolCurve visitor");
@@ -125,9 +117,9 @@ namespace QuantLib {
         // the time data used for interpolation
         actualOptionTimes_.clear();
         for (Size i=0; i<nOptionTenors_; ++i) {
-            if(inclusionInInterpolation_[i]==true) {
-               actualOptionTimes_.push_back(optionTimes_[i]);
-               actualOptionTenors_.push_back(optionTenors_[i]);
+            if (inclusionInInterpolation_[i]) {
+                actualOptionTimes_.push_back(optionTimes_[i]);
+                actualOptionTenors_.push_back(optionTenors_[i]);
             }
         }
     }
@@ -137,8 +129,8 @@ namespace QuantLib {
         actualVols_.clear();
         for (Size i=0; i<nOptionTenors_; ++i) {
             vols_[i] = volHandles_[i]->value();
-            if(inclusionInInterpolation_[i]==true)
-               actualVols_.push_back(vols_[i]);
+            if (inclusionInInterpolation_[i])
+                actualVols_.push_back(vols_[i]);
         }
     }
 
@@ -148,8 +140,8 @@ namespace QuantLib {
         actualVols_.clear();
         for (Size i=0; i<vols_.size(); ++i) {
             vols_[i] = volHandles_[i]->value();
-            if(inclusionInInterpolation_[i]==true)
-               actualVols_.push_back(vols_[i]);
+            if (inclusionInInterpolation_[i])
+                actualVols_.push_back(vols_[i]);
         }
         interpolation_->update();
     }

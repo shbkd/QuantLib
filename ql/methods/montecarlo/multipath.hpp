@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -26,6 +26,7 @@
 #define quantlib_montecarlo_multi_path_hpp
 
 #include <ql/methods/montecarlo/path.hpp>
+#include <utility>
 
 namespace QuantLib {
 
@@ -37,10 +38,10 @@ namespace QuantLib {
     */
     class MultiPath {
       public:
-        MultiPath() {}
+        MultiPath() = default;
         MultiPath(Size nAsset,
                   const TimeGrid& timeGrid);
-        MultiPath(const std::vector<Path>& multiPath);
+        MultiPath(std::vector<Path> multiPath);
         //! \name inspectors
         //@{
         Size assetNumber() const { return multiPath_.size(); }
@@ -65,9 +66,7 @@ namespace QuantLib {
         QL_REQUIRE(nAsset > 0, "number of asset must be positive");
     }
 
-    inline MultiPath::MultiPath(const std::vector<Path>& multiPath)
-    : multiPath_(multiPath) {}
-
+    inline MultiPath::MultiPath(std::vector<Path> multiPath) : multiPath_(std::move(multiPath)) {}
 }
 
 

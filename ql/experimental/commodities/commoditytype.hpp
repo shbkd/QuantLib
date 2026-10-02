@@ -10,14 +10,14 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-/*! \file commodity.hpp
+/*! \file commoditytype.hpp
     \brief commodity type
 */
 
@@ -26,9 +26,10 @@
 
 #include <ql/qldefines.hpp>
 #include <ql/shared_ptr.hpp>
-#include <map>
 #include <iosfwd>
+#include <map>
 #include <string>
+#include <utility>
 
 namespace QuantLib {
 
@@ -41,8 +42,8 @@ namespace QuantLib {
           and must be reassigned to a valid currency before being
           used.
         */
-        CommodityType() {}
-        CommodityType(const std::string& code, const std::string& name);
+        CommodityType() = default;
+        CommodityType(const std::string& name, const std::string& code);
         //! \name Inspectors
         //@{
         //! commodity code, e.g, "HO"
@@ -64,9 +65,8 @@ namespace QuantLib {
         struct Data {
             std::string name, code;
 
-            Data(const std::string& name,
-                 const std::string& code)
-            : name(name), code(code) {}
+            Data(std::string name, std::string code)
+            : name(std::move(name)), code(std::move(code)) {}
         };
 
         static std::map<std::string, ext::shared_ptr<Data> > commodityTypes_;

@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -35,33 +35,32 @@
 namespace QuantLib {
 
 
-
-     Integer capletSwaptionPeriodicCalibration(
+    Integer capletSwaptionPeriodicCalibration(
         const EvolutionDescription& evolution,
         const ext::shared_ptr<PiecewiseConstantCorrelation>& corr,
-        VolatilityInterpolationSpecifier&
-        displacedSwapVariances,
+        VolatilityInterpolationSpecifier& displacedSwapVariances,
         const std::vector<Volatility>& capletVols,
         const ext::shared_ptr<CurveState>& cs,
-        const Spread displacement,
-        Real caplet0Swaption1Priority, 
+        Spread displacement,
+        Real caplet0Swaption1Priority,
         Size numberOfFactors,
-        Size period, 
+        Size period,
         Size max1dIterations,
         Real tolerance1d,
         Size maxUnperiodicIterations,
-        Real toleranceUnperiodic, 
-        Size maxPeriodIterations, 
-        Real periodTolerance, 
-        Real& deformationSize, // used to return information, not set yet
-        Real& totalSwaptionError, // ?
-        std::vector<Matrix>& swapCovariancePseudoRoots,  // the thing we really want the pseudo root for each time step
-        std::vector<Real> & finalScales,  //scalings used for matching
-        Size& iterationsDone, // number of  period iteratations done 
-        Real& errorImprovement, // improvement in error for last iteration
-        Matrix& modelSwaptionVolsMatrix // the swaption vols calibrated to at each step of the iteration
-        );
-
+        Real toleranceUnperiodic,
+        Size maxPeriodIterations,
+        Real periodTolerance,
+        Real& deformationSize,                          // used to return information, not set yet
+        Real& totalSwaptionError,                       // ?
+        std::vector<Matrix>& swapCovariancePseudoRoots, // the thing we really want the pseudo root
+                                                        // for each time step
+        std::vector<Real>& finalScales,                 // scalings used for matching
+        Size& iterationsDone,                           // number of  period iteratations done
+        Real& errorImprovement,                         // improvement in error for last iteration
+        Matrix&
+            modelSwaptionVolsMatrix // the swaption vols calibrated to at each step of the iteration
+    );
 }
 
 #endif

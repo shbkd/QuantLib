@@ -10,7 +10,7 @@ QuantLib is free software: you can redistribute it and/or modify it
 under the terms of the QuantLib license.  You should have received a
 copy of the license along with this program; if not, please email
 <quantlib-dev@lists.sf.net>. The license is also available online at
-<http://quantlib.org/license.shtml>.
+<https://www.quantlib.org/license.shtml>.
 
 This program is distributed in the hope that it will be useful, but WITHOUT
 ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -26,6 +26,7 @@ FOR A PARTICULAR PURPOSE.  See the license for more details.
 
 #include <ql/experimental/variancegamma/fftengine.hpp>
 #include <ql/processes/blackscholesprocess.hpp>
+#include <complex>
 
 namespace QuantLib {
 
@@ -37,18 +38,15 @@ namespace QuantLib {
     */
     class FFTVanillaEngine : public FFTEngine {
     public:
-        FFTVanillaEngine(
-            const ext::shared_ptr<GeneralizedBlackScholesProcess>&process, Real logStrikeSpacing = 0.001);
-        #if defined(QL_USE_STD_UNIQUE_PTR)
-        virtual std::unique_ptr<FFTEngine> clone() const;
-        #else
-        virtual std::auto_ptr<FFTEngine> clone() const;
-        #endif
+        explicit FFTVanillaEngine(
+            const ext::shared_ptr<GeneralizedBlackScholesProcess>&process,
+            Real logStrikeSpacing = 0.001);
+        std::unique_ptr<FFTEngine> clone() const override;
     protected:
-        virtual void precalculateExpiry(Date d);
-        virtual std::complex<Real> complexFourierTransform(std::complex<Real> u) const;
-        virtual Real discountFactor(Date d) const;
-        virtual Real dividendYield(Date d) const;
+        void precalculateExpiry(Date d) override;
+        std::complex<Real> complexFourierTransform(std::complex<Real> u) const override;
+        Real discountFactor(Date d) const override;
+        Real dividendYield(Date d) const override;
 
     private:
         DiscountFactor dividendDiscount_;

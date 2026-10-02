@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -43,30 +43,27 @@ namespace QuantLib {
 
      {
       public:
-        MarketModelPathwiseCashRebate(const EvolutionDescription& evolution,
-                              const std::vector<Time>& paymentTimes,
-                              const Matrix& amounts,
-                              Size numberOfProducts);
+        MarketModelPathwiseCashRebate(EvolutionDescription evolution,
+                                      const std::vector<Time>& paymentTimes,
+                                      Matrix amounts,
+                                      Size numberOfProducts);
 
-        virtual std::vector<Size> suggestedNumeraires() const;
-        virtual const EvolutionDescription& evolution() const;
-        virtual std::vector<Time> possibleCashFlowTimes() const;
-        virtual Size numberOfProducts() const;
-        virtual Size maxNumberOfCashFlowsPerProductPerStep() const;
-        virtual void reset();
+        std::vector<Size> suggestedNumeraires() const override;
+        const EvolutionDescription& evolution() const override;
+        std::vector<Time> possibleCashFlowTimes() const override;
+        Size numberOfProducts() const override;
+        Size maxNumberOfCashFlowsPerProductPerStep() const override;
+        void reset() override;
 
 
-        virtual bool alreadyDeflated() const;
+        bool alreadyDeflated() const override;
 
-        virtual bool nextTimeStep(const CurveState& currentState,
-                                  std::vector<Size>& numberCashFlowsThisStep,
-                                  std::vector<std::vector<MarketModelPathwiseMultiProduct::CashFlow> >& cashFlowsGenerated);
+        bool nextTimeStep(const CurveState& currentState,
+                          std::vector<Size>& numberCashFlowsThisStep,
+                          std::vector<std::vector<MarketModelPathwiseMultiProduct::CashFlow> >&
+                              cashFlowsGenerated) override;
 
-        #if defined(QL_USE_STD_UNIQUE_PTR)
-        virtual std::unique_ptr<MarketModelPathwiseMultiProduct> clone() const;
-        #else
-        virtual std::auto_ptr<MarketModelPathwiseMultiProduct> clone() const;
-        #endif
+        std::unique_ptr<MarketModelPathwiseMultiProduct> clone() const override;
 
       private:
         EvolutionDescription evolution_;

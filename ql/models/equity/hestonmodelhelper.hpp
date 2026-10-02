@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -31,38 +31,39 @@
 namespace QuantLib {
 
     //! calibration helper for Heston model
-    class HestonModelHelper : public CalibrationHelper {
+    class HestonModelHelper : public BlackCalibrationHelper {
       public:
         HestonModelHelper(const Period& maturity,
-                          const Calendar& calendar,
-                          const Real s0,
-                          const Real strikePrice,
+                          Calendar calendar,
+                          Real s0,
+                          Real strikePrice,
                           const Handle<Quote>& volatility,
                           const Handle<YieldTermStructure>& riskFreeRate,
                           const Handle<YieldTermStructure>& dividendYield,
-                          CalibrationHelper::CalibrationErrorType errorType
-                                    = CalibrationHelper::RelativePriceError);
+                          BlackCalibrationHelper::CalibrationErrorType errorType =
+                              BlackCalibrationHelper::RelativePriceError);
 
         HestonModelHelper(const Period& maturity,
-                          const Calendar& calendar,
+                          Calendar calendar,
                           const Handle<Quote>& s0,
-                          const Real strikePrice,
+                          Real strikePrice,
                           const Handle<Quote>& volatility,
                           const Handle<YieldTermStructure>& riskFreeRate,
                           const Handle<YieldTermStructure>& dividendYield,
-                          CalibrationHelper::CalibrationErrorType errorType
-                                    = CalibrationHelper::RelativePriceError);
+                          BlackCalibrationHelper::CalibrationErrorType errorType =
+                              BlackCalibrationHelper::RelativePriceError);
 
-        void addTimesTo(std::list<Time>&) const {}
-        void performCalculations() const;
-        Real modelValue() const;
-        Real blackPrice(Real volatility) const;
+        void addTimesTo(std::list<Time>&) const override {}
+        void performCalculations() const override;
+        Real modelValue() const override;
+        Real blackPrice(Real volatility) const override;
         Time maturity() const  { calculate(); return tau_; }
       private:
         const Period maturity_;
         const Calendar calendar_;
         const Handle<Quote> s0_;
         const Real strikePrice_;
+        const Handle<YieldTermStructure> riskFreeRate_;
         const Handle<YieldTermStructure> dividendYield_;
         mutable Date exerciseDate_;
         mutable Time tau_;

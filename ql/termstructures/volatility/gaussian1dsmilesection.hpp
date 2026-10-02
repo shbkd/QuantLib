@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -40,28 +40,29 @@ namespace QuantLib {
 
 class Gaussian1dSmileSection : public SmileSection {
   public:
-    Gaussian1dSmileSection(
-        const Date &fixingDate, const ext::shared_ptr<SwapIndex> &swapIndex,
-        const ext::shared_ptr<Gaussian1dModel> &model, const DayCounter &dc,
-        const ext::shared_ptr<Gaussian1dSwaptionEngine> swaptionEngine =
-            ext::shared_ptr<Gaussian1dSwaptionEngine>());
-    Gaussian1dSmileSection(
-        const Date &fixingDate, const ext::shared_ptr<IborIndex> &swapIndex,
-        const ext::shared_ptr<Gaussian1dModel> &model, const DayCounter &dc,
-        const ext::shared_ptr<Gaussian1dCapFloorEngine> capEngine =
-            ext::shared_ptr<Gaussian1dCapFloorEngine>());
+    Gaussian1dSmileSection(const Date& fixingDate,
+                           ext::shared_ptr<SwapIndex> swapIndex,
+                           const ext::shared_ptr<Gaussian1dModel>& model,
+                           const DayCounter& dc,
+                           const ext::shared_ptr<Gaussian1dSwaptionEngine>& swaptionEngine =
+                               ext::shared_ptr<Gaussian1dSwaptionEngine>());
+    Gaussian1dSmileSection(const Date& fixingDate,
+                           ext::shared_ptr<IborIndex> swapIndex,
+                           const ext::shared_ptr<Gaussian1dModel>& model,
+                           const DayCounter& dc,
+                           const ext::shared_ptr<Gaussian1dCapFloorEngine>& capEngine =
+                               ext::shared_ptr<Gaussian1dCapFloorEngine>());
 
     // the minimum strike is zero only because we are
     // returning a lognormal section
-    Real minStrike() const { return 0.0; }
-    Real maxStrike() const { return QL_MAX_REAL; }
+    Real minStrike() const override { return 0.0; }
+    Real maxStrike() const override { return QL_MAX_REAL; }
 
-    Real atmLevel() const;
-    Real optionPrice(Rate strike, Option::Type = Option::Call,
-                     Real discount = 1.0) const;
+    Real atmLevel() const override;
+    Real optionPrice(Rate strike, Option::Type = Option::Call, Real discount = 1.0) const override;
 
   protected:
-    Real volatilityImpl(Rate strike) const;
+    Real volatilityImpl(Rate strike) const override;
 
   private:
     Real atm_, annuity_;

@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -21,26 +21,13 @@
     \brief analytic Heston expansion engine
 */
 
-#include <ql/math/functional.hpp>
 #include <ql/pricingengines/blackformula.hpp>
-
 #include <ql/instruments/payoffs.hpp>
 #include <ql/pricingengines/vanilla/hestonexpansionengine.hpp>
 
 #if defined(QL_PATCH_MSVC)
 #pragma warning(disable: 4180)
 #endif
-
-#if defined(__GNUC__) && (((__GNUC__ == 4) && (__GNUC_MINOR__ >= 8)) || (__GNUC__ > 4))
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-local-typedefs"
-#endif
-#include <boost/lambda/if.hpp>
-#if defined(__GNUC__) && (((__GNUC__ == 4) && (__GNUC_MINOR__ >= 8)) || (__GNUC__ > 4))
-#pragma GCC diagnostic pop
-#endif
-#include <boost/lambda/bind.hpp>
-#include <boost/lambda/lambda.hpp>
 
 using std::exp;
 using std::pow;

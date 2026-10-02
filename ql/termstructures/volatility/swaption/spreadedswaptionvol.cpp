@@ -11,28 +11,27 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include <ql/termstructures/volatility/swaption/spreadedswaptionvol.hpp>
-#include <ql/termstructures/volatility/spreadedsmilesection.hpp>
 #include <ql/quote.hpp>
+#include <ql/termstructures/volatility/spreadedsmilesection.hpp>
+#include <ql/termstructures/volatility/swaption/spreadedswaptionvol.hpp>
+#include <utility>
 
 namespace QuantLib {
 
     SpreadedSwaptionVolatility::SpreadedSwaptionVolatility(
-                            const Handle<SwaptionVolatilityStructure>& baseVol,
-                            const Handle<Quote>& spread)
-    : SwaptionVolatilityStructure(baseVol->businessDayConvention(),
-                                  baseVol->dayCounter()),
-      baseVol_(baseVol), spread_(spread) {
-          enableExtrapolation(baseVol->allowsExtrapolation());
-          registerWith(baseVol_);
-          registerWith(spread_);
+        const Handle<SwaptionVolatilityStructure>& baseVol, Handle<Quote> spread)
+    : SwaptionVolatilityStructure(baseVol->businessDayConvention(), baseVol->dayCounter()),
+      baseVol_(baseVol), spread_(std::move(spread)) {
+        enableExtrapolation(baseVol->allowsExtrapolation());
+        registerWith(baseVol_);
+        registerWith(spread_);
     }
 
     ext::shared_ptr<SmileSection>
@@ -40,8 +39,7 @@ namespace QuantLib {
                                                  const Period& swapT) const {
         ext::shared_ptr<SmileSection> baseSmile =
             baseVol_->smileSection(d, swapT, true);
-        return ext::shared_ptr<SmileSection>(new
-            SpreadedSmileSection(baseSmile, spread_));
+        return ext::make_shared<SpreadedSmileSection>(baseSmile, spread_);
     }
 
     ext::shared_ptr<SmileSection>
@@ -49,8 +47,7 @@ namespace QuantLib {
                                                  Time swapLength) const {
         ext::shared_ptr<SmileSection> baseSmile =
             baseVol_->smileSection(optionTime, swapLength, true);
-        return ext::shared_ptr<SmileSection>(new
-            SpreadedSmileSection(baseSmile, spread_));
+        return ext::make_shared<SpreadedSmileSection>(baseSmile, spread_);
     }
 
     Volatility SpreadedSwaptionVolatility::volatilityImpl(const Date& d,

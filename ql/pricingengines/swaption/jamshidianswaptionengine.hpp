@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -29,6 +29,7 @@
 #include <ql/instruments/swaption.hpp>
 #include <ql/models/shortrate/onefactormodel.hpp>
 #include <ql/pricingengines/genericmodelengine.hpp>
+#include <utility>
 
 namespace QuantLib {
 
@@ -48,21 +49,18 @@ namespace QuantLib {
         /*! \note the term structure is only needed when the short-rate
                   model cannot provide one itself.
         */
-        JamshidianSwaptionEngine(
-                         const ext::shared_ptr<OneFactorAffineModel>& model,
-                         const Handle<YieldTermStructure>& termStructure =
-                                                 Handle<YieldTermStructure>())
-        : GenericModelEngine<OneFactorAffineModel,
-                             Swaption::arguments,
-                             Swaption::results>(model),
-          termStructure_(termStructure) {
+        explicit JamshidianSwaptionEngine(
+            const ext::shared_ptr<OneFactorAffineModel>& model,
+            Handle<YieldTermStructure> termStructure = Handle<YieldTermStructure>())
+        : GenericModelEngine<OneFactorAffineModel, Swaption::arguments, Swaption::results>(model),
+          termStructure_(std::move(termStructure)) {
             registerWith(termStructure_);
         }
-        void calculate() const;
+        void calculate() const override;
+
       private:
         Handle<YieldTermStructure> termStructure_;
         class rStarFinder;
-        friend class rStarFinder;
     };
 
 }

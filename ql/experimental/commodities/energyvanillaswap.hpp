@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -33,22 +33,21 @@ namespace QuantLib {
     //! Vanilla energy swap
     class EnergyVanillaSwap : public EnergySwap {
       public:
-        EnergyVanillaSwap(
-                    bool payer,
-                    const Calendar& calendar,
-                    const Money& fixedPrice,
-                    const UnitOfMeasure& fixedPriceUnitOfMeasure,
-                    const ext::shared_ptr<CommodityIndex>& index,
-                    const Currency& payCurrency,
-                    const Currency& receiveCurrency,
-                    const PricingPeriods& pricingPeriods,
-                    const CommodityType& commodityType,
-                    const ext::shared_ptr<SecondaryCosts>& secondaryCosts,
-                    const Handle<YieldTermStructure>& payLegTermStructure,
-                    const Handle<YieldTermStructure>& receiveLegTermStructure,
-                    const Handle<YieldTermStructure>& discountTermStructure);
+        EnergyVanillaSwap(bool payer,
+                          const Calendar& calendar,
+                          Money fixedPrice,
+                          UnitOfMeasure fixedPriceUnitOfMeasure,
+                          ext::shared_ptr<CommodityIndex> index,
+                          const Currency& payCurrency,
+                          const Currency& receiveCurrency,
+                          const PricingPeriods& pricingPeriods,
+                          const CommodityType& commodityType,
+                          const ext::shared_ptr<SecondaryCosts>& secondaryCosts,
+                          Handle<YieldTermStructure> payLegTermStructure,
+                          Handle<YieldTermStructure> receiveLegTermStructure,
+                          Handle<YieldTermStructure> discountTermStructure);
 
-        bool isExpired() const;
+        bool isExpired() const override;
         Integer payReceive() const { return payReceive_; }
         const Money& fixedPrice() const { return fixedPrice_; }
         const UnitOfMeasure& fixedPriceUnitOfMeasure() const {
@@ -59,7 +58,7 @@ namespace QuantLib {
         }
 
       protected:
-        void performCalculations() const;
+        void performCalculations() const override;
 
         Integer payReceive_;
         Money fixedPrice_;

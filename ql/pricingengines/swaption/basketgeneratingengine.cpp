@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -24,17 +24,18 @@
 #include <ql/models/shortrate/calibrationhelpers/swaptionhelper.hpp>
 #include <ql/termstructures/volatility/swaption/swaptionvolcube.hpp>
 #include <ql/quotes/simplequote.hpp>
+#include <cmath>
 
 using std::exp;
 using std::fabs;
 
 namespace QuantLib {
 
-    Disposable<std::vector<ext::shared_ptr<CalibrationHelper> > >
+    std::vector<ext::shared_ptr<BlackCalibrationHelper>>
     BasketGeneratingEngine::calibrationBasket(
-        const ext::shared_ptr<Exercise> &exercise,
-        ext::shared_ptr<SwapIndex> standardSwapBase,
-        ext::shared_ptr<SwaptionVolatilityStructure> swaptionVolatility,
+        const ext::shared_ptr<Exercise>& exercise,
+        const ext::shared_ptr<SwapIndex>& standardSwapBase,
+        const ext::shared_ptr<SwaptionVolatilityStructure>& swaptionVolatility,
         const CalibrationBasketType basketType) const {
 
         QL_REQUIRE(
@@ -45,7 +46,7 @@ namespace QuantLib {
                 !standardSwapBase->discountingTermStructure().empty(),
             "standard swap base discounting term structure must not be empty.");
 
-        std::vector<ext::shared_ptr<CalibrationHelper> > result;
+        std::vector<ext::shared_ptr<BlackCalibrationHelper> > result;
 
         Date today = Settings::instance().evaluationDate();
         Size minIdxAlive = static_cast<Size>(
@@ -61,7 +62,7 @@ namespace QuantLib {
             Date expiry = exercise->date(i);
             Real rebate = 0.0;
             Date rebateDate = expiry;
-            if (rebEx != NULL) {
+            if (rebEx != nullptr) {
                 rebate = rebEx->rebate(i);
                 rebateDate = rebEx->rebatePaymentDate(i);
             }
@@ -76,7 +77,7 @@ namespace QuantLib {
                 ext::shared_ptr<SmileSection> sec =
                     swaptionVolatility->smileSection(
                         expiry,
-                        static_cast<Size>(swapLength * 12.0 + 0.5) * Months,
+                        static_cast<Size>(std::lround(swapLength * 12.0)) * Months,
                         true);
                 Real atmStrike = sec->atmLevel();
                 Real atmVol;
@@ -86,7 +87,7 @@ namespace QuantLib {
                     atmVol = sec->volatility(atmStrike);
                 Real shift = sec->shift();
 
-                helper = ext::shared_ptr<SwaptionHelper>(new SwaptionHelper(
+                helper = ext::make_shared<SwaptionHelper>(
                     expiry, underlyingLastDate(),
                     Handle<Quote>(ext::make_shared<SimpleQuote>(atmVol)),
                     standardSwapBase->iborIndex(),
@@ -96,8 +97,8 @@ namespace QuantLib {
                     standardSwapBase->exogenousDiscount()
                         ? standardSwapBase->discountingTermStructure()
                         : standardSwapBase->forwardingTermStructure(),
-                    CalibrationHelper::RelativePriceError, Null<Real>(), 1.0,
-                    swaptionVolatility->volatilityType() ,shift));
+                    BlackCalibrationHelper::RelativePriceError, Null<Real>(), 1.0,
+                    swaptionVolatility->volatilityType() ,shift);
 
                 break;
             }
@@ -110,7 +111,7 @@ namespace QuantLib {
                 const Real h = 0.0001; // finite difference step in $y$, make
                                        // this a parameter of the engine ?
                 Real zSpreadDsc =
-                    oas_.empty() ? 1.0
+                    oas_.empty() ? Real(1.0)
                                  : exp(-oas_->value() *
                                        onefactormodel_->termStructure()
                                            ->dayCounter()
@@ -160,7 +161,7 @@ namespace QuantLib {
 
                 ext::shared_ptr<MatchHelper> matchHelper_;
                 matchHelper_ = ext::make_shared<MatchHelper>(
-                    underlyingType(), npv, delta, gamma, onefactormodel_,
+                    underlyingType(), npv, delta, gamma, *onefactormodel_,
                     standardSwapBase, expiry, maxMaturity, h);
 
                 // Optimize
@@ -214,7 +215,7 @@ namespace QuantLib {
 
                 Real vol = sec->volatility(solution[2]);
 
-                helper = ext::shared_ptr<SwaptionHelper>(new SwaptionHelper(
+                helper = ext::make_shared<SwaptionHelper>(
                     expiry, matPeriod,
                     Handle<Quote>(ext::make_shared<SimpleQuote>(
                                       vol)),
@@ -225,8 +226,8 @@ namespace QuantLib {
                     standardSwapBase->exogenousDiscount()
                         ? standardSwapBase->discountingTermStructure()
                         : standardSwapBase->forwardingTermStructure(),
-                    CalibrationHelper::RelativePriceError, solution[2],
-                    fabs(solution[0]), swaptionVolatility->volatilityType(), shift));
+                    BlackCalibrationHelper::RelativePriceError, solution[2],
+                    fabs(solution[0]), swaptionVolatility->volatilityType(), shift);
                 break;
             }
 

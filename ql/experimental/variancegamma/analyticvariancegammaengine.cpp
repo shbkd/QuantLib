@@ -10,39 +10,44 @@ QuantLib is free software: you can redistribute it and/or modify it
 under the terms of the QuantLib license.  You should have received a
 copy of the license along with this program; if not, please email
 <quantlib-dev@lists.sf.net>. The license is also available online at
-<http://quantlib.org/license.shtml>.
+<https://www.quantlib.org/license.shtml>.
 
 This program is distributed in the hope that it will be useful, but WITHOUT
 ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
 FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include <ql/experimental/variancegamma/analyticvariancegammaengine.hpp>
 #include <ql/exercise.hpp>
+#include <ql/experimental/variancegamma/analyticvariancegammaengine.hpp>
 #include <ql/math/distributions/gammadistribution.hpp>
-#include <ql/pricingengines/blackscholescalculator.hpp>
-#include <ql/math/integrals/segmentintegral.hpp>
 #include <ql/math/integrals/gausslobattointegral.hpp>
 #include <ql/math/integrals/kronrodintegral.hpp>
+#include <ql/math/integrals/segmentintegral.hpp>
+#include <ql/pricingengines/blackscholescalculator.hpp>
+#include <utility>
 
 namespace QuantLib {
 
     namespace {
 
-        class Integrand : std::unary_function<Real,Real> {
+        class Integrand {
         public:
-            Integrand(const ext::shared_ptr<StrikedTypePayoff>& payoff,
-                Real s0, Real t, Real riskFreeDiscount, Real dividendDiscount,
-                Real sigma, Real nu, Real theta)
-                : payoff_(payoff), s0_(s0), t_(t), riskFreeDiscount_(riskFreeDiscount),
-                    dividendDiscount_(dividendDiscount),
-                    sigma_(sigma), nu_(nu), theta_(theta) {
-                omega_ = std::log(1.0 - theta_ * nu_ - (sigma_ * sigma_ * nu_) / 2.0) / nu_;
-                // We can precompute the denominator of the gamma pdf (does not depend on x)
-                // shape = t_/nu_, scale = nu_
-                GammaFunction gf;
-                gammaDenom_ = std::exp(gf.logValue(t_ / nu_)) * std::pow(nu_, t_ / nu_);
-            }
+          Integrand(ext::shared_ptr<StrikedTypePayoff> payoff,
+                    Real s0,
+                    Real t,
+                    Real riskFreeDiscount,
+                    Real dividendDiscount,
+                    Real sigma,
+                    Real nu,
+                    Real theta)
+          : payoff_(std::move(payoff)), s0_(s0), t_(t), riskFreeDiscount_(riskFreeDiscount),
+            dividendDiscount_(dividendDiscount), sigma_(sigma), nu_(nu), theta_(theta) {
+              omega_ = std::log(1.0 - theta_ * nu_ - (sigma_ * sigma_ * nu_) / 2.0) / nu_;
+              // We can precompute the denominator of the gamma pdf (does not depend on x)
+              // shape = t_/nu_, scale = nu_
+              GammaFunction gf;
+              gammaDenom_ = std::exp(gf.logValue(t_ / nu_)) * std::pow(nu_, t_ / nu_);
+          }
 
             Real operator()(Real x) const {
                 // Compute adjusted black scholes price
@@ -74,12 +79,11 @@ namespace QuantLib {
     }
 
 
-    VarianceGammaEngine::VarianceGammaEngine(
-        const ext::shared_ptr<VarianceGammaProcess>& process,
-        Real absoluteError)
-        : process_(process), absErr_(absoluteError) {
-            QL_REQUIRE(absErr_>0, "absolute error must be positive")
-            registerWith(process_);
+    VarianceGammaEngine::VarianceGammaEngine(ext::shared_ptr<VarianceGammaProcess> process,
+                                             Real absoluteError)
+    : process_(std::move(process)), absErr_(absoluteError) {
+        QL_REQUIRE(absErr_ > 0, "absolute error must be positive");
+        registerWith(process_);
     }
 
     void VarianceGammaEngine::calculate() const {

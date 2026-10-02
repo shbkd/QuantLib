@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -35,7 +35,7 @@ namespace QuantLib {
     */
     class KernelFunction {
       public:
-        virtual ~KernelFunction() {}
+        virtual ~KernelFunction() = default;
         virtual Real operator()(Real x) const = 0;
     };
 
@@ -44,14 +44,10 @@ namespace QuantLib {
     class GaussianKernel : public KernelFunction {
       public:
         GaussianKernel(Real average, Real sigma)
-        : nd_(average,sigma), cnd_(average,sigma) {
-            // normFact is \sqrt{2*\pi}.
-            normFact_ = M_SQRT2*M_SQRTPI;
-        }
+        : nd_(average,sigma), cnd_(average,sigma),
+          normFact_(M_SQRT2*M_SQRTPI) {} // normFact is \sqrt{2*\pi}.
 
-        Real operator()(Real x) const{
-            return nd_(x)*normFact_;
-        }
+        Real operator()(Real x) const override { return nd_(x) * normFact_; }
 
         Real derivative(Real x) const{
             return nd_.derivative(x)*normFact_;

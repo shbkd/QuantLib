@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -81,14 +81,13 @@ namespace QuantLib {
         @param invstDTS Investor (swap holder) default curve.
         @param invstRecoveryRate Investor recovery rate.
        */
-      CounterpartyAdjSwapEngine(
-          const Handle<YieldTermStructure>& discountCurve,
-          const Volatility blackVol,
-          const Handle<DefaultProbabilityTermStructure>& ctptyDTS,
-          Real ctptyRecoveryRate,
-          const Handle<DefaultProbabilityTermStructure>& invstDTS =
-              Handle<DefaultProbabilityTermStructure>(),
-          Real invstRecoveryRate = 0.999);
+      CounterpartyAdjSwapEngine(const Handle<YieldTermStructure>& discountCurve,
+                                Volatility blackVol,
+                                const Handle<DefaultProbabilityTermStructure>& ctptyDTS,
+                                Real ctptyRecoveryRate,
+                                const Handle<DefaultProbabilityTermStructure>& invstDTS =
+                                    Handle<DefaultProbabilityTermStructure>(),
+                                Real invstRecoveryRate = 0.999);
       /*! Creates an engine with a black volatility model for the 
         exposure. The volatility is given as a quote.
         If the investor default model is not given a default 
@@ -109,7 +108,8 @@ namespace QuantLib {
               Handle<DefaultProbabilityTermStructure>(),
           Real invstRecoveryRate = 0.999);
       //@}
-      void calculate() const;
+      void calculate() const override;
+
     private:
       Handle<PricingEngine> baseSwapEngine_;
       Handle<PricingEngine> swaptionletEngine_;

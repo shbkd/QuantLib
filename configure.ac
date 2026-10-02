@@ -1,12 +1,12 @@
 # Process this file with autoconf to produce a configure script.
-AC_INIT([QuantLib], [1.14],
+AC_INIT([QuantLib], [1.44-dev],
         [quantlib-dev@lists.sourceforge.net],
         [QuantLib])
 AC_PREREQ(2.62)
 AC_CONFIG_SRCDIR([ql/qldefines.hpp])
 AC_CONFIG_AUX_DIR([config])
 AC_CONFIG_HEADERS([ql/config.hpp])
-AM_INIT_AUTOMAKE([foreign])
+AM_INIT_AUTOMAKE([foreign nostdinc subdir-objects tar-ustar])
 AC_CONFIG_MACRO_DIR([m4])
 
 AC_COPYRIGHT([
@@ -21,7 +21,7 @@ QuantLib is free software: you can redistribute it and/or modify it
 under the terms of the QuantLib license.  You should have received a
 copy of the license along with this program; if not, please email
 <quantlib-dev@lists.sf.net>. The license is also available online at
-<http://quantlib.org/license.shtml>.
+<https://www.quantlib.org/license.shtml>.
 
 This program is distributed in the hope that it will be useful, but WITHOUT
 ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -33,38 +33,28 @@ AC_PROG_INSTALL
 # Help the compiler find external software
 
 AC_ARG_WITH([boost-include],
-            AC_HELP_STRING([--with-boost-include=INCLUDE_PATH],
+            AS_HELP_STRING([--with-boost-include=INCLUDE_PATH],
                            [Supply the location of Boost header files]),
             [ql_boost_include_path="`cd ${withval} 2>/dev/null && pwd`"],
             [ql_boost_include_path=""])
 if test [ -n "$ql_boost_include_path" ] ; then
-   AC_SUBST([BOOST_INCLUDE],["-I${ql_boost_include_path}"])
-   AC_SUBST([CPPFLAGS],["${CPPFLAGS} -I${ql_boost_include_path}"])
+   AC_SUBST([BOOST_INCLUDE],["-isystem ${ql_boost_include_path}"])
+   AC_SUBST([CPPFLAGS],["${CPPFLAGS} -isystem ${ql_boost_include_path}"])
 fi
-AC_ARG_WITH([boost-lib],
-            AC_HELP_STRING([--with-boost-lib=LIB_PATH],
-                           [Supply the location of Boost libraries]),
-            [ql_boost_lib_path="`cd ${withval} 2>/dev/null && pwd`"],
-            [ql_boost_lib_path=""])
-if test [ -n "$ql_boost_lib_path" ] ; then
-   AC_SUBST([BOOST_LIB],["-L${ql_boost_lib_path}"])
-   AC_SUBST([LDFLAGS],["${LDFLAGS} -L${ql_boost_lib_path}"])
-fi
-
 
 # Continue setup
 
 AC_PROG_CC
 AC_PROG_CXX
 AC_PROG_CPP
-AC_PROG_LIBTOOL
+LT_INIT
 
 AM_CONDITIONAL(ENABLE_STATIC, test "${enable_static}" == "yes")
 
 AC_LANG([C++])
 
 AC_ARG_ENABLE([openmp],
-              AC_HELP_STRING([--enable-openmp],
+              AS_HELP_STRING([--enable-openmp],
                              [If enabled, configure will try to detect
                               and enable OpenMP support.]),
               [ql_openmp=$enableval],
@@ -74,16 +64,14 @@ if test "$ql_openmp" = "yes" ; then
    AC_SUBST([CXXFLAGS],["${CXXFLAGS} ${OPENMP_CXXFLAGS}"])
 fi
 
-# Check for mandatory features
+# Check for C++17 support
+QL_CHECK_CPP17
 
-QL_CHECK_ASINH
+# Check for other compiler flags
+QL_CHECK_SYSTEM_HEADER_PREFIX
 
 # Check for Boost components
 QL_CHECK_BOOST
-AM_CONDITIONAL(BOOST_UNIT_TEST_FOUND, test "x${BOOST_UNIT_TEST_LIB}" != "x")
-
-# Check for optional features
-QL_CHECK_LONG_LONG
 
 # Check for Emacs
 AM_PATH_LISPDIR
@@ -100,70 +88,11 @@ AC_PATH_PROG([DVIPS], [dvips])
 
 # site configuration
 
-# AC_ARG_WITH([real],
-#             AC_HELP_STRING([--with-real=type],
-#                            [The given type will be used for floating-point
-#                             calculations.
-#                             In case this option is not invoked, double
-#                             will be used.]),
-#             [AC_DEFINE_UNQUOTED([QL_REAL],[$withval],
-#                                 [Define this as the type to be used for
-#                                  floating-point calculations.])],
-#             [AC_DEFINE_UNQUOTED([QL_REAL],[double],
-#                                 [Define this as the type to be used for
-#                                  floating-point calculations.])])
-
-# AC_ARG_WITH([integer],
-#             AC_HELP_STRING([--with-integer=type],
-#                            [The given type will be used for integer
-#                             calculations. At least an int is required.
-#                             In case this option is not invoked, int
-#                             will be used.]),
-#             [AC_DEFINE_UNQUOTED([QL_INTEGER],[$withval],
-#                                 [Define this as the type to be used for
-#                                  integer calculations. At least an int
-#                                  is required.])],
-#             [AC_DEFINE_UNQUOTED([QL_INTEGER],[int],
-#                                 [Define this as the type to be used for
-#                                  integer calculations. At least an int
-#                                  is required.])])
-
-# AC_ARG_WITH([big-integer],
-#             AC_HELP_STRING([--with-big-integer=type],
-#                            [The given type will be used for large integer
-#                             calculations. At least 4 bytes are required.
-#                             In case this option is not invoked, long
-#                             will be used.]),
-#             [AC_DEFINE_UNQUOTED([QL_BIG_INTEGER],[$withval],
-#                                 [Define this as the type to be used for
-#                                  large integer calculations. At least
-#                                  4 bytes are required.])],
-#             [AC_DEFINE_UNQUOTED([QL_BIG_INTEGER],[long],
-#                                 [Define this as the type to be used for
-#                                  large integer calculations. At least
-#                                  4 bytes are required.])])
-
-
-AC_ARG_ENABLE([error-lines],
-              AC_HELP_STRING([--enable-error-lines],
-                             [If enabled, file and line information is
-                              added to the error messages thrown by
-                              the library.]),
-              [ql_error_lines=$enableval],
-              [ql_error_lines=no])
-AC_MSG_CHECKING([whether to add file and line information to errors])
-if test "$ql_error_lines" = "yes" ; then
-   AC_DEFINE([QL_ERROR_LINES],[1],
-             [Define this if error messages should include file and line
-              information.])
-fi
-AC_MSG_RESULT([$ql_error_lines])
-
 AC_ARG_ENABLE([error-functions],
-              AC_HELP_STRING([--enable-error-functions],
+              AS_HELP_STRING([--enable-error-functions],
                              [If enabled, current function information
                               is added to the error messages thrown by
-                              the library.]),
+                              the library. Disabled by default.]),
               [ql_error_functions=$enableval],
               [ql_error_functions=no])
 AC_MSG_CHECKING([whether to add function information to errors])
@@ -174,25 +103,56 @@ if test "$ql_error_functions" = "yes" ; then
 fi
 AC_MSG_RESULT([$ql_error_functions])
 
+AC_ARG_ENABLE([error-lines],
+              AS_HELP_STRING([--enable-error-lines],
+                             [If enabled, file and line information is
+                              added to the error messages thrown by
+                              the library. Disabled by default.]),
+              [ql_error_lines=$enableval],
+              [ql_error_lines=no])
+AC_MSG_CHECKING([whether to add file and line information to errors])
+if test "$ql_error_lines" = "yes" ; then
+   AC_DEFINE([QL_ERROR_LINES],[1],
+             [Define this if error messages should include file and line
+              information.])
+fi
+AC_MSG_RESULT([$ql_error_lines])
+
 AC_ARG_ENABLE([tracing],
-              AC_HELP_STRING([--enable-tracing],
+              AS_HELP_STRING([--enable-tracing],
                              [If enabled, tracing messages might be emitted
                               by the library depending on run-time
                               settings. Enabling this option can degrade
-                              performance.]),
+                              performance. Disabled by default.]),
               [ql_tracing=$enableval],
               [ql_tracing=no])
 AC_MSG_CHECKING([whether to enable tracing])
 if test "$ql_tracing" = "yes" ; then
    AC_DEFINE([QL_ENABLE_TRACING],[1],
-             [Define this if tracing messages should allowed (whether they
+             [Define this if tracing messages should be allowed (whether they
               are actually emitted will depend on run-time settings.)])
 fi
 AC_MSG_RESULT([$ql_tracing])
 
+AC_MSG_CHECKING([whether to enable extra safety checks])
+AC_ARG_ENABLE([extra-safety-checks],
+              AS_HELP_STRING([--enable-extra-safety-checks],
+                             [If enabled, extra run-time checks are added
+                              to a few functions. This can prevent their
+                              inlining and degrade performance.
+                              Disabled by default.]),
+              [ql_belt_and_braces=$enableval],
+              [ql_belt_and_braces=no])
+if test "$ql_belt_and_braces" = "yes" ; then
+   AC_DEFINE([QL_EXTRA_SAFETY_CHECKS],[1],
+             [Define this if extra safety checks should be performed.
+              This can degrade performance.])
+fi
+AC_MSG_RESULT([$ql_belt_and_braces])
+
 AC_MSG_CHECKING([whether to enable indexed coupons])
 AC_ARG_ENABLE([indexed-coupons],
-              AC_HELP_STRING([--enable-indexed-coupons],
+              AS_HELP_STRING([--enable-indexed-coupons],
                              [If enabled, indexed coupons (see the
                               documentation) are used in floating legs.
                               If disabled (the default), par coupons
@@ -206,45 +166,15 @@ if test "$ql_indexed_coupon" = "yes" ; then
 fi
 AC_MSG_RESULT([$ql_indexed_coupon])
 
-AC_MSG_CHECKING([whether to enable negative rates])
-AC_ARG_ENABLE([negative-rates],
-              AC_HELP_STRING([--enable-negative-rates],
-                             [If enabled (the default), negative yield
-                              rates are allowed.  If disabled, some
-                              features (notably, curve bootstrapping)
-                              will throw when negative rates are found.]),
-              [ql_negative_rates=$enableval],
-              [ql_negative_rates=yes])
-if test "$ql_negative_rates" = "yes" ; then
-   AC_DEFINE([QL_NEGATIVE_RATES],[1],
-             [Define this if negative yield rates should be allowed.])
-fi
-AC_MSG_RESULT([$ql_negative_rates])
-
-AC_MSG_CHECKING([whether to enable extra safety checks])
-AC_ARG_ENABLE([extra-safety-checks],
-              AC_HELP_STRING([--enable-extra-safety-checks],
-                             [If enabled, extra run-time checks are added
-                              to a few functions. This can prevent their
-                              inlining and degrade performance.]),
-              [ql_belt_and_braces=$enableval],
-              [ql_belt_and_braces=no])
-if test "$ql_belt_and_braces" = "yes" ; then
-   AC_DEFINE([QL_EXTRA_SAFETY_CHECKS],[1],
-             [Define this if extra safety checks should be performed.
-              This can degrade performance.])
-fi
-AC_MSG_RESULT([$ql_belt_and_braces])
-
 AC_MSG_CHECKING([whether to enable sessions])
 AC_ARG_ENABLE([sessions],
-              AC_HELP_STRING([--enable-sessions],
-                             [If enabled, singletons will return different
-                              instances for different sessions. You will
-                              have to provide and link with the library
-                              a sessionId() function in namespace QuantLib,
-                              returning a different session id for each
-                              session.]),
+              AS_HELP_STRING([--enable-sessions],
+                             [If enabled, singletons will return
+                              different instances for different
+                              threads; in particular, this means that
+                              the evaluation date, the stored index
+                              fixings and any other settings will be
+                              per-thread. Disabled by default.]),
               [ql_use_sessions=$enableval],
               [ql_use_sessions=no])
 if test "$ql_use_sessions" = "yes" ; then
@@ -255,13 +185,14 @@ AC_MSG_RESULT([$ql_use_sessions])
 
 AC_MSG_CHECKING([whether to enable thread-safe observer pattern])
 AC_ARG_ENABLE([thread-safe-observer-pattern],
-              AC_HELP_STRING([--enable-thread-safe-observer-pattern],
-                             [If enabled, thread-safe version of the 
-                              observer pattern will be used. You should 
-                              enable it if you want to use QuantLib 
-                              via the SWIG layer within the JVM or .NET 
-                              eco system or any environment with an 
-                              async garbage collector.]),
+              AS_HELP_STRING([--enable-thread-safe-observer-pattern],
+                             [If enabled, a thread-safe (but less
+                              performant) version of the observer pattern
+                              will be used. You should enable it if you
+                              want to use QuantLib via the SWIG layer
+                              within the JVM or .NET ecosystem or any
+                              other environment with an async garbage
+                              collector. Disabled by default.]),
               [ql_use_tsop=$enableval],
               [ql_use_tsop=no])
 AC_MSG_RESULT([$ql_use_tsop])
@@ -271,91 +202,16 @@ if test "$ql_use_tsop" = "yes" ; then
               thread-safe observer pattern.])
 fi
 
-AC_MSG_CHECKING([whether to enable thread-safe singleton initialization])
-AC_ARG_ENABLE([thread-safe-singleton-init],
-              AC_HELP_STRING([--enable-thread-safe-singleton-init],
-                             [If enabled, singleton initialization will
-                              be thread-safe. This requires Boost 1.58
-                              or later and is not supported when sessions
-                              are enabled.]),
-              [ql_use_safe_singleton_init=$enableval],
-              [ql_use_safe_singleton_init=no])
-if test "$ql_use_safe_singleton_init" = "yes" ; then
-   AC_DEFINE([QL_ENABLE_SINGLETON_THREAD_SAFE_INIT],[1],
-             [Define this if you want thread-safe singleton initialization.])
-fi
-AC_MSG_RESULT([$ql_use_safe_singleton_init])
-
-if test "$ql_use_tsop" = "yes" || test "$ql_use_safe_singleton_init" = "yes"; then
+if test "$ql_use_sessions" = "yes" || test "$ql_use_tsop" = "yes"; then
    QL_CHECK_BOOST_VERSION_1_58_OR_HIGHER
-   QL_CHECK_BOOST_TEST_THREAD_SIGNALS2_SYSTEM
+   QL_CHECK_BOOST_SIGNALS2
 else
-   AC_SUBST([BOOST_THREAD_LIB],[""])
+   AC_SUBST([PTHREAD_LIB],[""])
 fi
-
-AC_MSG_CHECKING([whether to enable parallel unit test runner])
-AC_ARG_ENABLE([parallel-unit-test-runner],
-              AC_HELP_STRING([--enable-parallel-unit-test-runner],
-                             [If enabled, a parallel unit test runner is used 
-                              to execute the C++ test suite. This will reduce 
-                              the runtime on multi core CPUs.]),
-              [ql_use_parallel_test=$enableval],
-              [ql_use_parallel_test=no])
-AC_MSG_RESULT([$ql_use_parallel_test])
-if test "$ql_use_parallel_test" = "yes" ; then
-   AC_DEFINE([QL_ENABLE_PARALLEL_UNIT_TEST_RUNNER],[1],
-             [Define this if you want to enable 
-              the parallel unit test runner.])
-   QL_CHECK_BOOST_VERSION_1_59_OR_HIGHER
-   if test "$ql_use_tsop" != "yes" ; then
-      QL_CHECK_BOOST_TEST_THREAD_SIGNALS2_SYSTEM
-   fi
-   QL_CHECK_BOOST_TEST_INTERPROCESS
-else
-   AC_SUBST([BOOST_INTERPROCESS_LIB],[""])
-fi
-
-AC_MSG_CHECKING([whether to install examples])
-AC_ARG_ENABLE([examples],
-              AC_HELP_STRING([--enable-examples],
-                             [If enabled, examples are built and installed
-                              when "make" and "make install" are invoked.
-                              If disabled (the default) they are built
-                              but not installed.]),
-              [ql_install_examples=$enableval],
-              [ql_install_examples=no])
-AM_CONDITIONAL(AUTO_EXAMPLES, test "$ql_install_examples" != "no")
-AC_MSG_RESULT([$ql_install_examples])
-
-AC_MSG_CHECKING([whether to install the benchmark])
-AC_ARG_ENABLE([benchmark],
-              AC_HELP_STRING([--enable-benchmark],
-                             [If enabled, the benchmark is built and
-                              installed when "make" and "make install"
-                              are invoked. If disabled (the default)
-                              it is built but not installed.]),
-              [ql_install_benchmark=$enableval],
-              [ql_install_benchmark=no])
-AM_CONDITIONAL(AUTO_BENCHMARK, test "$ql_install_benchmark" != "no")
-AC_MSG_RESULT([$ql_install_benchmark])
-
-AC_MSG_CHECKING([whether to use unity build])
-AC_ARG_ENABLE([unity-build],
-              AC_HELP_STRING([--enable-unity-build],
-                             [If enabled, the source files in each directory
-                              are collected into one single source file and
-                              compiled together. This can speed up the
-                              compilation of the library.
-                              If disabled (the default) each source file is
-                              compiled separately..]),
-              [ql_use_unity_build=$enableval],
-              [ql_use_unity_build=no])
-AM_CONDITIONAL(UNITY_BUILD, test "$ql_use_unity_build" != "no")
-AC_MSG_RESULT([$ql_use_unity_build])
 
 AC_MSG_CHECKING([whether to enable intraday date and daycounters])
 AC_ARG_ENABLE([intraday],
-              AC_HELP_STRING([--enable-intraday],
+              AS_HELP_STRING([--enable-intraday],
                              [If enabled, date objects will support an intraday 
                               datetime resolution down to microseconds. 
                               Strickly monotone daycounters (Actual360, 
@@ -373,17 +229,60 @@ if test "$ql_use_intraday" = "yes" ; then
 fi
 AC_MSG_RESULT([$ql_use_intraday])
 
+AC_MSG_CHECKING([whether to throw exceptions for notification cycles])
+AC_ARG_ENABLE([throwing-in-cycles],
+              AS_HELP_STRING([--enable-throwing-in-cycles],
+                             [If enabled, lazy objects will raise an
+                              exception when they detect a
+                              notification cycle which would result in
+                              an infinite recursion loop. If disabled
+                              (the default), they will break the
+                              recursion without throwing.  Enabling
+                              this option is recommended but might
+                              cause existing code to throw.]),
+              [ql_throw_in_cycles=$enableval],
+              [ql_throw_in_cycles=no])
+if test "$ql_throw_in_cycles" = "yes" ; then
+   AC_DEFINE([QL_THROW_IN_CYCLES],[1],
+             [Define this if you want to throw an exception when a notification loop is detected.])
+fi
+AC_MSG_RESULT([$ql_throw_in_cycles])
+
+AC_MSG_CHECKING([whether to reduce the number of notifications from lazy objects])
+AC_ARG_ENABLE([faster-lazy-objects],
+              AS_HELP_STRING([--enable-faster-lazy-objects],
+                             [If enabled (the default), lazy objects
+                              will forward the first notification
+                              received, and discard the others until
+                              recalculated; the rationale is that
+                              observers were already notified, and
+                              don't need further notifications until
+                              they recalculate, at which point this
+                              object would be recalculated too.  After
+                              recalculation, this object would again
+                              forward the first notification received.
+                              Although not always correct, this
+                              behavior is a lot faster and thus is the
+                              current default.]),
+              [ql_faster_lazy_objects=$enableval],
+              [ql_faster_lazy_objects=yes])
+if test "$ql_faster_lazy_objects" = "yes" ; then
+   AC_DEFINE([QL_FASTER_LAZY_OBJECTS],[1],
+             [Define this if you want lazy objects to forward fewer notifications.])
+fi
+AC_MSG_RESULT([$ql_faster_lazy_objects])
+
 AC_MSG_CHECKING([whether to enable standard smart pointers])
 AC_ARG_ENABLE([std-pointers],
-              AC_HELP_STRING([--enable-std-pointers],
+              AS_HELP_STRING([--enable-std-pointers],
                              [If enabled, std::shared_ptr and related
                               classes and functions will be used instead
-                              of boost::shared_ptr; this requires you to set
-                              your compiler's standard to at least C++11.
+                              of boost::shared_ptr.
                               If disabled (the default) the Boost facilities
-                              are used.
+                              will be used.
                               Note that std::shared_ptr does not check
-                              access and can cause segmentation faults.]),
+                              access and will cause a segmentation fault
+                              if you access a null pointer.]),
               [ql_use_std_pointers=$enableval],
               [ql_use_std_pointers=no])
 if test "$ql_use_std_pointers" = "yes" ; then
@@ -392,29 +291,121 @@ if test "$ql_use_std_pointers" = "yes" ; then
 fi
 AC_MSG_RESULT([$ql_use_std_pointers])
 
-AC_MSG_CHECKING([whether to enable std::unique_ptr instead of std::auto_ptr])
-AC_ARG_ENABLE([std-unique-ptr],
-              AC_HELP_STRING([--enable-std-unique-ptr],
-                             [If enabled, std::unique_ptr will be used
-                              instead of the deprecated std::auto_ptr;
-                              this requires you to set your compiler's
-                              standard to at least C++11.  If disabled
-                              (the default), std::auto_ptr will still
-                              be used.]),
-              [ql_use_unique_ptr=$enableval],
-              [ql_use_unique_ptr=no])
-if test "$ql_use_unique_ptr" = "yes" ; then
-   AC_DEFINE([QL_USE_STD_UNIQUE_PTR],[1],
-             [Define this if you want to replace std::auto_ptr with std::unique_ptr.])
+AC_MSG_CHECKING([whether to enable available std classes])
+AC_ARG_ENABLE([std-classes],
+              AS_HELP_STRING([--enable-std-classes],
+                             [This is a shortcut for --enable-std-pointers.
+                              If enabled, this supersedes any --disable
+                              option passed for the above.]),
+              [ql_use_std_classes=$enableval],
+              [ql_use_std_classes=no])
+if test "$ql_use_std_classes" = "yes" ; then
+   AC_DEFINE([QL_USE_STD_SHARED_PTR],[1],
+             [Define this if you want to use standard smart pointers.])
 fi
-AC_MSG_RESULT([$ql_use_unique_ptr])
+AC_MSG_RESULT([$ql_use_std_classes])
+
+AC_MSG_CHECKING([whether to enable the implementation of Null as template functions])
+AC_ARG_ENABLE([null-as-functions],
+              AS_HELP_STRING([--enable-null-as-functions],
+                             [If enabled, Null will be implemented as a
+                              template function.  This allows the code
+                              to work with user-defined Real types but was
+                              reported to cause internal compiler errors
+                              with Visual C++ 2022 in some cases.
+                              If disabled (the default) Null will be
+                              implemented as a class template, as in
+                              previous releases.]),
+              [ql_use_null_functions=$enableval],
+              [ql_use_null_functions=no])
+if test "$ql_use_null_functions" = "yes" ; then
+   AC_DEFINE([QL_NULL_AS_FUNCTIONS],[1],
+             [Define this if you want to enable the implementation of Null as template functions.])
+fi
+AC_MSG_RESULT([$ql_use_null_functions])
+
+AC_MSG_CHECKING([whether to enable parallel unit test runner])
+AC_ARG_ENABLE([parallel-unit-test-runner],
+              AS_HELP_STRING([--enable-parallel-unit-test-runner],
+                             [If enabled, a parallel unit test runner will be
+                              used to execute the C++ test suite. This will
+                              reduce the runtime on multi core CPUs.
+                              Disabled by default.]),
+              [ql_use_parallel_test=$enableval],
+              [ql_use_parallel_test=no])
+AC_MSG_RESULT([$ql_use_parallel_test])
+if test "$ql_use_parallel_test" = "yes" ; then
+   AC_DEFINE([QL_ENABLE_PARALLEL_UNIT_TEST_RUNNER],[1],
+             [Define this if you want to enable 
+              the parallel unit test runner.])
+   QL_CHECK_BOOST_VERSION_1_59_OR_HIGHER
+   QL_CHECK_BOOST_TEST_INTERPROCESS
+else
+   AC_SUBST([BOOST_INTERPROCESS_LIB],[""])
+fi
+
+AC_MSG_CHECKING([whether to install examples])
+AC_ARG_ENABLE([examples],
+              AS_HELP_STRING([--enable-examples],
+                             [If enabled, examples are built and installed
+                              when "make" and "make install" are invoked.
+                              If disabled (the default) they are built
+                              but not installed.]),
+              [ql_install_examples=$enableval],
+              [ql_install_examples=no])
+AM_CONDITIONAL(AUTO_EXAMPLES, test "$ql_install_examples" != "no")
+AC_MSG_RESULT([$ql_install_examples])
+
+AC_MSG_CHECKING([whether to skip examples])
+AC_ARG_ENABLE([skip-examples],
+              AS_HELP_STRING([--enable-skip-examples],
+                             [If enabled, examples are not built.
+                              Disabled by default.]),
+              [ql_skip_examples=$enableval],
+              [ql_skip_examples=no])
+AM_CONDITIONAL(AUTO_SKIP_EXAMPLES, test "$ql_skip_examples" != "no")
+AC_MSG_RESULT([$ql_skip_examples])
+
+AC_MSG_CHECKING([whether to install the benchmark])
+AC_ARG_ENABLE([benchmark],
+              AS_HELP_STRING([--enable-benchmark],
+                             [If enabled, the benchmark is built and
+                              installed when "make" and "make install"
+                              are invoked. If disabled (the default)
+                              it is built but not installed.]),
+              [ql_install_benchmark=$enableval],
+              [ql_install_benchmark=no])
+AM_CONDITIONAL(AUTO_BENCHMARK, test "$ql_install_benchmark" != "no")
+AC_MSG_RESULT([$ql_install_benchmark])
+
+AC_MSG_CHECKING([whether to use unity build])
+AC_ARG_ENABLE([unity-build],
+              AS_HELP_STRING([--enable-unity-build],
+                             [If enabled, the source files in each directory
+                              are collected into one single source file and
+                              compiled together. This can speed up the
+                              compilation of the library.
+                              If disabled (the default) each source file is
+                              compiled separately..]),
+              [ql_use_unity_build=$enableval],
+              [ql_use_unity_build=no])
+AM_CONDITIONAL(UNITY_BUILD, test "$ql_use_unity_build" != "no")
+AC_MSG_RESULT([$ql_use_unity_build])
+
+AC_MSG_CHECKING([whether to compile the test suite])
+AC_ARG_ENABLE([test-suite],
+              AS_HELP_STRING([--enable-test-suite],
+                             [If enabled (the default), the test suite is
+                              also built, assuming Boost.Test could be found.
+                              If disabled, it is not. Do not try this at home.]),
+              [ql_build_test_suite=$enableval],
+              [ql_build_test_suite=yes])
+AM_CONDITIONAL(BUILD_TEST_SUITE, test "$ql_build_test_suite" != "no" && test "x${HAVE_BOOST_TEST}" != "x" )
+AC_MSG_RESULT([$ql_build_test_suite])
+
 
 # manual configurations for specific hosts
 case $host in
-  powerpc-apple-darwin*)
-    AC_DEFINE([QL_PATCH_DARWIN],[1],
-              [Define if running on a Mac OS X machine.])
-    ;;
   sparc-sun-solaris*)
     AC_DEFINE([QL_PATCH_SOLARIS],[1],
               [Define if running on a Sun Solaris machine.])
@@ -429,17 +420,18 @@ AC_CONFIG_FILES([
     ql/cashflows/Makefile
     ql/currencies/Makefile
     ql/experimental/Makefile
-    ql/experimental/amortizingbonds/Makefile
+    ql/experimental/asian/Makefile
     ql/experimental/averageois/Makefile
     ql/experimental/barrieroption/Makefile
+    ql/experimental/basismodels/Makefile
     ql/experimental/callablebonds/Makefile
     ql/experimental/catbonds/Makefile
     ql/experimental/commodities/Makefile
-    ql/experimental/convertiblebonds/Makefile
     ql/experimental/coupons/Makefile
     ql/experimental/credit/Makefile
     ql/experimental/exoticoptions/Makefile
     ql/experimental/finitedifferences/Makefile
+    ql/experimental/forward/Makefile
     ql/experimental/fx/Makefile
     ql/experimental/inflation/Makefile
     ql/experimental/lattices/Makefile
@@ -513,7 +505,9 @@ AC_CONFIG_FILES([
     ql/pricingengines/capfloor/Makefile
     ql/pricingengines/cliquet/Makefile
     ql/pricingengines/credit/Makefile
+    ql/pricingengines/exotic/Makefile
     ql/pricingengines/forward/Makefile
+    ql/pricingengines/futures/Makefile
     ql/pricingengines/inflation/Makefile
     ql/pricingengines/lookback/Makefile
     ql/pricingengines/quanto/Makefile
@@ -540,27 +534,9 @@ AC_CONFIG_FILES([
     m4/Makefile
     Docs/Makefile
     Examples/Makefile
-    Examples/BasketLosses/Makefile
-    Examples/BermudanSwaption/Makefile
-    Examples/Bonds/Makefile
-    Examples/CallableBonds/Makefile
-    Examples/CDS/Makefile
-    Examples/ConvertibleBonds/Makefile
-    Examples/CVAIRS/Makefile
-    Examples/DiscreteHedging/Makefile
-    Examples/EquityOption/Makefile
-    Examples/FittedBondCurve/Makefile
-    Examples/FRA/Makefile
-    Examples/LatentModel/Makefile
-    Examples/Gaussian1dModels/Makefile
-    Examples/GlobalOptimizer/Makefile
-    Examples/MarketModels/Makefile
-    Examples/MultidimIntegral/Makefile
-    Examples/Replication/Makefile
-    Examples/Repo/Makefile
-    Examples/Swap/Makefile
     test-suite/Makefile])
 AC_CONFIG_FILES([quantlib-config],[chmod +x quantlib-config])
 AC_CONFIG_FILES([QuantLib.spec])
 AC_CONFIG_FILES([quantlib.pc])
 AC_OUTPUT
+

@@ -12,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -42,19 +42,18 @@ namespace QuantLib {
                   BusinessDayConvention convention,
                   bool endOfMonth,
                   const DayCounter& dayCounter,
-                  const Handle<YieldTermStructure>& h =
-                                    Handle<YieldTermStructure>());
+                  Handle<YieldTermStructure> h = {});
         //! \name InterestRateIndex interface
         //@{
-        Date maturityDate(const Date& valueDate) const;
-        Rate forecastFixing(const Date& fixingDate) const;
+        Date maturityDate(const Date& valueDate) const override;
+        Rate forecastFixing(const Date& fixingDate) const override;
         // @}
         //! \name Inspectors
         //@{
         BusinessDayConvention businessDayConvention() const;
         bool endOfMonth() const { return endOfMonth_; }
         //! the curve used to forecast fixings
-        Handle<YieldTermStructure> forwardingTermStructure() const;
+        const Handle<YieldTermStructure>& forwardingTermStructure() const;
         //@}
         //! \name Other methods
         //@{
@@ -93,11 +92,9 @@ namespace QuantLib {
                        const Currency& currency,
                        const Calendar& fixingCalendar,
                        const DayCounter& dayCounter,
-                       const Handle<YieldTermStructure>& h =
-                                    Handle<YieldTermStructure>());
+                       const Handle<YieldTermStructure>& h = {});
         //! returns a copy of itself linked to a different forwarding curve
-        ext::shared_ptr<IborIndex> clone(
-                                   const Handle<YieldTermStructure>& h) const;
+        ext::shared_ptr<IborIndex> clone(const Handle<YieldTermStructure>& h) const override;
     };
 
 
@@ -107,7 +104,7 @@ namespace QuantLib {
         return convention_;
     }
 
-    inline Handle<YieldTermStructure>
+    inline const Handle<YieldTermStructure>&
     IborIndex::forwardingTermStructure() const {
         return termStructure_;
     }

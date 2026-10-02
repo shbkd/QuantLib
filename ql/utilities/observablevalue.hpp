@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -39,13 +39,16 @@ namespace QuantLib {
               code should modify the value via re-assignment instead.
     */
     template <class T>
-    class ObservableValue {
+    class ObservableValue { // NOLINT(cppcoreguidelines-special-member-functions)
       public:
         ObservableValue();
+        ObservableValue(T&&);
         ObservableValue(const T&);
         ObservableValue(const ObservableValue<T>&);
+        ~ObservableValue() = default;
         //! \name controlled assignment
         //@{
+        ObservableValue<T>& operator=(T&&);
         ObservableValue<T>& operator=(const T&);
         ObservableValue<T>& operator=(const ObservableValue<T>&);
         //@}
@@ -67,12 +70,23 @@ namespace QuantLib {
     : value_(), observable_(new Observable) {}
 
     template <class T>
+    ObservableValue<T>::ObservableValue(T&& t)
+    : value_(std::move(t)), observable_(new Observable) {}
+
+    template <class T>
     ObservableValue<T>::ObservableValue(const T& t)
     : value_(t), observable_(new Observable) {}
 
     template <class T>
     ObservableValue<T>::ObservableValue(const ObservableValue<T>& t)
     : value_(t.value_), observable_(new Observable) {}
+
+    template <class T>
+    ObservableValue<T>& ObservableValue<T>::operator=(T&& t) {
+        value_ = std::move(t);
+        observable_->notifyObservers();
+        return *this;
+    }
 
     template <class T>
     ObservableValue<T>& ObservableValue<T>::operator=(const T& t) {
@@ -83,7 +97,7 @@ namespace QuantLib {
 
     template <class T>
     ObservableValue<T>&
-    ObservableValue<T>::operator=(const ObservableValue<T>& t) {
+    ObservableValue<T>::operator=(const ObservableValue<T>& t) { // NOLINT(bugprone-unhandled-self-assignment)
         value_ = t.value_;
         observable_->notifyObservers();
         return *this;

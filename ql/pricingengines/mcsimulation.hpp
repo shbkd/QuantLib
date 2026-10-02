@@ -12,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -26,7 +26,6 @@
 #ifndef quantlib_montecarlo_engine_hpp
 #define quantlib_montecarlo_engine_hpp
 
-#include <ql/grid.hpp>
 #include <ql/methods/montecarlo/montecarlomodel.hpp>
 
 namespace QuantLib {
@@ -50,7 +49,7 @@ namespace QuantLib {
             stats_type;
         typedef typename MonteCarloModel<MC,RNG,S>::result_type result_type;
 
-        virtual ~McSimulation() {}
+        virtual ~McSimulation() = default;
         //! add samples until the required absolute tolerance is reached
         result_type value(Real tolerance,
                           Size maxSamples = QL_MAX_INTEGER,
@@ -123,7 +122,7 @@ namespace QuantLib {
                        << ") is still above tolerance (" << tolerance << ")");
 
             // conservative estimate of how many samples are needed
-            order = maxError(error*error)/tolerance/tolerance;
+            order = maxError(Real(error*error))/tolerance/tolerance;
             nextBatch =
                 Size(std::max<Real>(static_cast<Real>(sampleNumber)*order*0.8 - static_cast<Real>(sampleNumber),
                                     static_cast<Real>(minSamples)));
@@ -182,17 +181,15 @@ namespace QuantLib {
                 this->controlPathGenerator();
 
             this->mcModel_ =
-                ext::shared_ptr<MonteCarloModel<MC,RNG,S> >(
-                    new MonteCarloModel<MC,RNG,S>(
+                ext::make_shared<MonteCarloModel<MC,RNG,S>>(
                            pathGenerator(), this->pathPricer(), stats_type(),
                            this->antitheticVariate_, controlPP,
-                           controlVariateValue, controlPG));
+                           controlVariateValue, controlPG);
         } else {
             this->mcModel_ =
-                ext::shared_ptr<MonteCarloModel<MC,RNG,S> >(
-                    new MonteCarloModel<MC,RNG,S>(
+                ext::make_shared<MonteCarloModel<MC,RNG,S>>(
                            pathGenerator(), this->pathPricer(), S(),
-                           this->antitheticVariate_));
+                           this->antitheticVariate_);
         }
 
         if (requiredTolerance != Null<Real>()) {

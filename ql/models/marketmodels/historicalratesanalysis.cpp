@@ -10,16 +10,17 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
+#include <ql/indexes/interestrateindex.hpp>
 #include <ql/models/marketmodels/historicalratesanalysis.hpp>
 #include <ql/time/calendar.hpp>
-#include <ql/indexes/interestrateindex.hpp>
+#include <utility>
 
 namespace QuantLib {
 
@@ -57,7 +58,7 @@ namespace QuantLib {
                 }
             } catch (std::exception& e) {
                 skippedDates.push_back(currentDate);
-                skippedDatesErrorMessage.push_back(e.what());
+                skippedDatesErrorMessage.emplace_back(e.what());
                 continue;
             }
 
@@ -79,16 +80,16 @@ namespace QuantLib {
     }
 
     HistoricalRatesAnalysis::HistoricalRatesAnalysis(
-                const ext::shared_ptr<SequenceStatistics>& stats,
-                const Date& startDate,
-                const Date& endDate,
-                const Period& step,
-                const std::vector<ext::shared_ptr<InterestRateIndex> >& indexes)
-    : stats_(stats) {
+        ext::shared_ptr<SequenceStatistics> stats,
+        const Date& startDate,
+        const Date& endDate,
+        const Period& step,
+        const std::vector<ext::shared_ptr<InterestRateIndex> >& indexes)
+    : stats_(std::move(stats)) {
         historicalRatesAnalysis(
                     *stats_,
                     skippedDates_, skippedDatesErrorMessage_,
                     startDate, endDate, step,
                     indexes);
-      }
+    }
 }

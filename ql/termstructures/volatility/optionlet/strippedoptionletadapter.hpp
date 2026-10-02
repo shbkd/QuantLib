@@ -12,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -45,39 +45,37 @@ namespace QuantLib {
 
         //! \name TermStructure interface
         //@{
-        Date maxDate() const;
-        //@}
-        //! \name VolatilityTermStructure interface
-        //@{
-        Rate minStrike() const;
-        Rate maxStrike() const;
-        //@} 
-        //! \name LazyObject interface
-        //@{
-        void update();
-        void performCalculations() const;
-        ext::shared_ptr< OptionletStripper > optionletStripper() const;
-        //@}
-        //! \name Observer interface
-        //@{
-        void deepUpdate();
-        //@}
+          Date maxDate() const override;
+          //@}
+          //! \name VolatilityTermStructure interface
+          //@{
+          Rate minStrike() const override;
+          Rate maxStrike() const override;
+          //@}
+          //! \name LazyObject interface
+          //@{
+          void update() override;
+          void performCalculations() const override;
+          ext::shared_ptr<OptionletStripper> optionletStripper() const;
+          //@}
+          //! \name Observer interface
+          //@{
+          void deepUpdate() override;
+          //@}
 
-        VolatilityType volatilityType() const;
-        Real displacement() const;
+          VolatilityType volatilityType() const override;
+          Real displacement() const override;
 
-      protected:
-        //! \name OptionletVolatilityStructure interface
-        //@{
-        ext::shared_ptr<SmileSection> smileSectionImpl(
-                                                Time optionTime) const;
-        Volatility volatilityImpl(Time length,
-                                  Rate strike) const;
-        //@} 
-    private:
-        const ext::shared_ptr<StrippedOptionletBase> optionletStripper_;
-        Size nInterpolations_;
-        mutable std::vector<ext::shared_ptr<Interpolation> > strikeInterpolations_;
+        protected:
+          //! \name OptionletVolatilityStructure interface
+          //@{
+          ext::shared_ptr<SmileSection> smileSectionImpl(Time optionTime) const override;
+          Volatility volatilityImpl(Time length, Rate strike) const override;
+          //@}
+        private:
+          const ext::shared_ptr<StrippedOptionletBase> optionletStripper_;
+          Size nInterpolations_;
+          mutable std::vector<ext::shared_ptr<Interpolation> > strikeInterpolations_;
     };
 
     inline void StrippedOptionletAdapter::update() {

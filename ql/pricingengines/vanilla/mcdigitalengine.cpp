@@ -12,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -20,17 +20,18 @@
 */
 
 #include <ql/pricingengines/vanilla/mcdigitalengine.hpp>
+#include <utility>
 
 namespace QuantLib {
 
-    DigitalPathPricer::DigitalPathPricer(
-                    const ext::shared_ptr<CashOrNothingPayoff>& payoff,
-                    const ext::shared_ptr<AmericanExercise>& exercise,
-                    const Handle<YieldTermStructure>& discountTS,
-                    const ext::shared_ptr<StochasticProcess1D>& diffProcess,
-                    const PseudoRandom::ursg_type& sequenceGen)
-    : payoff_(payoff), exercise_(exercise), diffProcess_(diffProcess),
-      sequenceGen_(sequenceGen), discountTS_(discountTS) {}
+    DigitalPathPricer::DigitalPathPricer(ext::shared_ptr<CashOrNothingPayoff> payoff,
+                                         ext::shared_ptr<AmericanExercise> exercise,
+                                         Handle<YieldTermStructure> discountTS,
+                                         ext::shared_ptr<StochasticProcess1D> diffProcess,
+                                         PseudoRandom::ursg_type sequenceGen)
+    : payoff_(std::move(payoff)), exercise_(std::move(exercise)),
+      diffProcess_(std::move(diffProcess)), sequenceGen_(std::move(sequenceGen)),
+      discountTS_(std::move(discountTS)) {}
 
     Real DigitalPathPricer::operator()(const Path& path) const {
         Size n = path.length();
@@ -39,7 +40,7 @@ namespace QuantLib {
         Real log_asset_price = std::log(path.front());
         Real x, y;
         Volatility vol;
-        TimeGrid timeGrid = path.timeGrid();
+        const TimeGrid& timeGrid = path.timeGrid();
         Time dt;
         std::vector<Real> u = sequenceGen_.nextSequence().value;
         Real log_strike = std::log(payoff_->strike());

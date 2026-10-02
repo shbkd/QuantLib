@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -46,14 +46,15 @@ namespace QuantLib {
                             Size steps,
                             unsigned long seed = 0);
 
-        Real nextStep(std::vector<Real>&);
-        Real nextPath();
+        Real nextStep(std::vector<Real>&) override;
+        Real nextPath() override;
 
-        Size numberOfFactors() const;
-        Size numberOfSteps() const;
+        Size numberOfFactors() const override;
+        Size numberOfSteps() const override;
+
       private:
         Size factors_, steps_;
-        Size lastStep_;
+        Size lastStep_ = 0;
         RandomSequenceGenerator<MersenneTwisterUniformRng> generator_;
         InverseCumulativeNormal inverseCumulative_;
     };
@@ -61,8 +62,8 @@ namespace QuantLib {
     class MTBrownianGeneratorFactory : public BrownianGeneratorFactory {
       public:
         MTBrownianGeneratorFactory(unsigned long seed = 0);
-        ext::shared_ptr<BrownianGenerator> create(Size factors,
-                                                    Size steps) const;
+        ext::shared_ptr<BrownianGenerator> create(Size factors, Size steps) const override;
+
       private:
         unsigned long seed_;
     };

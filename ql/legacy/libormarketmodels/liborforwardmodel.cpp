@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -19,6 +19,7 @@
 
 #include <ql/legacy/libormarketmodels/liborforwardmodel.hpp>
 #include <ql/pricingengines/blackformula.hpp>
+#include <ql/time/calendars/nullcalendar.hpp>
 #include <limits>
 
 namespace QuantLib {
@@ -101,7 +102,7 @@ namespace QuantLib {
         return npv / (1.0 + capRate*tenor);
     }
 
-    Disposable<Array> LiborForwardModel::w_0(Size alpha, Size beta) const {
+    Array LiborForwardModel::w_0(Size alpha, Size beta) const {
         Array omega(beta+1,0.0);
         QL_REQUIRE(alpha<beta, "alpha needs to be smaller than beta");
 
@@ -145,7 +146,7 @@ namespace QuantLib {
     // same frequency
     ext::shared_ptr<SwaptionVolatilityMatrix>
         LiborForwardModel::getSwaptionVolatilityMatrix() const {
-        if (swaptionVola) {
+        if (swaptionVola != nullptr) {
             return swaptionVola;
         }
 
@@ -192,9 +193,9 @@ namespace QuantLib {
         }
 
         return swaptionVola = ext::make_shared<SwaptionVolatilityMatrix>(
-             today, exercises, lengths,
-                                          volatilities,
-                                          index->dayCounter());
+            today, NullCalendar(), Following,
+            exercises, lengths, volatilities,
+            index->dayCounter());
     }
 
     // the next two methods are meaningless within this context

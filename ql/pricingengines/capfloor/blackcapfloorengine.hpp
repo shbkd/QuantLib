@@ -12,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -37,21 +37,22 @@ namespace QuantLib {
     /*! \ingroup capfloorengines */
     class BlackCapFloorEngine : public CapFloor::engine {
       public:
-        BlackCapFloorEngine(const Handle<YieldTermStructure>& discountCurve,
+        BlackCapFloorEngine(Handle<YieldTermStructure> discountCurve,
                             Volatility vol,
                             const DayCounter& dc = Actual365Fixed(),
                             Real displacement = 0.0);
-        BlackCapFloorEngine(const Handle<YieldTermStructure>& discountCurve,
+        BlackCapFloorEngine(Handle<YieldTermStructure> discountCurve,
                             const Handle<Quote>& vol,
                             const DayCounter& dc = Actual365Fixed(),
                             Real displacement = 0.0);
-        BlackCapFloorEngine(const Handle< YieldTermStructure > &discountCurve,
-                            const Handle< OptionletVolatilityStructure > &vol,
-                            Real displacement = Null< Real >());
-        void calculate() const;
+        BlackCapFloorEngine(Handle<YieldTermStructure> discountCurve,
+                            Handle<OptionletVolatilityStructure> vol,
+                            Real displacement = Null<Real>());
+        void calculate() const override;
         Handle<YieldTermStructure> termStructure() { return discountCurve_; }
         Handle<OptionletVolatilityStructure> volatility() { return vol_; }
-        Real displacement() { return displacement_; }
+        Real displacement() const { return displacement_; }
+
       private:
         Handle<YieldTermStructure> discountCurve_;
         Handle<OptionletVolatilityStructure> vol_;

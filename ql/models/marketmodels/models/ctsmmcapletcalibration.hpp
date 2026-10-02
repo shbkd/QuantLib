@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -34,15 +34,13 @@ namespace QuantLib {
 
     class CTSMMCapletCalibration {
       public:
-        virtual ~CTSMMCapletCalibration();
+        virtual ~CTSMMCapletCalibration() = default;
         CTSMMCapletCalibration(
-            const EvolutionDescription& evolution,
-            const ext::shared_ptr<PiecewiseConstantCorrelation>& corr,
-            const std::vector<ext::shared_ptr<
-                        PiecewiseConstantVariance> >&
-                                    displacedSwapVariances,
-            const std::vector<Volatility>& mktCapletVols, // displaced??
-            const ext::shared_ptr<CurveState>& cs,
+            EvolutionDescription evolution,
+            ext::shared_ptr<PiecewiseConstantCorrelation> corr,
+            std::vector<ext::shared_ptr<PiecewiseConstantVariance> > displacedSwapVariances,
+            std::vector<Volatility> mktCapletVols, // displaced??
+            ext::shared_ptr<CurveState> cs,
             Spread displacement); // ??
         // modifiers
         bool calibrate(Natural numberOfFactors,

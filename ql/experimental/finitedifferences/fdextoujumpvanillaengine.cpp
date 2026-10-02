@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -23,44 +23,43 @@
 */
 
 #include <ql/exercise.hpp>
-#include <ql/termstructures/yieldtermstructure.hpp>
-#include <ql/experimental/processes/extouwithjumpsprocess.hpp>
-#include <ql/experimental/processes/extendedornsteinuhlenbeckprocess.hpp>
-#include <ql/methods/finitedifferences/operators/fdmlinearoplayout.hpp>
-#include <ql/methods/finitedifferences/meshers/fdmmeshercomposite.hpp>
+#include <ql/experimental/finitedifferences/fdextoujumpvanillaengine.hpp>
 #include <ql/experimental/finitedifferences/fdmextoujumpmodelinnervalue.hpp>
+#include <ql/experimental/finitedifferences/fdmextoujumpsolver.hpp>
+#include <ql/experimental/processes/extendedornsteinuhlenbeckprocess.hpp>
+#include <ql/experimental/processes/extouwithjumpsprocess.hpp>
+#include <ql/methods/finitedifferences/meshers/exponentialjump1dmesher.hpp>
+#include <ql/methods/finitedifferences/meshers/fdmmeshercomposite.hpp>
+#include <ql/methods/finitedifferences/meshers/fdmsimpleprocess1dmesher.hpp>
+#include <ql/methods/finitedifferences/operators/fdmlinearoplayout.hpp>
 #include <ql/methods/finitedifferences/stepconditions/fdmamericanstepcondition.hpp>
 #include <ql/methods/finitedifferences/stepconditions/fdmbermudanstepcondition.hpp>
 #include <ql/methods/finitedifferences/stepconditions/fdmstepconditioncomposite.hpp>
-#include <ql/methods/finitedifferences/meshers/exponentialjump1dmesher.hpp>
-#include <ql/experimental/finitedifferences/fdmextoujumpsolver.hpp>
-#include <ql/methods/finitedifferences/meshers/fdmsimpleprocess1dmesher.hpp>
-#include <ql/experimental/finitedifferences/fdextoujumpvanillaengine.hpp>
+#include <ql/termstructures/yieldtermstructure.hpp>
+#include <utility>
 
 namespace QuantLib {
 
     FdExtOUJumpVanillaEngine::FdExtOUJumpVanillaEngine(
-                      const ext::shared_ptr<ExtOUWithJumpsProcess>& process,
-                      const ext::shared_ptr<YieldTermStructure>& rTS,
-                      Size tGrid, Size xGrid, Size yGrid,
-                      const FdmSchemeDesc& schemeDesc)
-    : process_(process),
-      rTS_(rTS),
-      tGrid_(tGrid),
-      xGrid_(xGrid),
-      yGrid_(yGrid),
-      schemeDesc_(schemeDesc) {
-    }
-                      
+        ext::shared_ptr<ExtOUWithJumpsProcess> process,
+        ext::shared_ptr<YieldTermStructure> rTS,
+        Size tGrid,
+        Size xGrid,
+        Size yGrid,
+        ext::shared_ptr<Shape> shape,
+        const FdmSchemeDesc& schemeDesc)
+    : process_(std::move(process)), rTS_(std::move(rTS)), shape_(std::move(shape)), tGrid_(tGrid),
+      xGrid_(xGrid), yGrid_(yGrid), schemeDesc_(schemeDesc) {}
+
     void FdExtOUJumpVanillaEngine::calculate() const {
         // 1. Mesher
         const Time maturity 
             = rTS_->dayCounter().yearFraction(rTS_->referenceDate(),
                                               arguments_.exercise->lastDate());
         const ext::shared_ptr<StochasticProcess1D> ouProcess(
-                              process_->getExtendedOrnsteinUhlenbeckProcess());
+            process_->getExtendedOrnsteinUhlenbeckProcess());
         const ext::shared_ptr<Fdm1dMesher> xMesher(
-                     new FdmSimpleProcess1dMesher(xGrid_, ouProcess,maturity));
+            new FdmSimpleProcess1dMesher(xGrid_, ouProcess,maturity));
 
         const ext::shared_ptr<Fdm1dMesher> yMesher(
             new ExponentialJump1dMesher(yGrid_, 
@@ -73,7 +72,7 @@ namespace QuantLib {
 
         // 2. Calculator
         const ext::shared_ptr<FdmInnerValueCalculator> calculator(
-                    new FdmExtOUJumpModelInnerValue(arguments_.payoff, mesher));
+            new FdmExtOUJumpModelInnerValue(arguments_.payoff, mesher, shape_));
 
         // 3. Step conditions
         const ext::shared_ptr<FdmStepConditionComposite> conditions =

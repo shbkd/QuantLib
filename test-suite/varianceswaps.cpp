@@ -11,14 +11,14 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "varianceswaps.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
 #include <ql/quotes/simplequote.hpp>
 #include <ql/time/daycounters/actual365fixed.hpp>
@@ -36,6 +36,11 @@
 using namespace QuantLib;
 using namespace boost::unit_test_framework;
 
+BOOST_FIXTURE_TEST_SUITE(QuantLibTests, TopLevelFixture)
+
+BOOST_AUTO_TEST_SUITE(VarianceSwapTests)
+
+#undef REPORT_FAILURE
 #define REPORT_FAILURE(greekName, isLong, varStrike, nominal, s, q, r, today, \
                        exDate, v, expected, calculated, error, tolerance) \
     BOOST_ERROR( \
@@ -54,46 +59,42 @@ using namespace boost::unit_test_framework;
         << "    tolerance:        " << tolerance);
 
 
-namespace {
+struct MCVarianceSwapData {
+    Position::Type type;
+    Real varStrike;
+    Real nominal;
+    Real s;         // spot
+    Rate q;         // dividend
+    Rate r;         // risk-free rate
+    Time t1;        // intermediate time
+    Time t;         // time to maturity
+    Volatility v1;  // volatility at t1
+    Volatility v;   // volatility at t
+    Real result;    // result
+    Real tol;       // tolerance
+};
 
-    struct MCVarianceSwapData {
-        Position::Type type;
-        Real varStrike;
-        Real nominal;
-        Real s;         // spot
-        Rate q;         // dividend
-        Rate r;         // risk-free rate
-        Time t1;        // intermediate time
-        Time t;         // time to maturity
-        Volatility v1;  // volatility at t1
-        Volatility v;   // volatility at t
-        Real result;    // result
-        Real tol;       // tolerance
-    };
+struct ReplicatingVarianceSwapData {
+    Position::Type type;
+    Real varStrike;
+    Real nominal;
+    Real s;         // spot
+    Rate q;         // dividend
+    Rate r;         // risk-free rate
+    Time t;         // time to maturity
+    Volatility v;   // volatility at t
+    Real result;    // result
+    Real tol;       // tolerance
+};
 
-    struct ReplicatingVarianceSwapData {
-        Position::Type type;
-        Real varStrike;
-        Real nominal;
-        Real s;         // spot
-        Rate q;         // dividend
-        Rate r;         // risk-free rate
-        Time t;         // time to maturity
-        Volatility v;   // volatility at t
-        Real result;    // result
-        Real tol;       // tolerance
-    };
-
-    struct Datum {
-        Option::Type type;
-        Real strike;
-        Volatility v;
-    };
-
-}
+struct Datum {
+    Option::Type type;
+    Real strike;
+    Volatility v;
+};
 
 
-void VarianceSwapTest::testReplicatingVarianceSwap() {
+BOOST_AUTO_TEST_CASE(testReplicatingVarianceSwap) {
 
     BOOST_TEST_MESSAGE("Testing variance swap with replicating cost engine...");
 
@@ -145,16 +146,16 @@ void VarianceSwapTest::testReplicatingVarianceSwap() {
     ext::shared_ptr<SimpleQuote> rRate(new SimpleQuote(0.0));
     ext::shared_ptr<YieldTermStructure> rTS = flatRate(today, rRate, dc);
 
-    for (Size i=0; i<LENGTH(values); i++) {
-        Date exDate = today + Integer(values[i].t*365+0.5);
+    for (auto& value : values) {
+        Date exDate = today + timeToDays(value.t, 365);
         std::vector<Date> dates(1);
         dates[0] = exDate;
 
-        spot ->setValue(values[i].s);
-        qRate->setValue(values[i].q);
-        rRate->setValue(values[i].r);
+        spot->setValue(value.s);
+        qRate->setValue(value.q);
+        rRate->setValue(value.r);
 
-        Size options = LENGTH(replicatingOptionData);
+        Size options = std::size(replicatingOptionData);
         std::vector<Real> callStrikes, putStrikes, callVols, putVols;
 
         // Assumes ascending strikes and same min call and max put strikes
@@ -201,26 +202,20 @@ void VarianceSwapTest::testReplicatingVarianceSwap() {
                                                             callStrikes,
                                                             putStrikes));
 
-        VarianceSwap varianceSwap(values[i].type,
-                                  values[i].varStrike,
-                                  values[i].nominal,
-                                  today,
-                                  exDate);
+        VarianceSwap varianceSwap(value.type, value.varStrike, value.nominal, today, exDate);
         varianceSwap.setPricingEngine(engine);
 
         Real calculated = varianceSwap.variance();
-        Real expected = values[i].result;
+        Real expected = value.result;
         Real error = std::fabs(calculated-expected);
-        if (error>values[i].tol)
-            REPORT_FAILURE("value", values[i].type, values[i].varStrike,
-                           values[i].nominal, values[i].s, values[i].q,
-                           values[i].r, today, exDate, values[i].v, expected,
-                           calculated, error, values[i].tol);
+        if (error > value.tol)
+            REPORT_FAILURE("value", values[i].type, value.varStrike, value.nominal, value.s,
+                           value.q, value.r, today, exDate, value.v, expected, calculated, error,
+                           value.tol);
     }
 }
 
-
-void VarianceSwapTest::testMCVarianceSwap() {
+BOOST_AUTO_TEST_CASE(testMCVarianceSwap) {
 
     BOOST_TEST_MESSAGE("Testing variance swap with Monte Carlo engine...");
 
@@ -251,18 +246,18 @@ void VarianceSwapTest::testMCVarianceSwap() {
     std::vector<Volatility> vols(2);
     std::vector<Date> dates(2);
 
-    for (Size i=0; i<LENGTH(values); i++) {
-        Date exDate = today + Integer(values[i].t*365+0.5);
-        Date intermDate = today + Integer(values[i].t1*365+0.5);
+    for (auto& value : values) {
+        Date exDate = today + timeToDays(value.t, 365);
+        Date intermDate = today + timeToDays(value.t1, 365);
         ext::shared_ptr<Exercise> exercise(new EuropeanExercise(exDate));
         dates[0] = intermDate;
         dates[1] = exDate;
 
-        spot ->setValue(values[i].s);
-        qRate->setValue(values[i].q);
-        rRate->setValue(values[i].r);
-        vols[0] = values[i].v1;
-        vols[1] = values[i].v;
+        spot->setValue(value.s);
+        qRate->setValue(value.q);
+        rRate->setValue(value.r);
+        vols[0] = value.v1;
+        vols[1] = value.v;
 
         ext::shared_ptr<BlackVolTermStructure> volTS(
                         new BlackVarianceCurve(today, dates, vols, dc, true));
@@ -281,30 +276,19 @@ void VarianceSwapTest::testMCVarianceSwap() {
             .withSamples(1023)
             .withSeed(42);
 
-        VarianceSwap varianceSwap(values[i].type,
-                                  values[i].varStrike,
-                                  values[i].nominal,
-                                  today,
-                                  exDate);
+        VarianceSwap varianceSwap(value.type, value.varStrike, value.nominal, today, exDate);
         varianceSwap.setPricingEngine(engine);
 
         Real calculated = varianceSwap.variance();
-        Real expected = values[i].result;
+        Real expected = value.result;
         Real error = std::fabs(calculated-expected);
-        if (error>values[i].tol)
-            REPORT_FAILURE("value", values[i].type, values[i].varStrike,
-                           values[i].nominal, values[i].s, values[i].q,
-                           values[i].r, today, exDate, values[i].v, expected,
-                           calculated, error, values[i].tol);
+        if (error > value.tol)
+            REPORT_FAILURE("value", values[i].type, value.varStrike, value.nominal, value.s,
+                           value.q, value.r, today, exDate, value.v, expected, calculated, error,
+                           value.tol);
     }
 }
 
-test_suite* VarianceSwapTest::suite() {
-    test_suite* suite = BOOST_TEST_SUITE("Variance swap tests");
+BOOST_AUTO_TEST_SUITE_END()
 
-    suite->add(QUANTLIB_TEST_CASE(
-                             &VarianceSwapTest::testReplicatingVarianceSwap));
-    suite->add(QUANTLIB_TEST_CASE(&VarianceSwapTest::testMCVarianceSwap));
-    return suite;
-}
-
+BOOST_AUTO_TEST_SUITE_END()

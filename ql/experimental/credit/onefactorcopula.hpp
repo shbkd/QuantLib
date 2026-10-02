@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -27,6 +27,7 @@
 #include <ql/experimental/credit/distribution.hpp>
 #include <ql/patterns/lazyobject.hpp>
 #include <ql/quote.hpp>
+#include <utility>
 
 namespace QuantLib {
 
@@ -100,11 +101,12 @@ namespace QuantLib {
     */
     class OneFactorCopula : public LazyObject {
       public:
-        OneFactorCopula(const Handle<Quote>& correlation,
-                        Real maximum = 5.0, Size integrationSteps = 50,
+        OneFactorCopula(Handle<Quote> correlation,
+                        Real maximum = 5.0,
+                        Size integrationSteps = 50,
                         Real minimum = -5.0)
-        : correlation_(correlation),
-          max_(maximum), steps_(integrationSteps), min_(minimum) {
+        : correlation_(std::move(correlation)), max_(maximum), steps_(integrationSteps),
+          min_(minimum) {
             QL_REQUIRE(correlation_->value() >= -1
                        && correlation_->value() <= 1,
                        "correlation out of range [-1, +1]");

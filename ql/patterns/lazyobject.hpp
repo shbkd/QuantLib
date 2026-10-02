@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -25,6 +25,7 @@
 #define quantlib_lazy_object_h
 
 #include <ql/patterns/observable.hpp>
+#include <ql/shared_ptr.hpp>
 
 namespace QuantLib {
 
@@ -34,11 +35,15 @@ namespace QuantLib {
                        public virtual Observer {
       public:
         LazyObject();
-        virtual ~LazyObject() {}
+        ~LazyObject() override = default;
         //! \name Observer interface
         //@{
-        void update();
+        void update() override;
         //@}
+        /*! Returns true if the instrument is calculated */
+        bool isCalculated() const;
+        /*! Set calculated status */
+        void setCalculated(bool c) const;
         /*! \name Calculations
             These methods do not modify the structure of the object
             and are therefore declared as <tt>const</tt>. Data members
@@ -67,22 +72,7 @@ namespace QuantLib {
             method, thus re-enabling recalculations.
         */
         void unfreeze();
-        /*! This method causes the object to forward all
-            notifications, even when not calculated.  The default
-            behavior is to forward the first notification received,
-            and discard the others until recalculated; the rationale
-            is that observers were already notified, and don't need
-            further notification until they recalculate, at which
-            point this object would be recalculated too.  After
-            recalculation, this object would again forward the first
-            notification received.
 
-            \warning Forwarding all notifications will cause a
-                     performance hit, and should be used only when
-                     discarding notifications cause an incorrect
-                     behavior.
-        */
-        void alwaysForwardNotifications();
       protected:
         /*! This method performs all needed calculations by calling
             the <i><b>performCalculations</b></i> method.
@@ -106,23 +96,120 @@ namespace QuantLib {
         */
         virtual void performCalculations() const = 0;
         //@}
-        mutable bool calculated_, frozen_, alwaysForward_;
+
+      public:
+        //! \name Notification settings
+        //@{
+        /*! This method causes the object to forward the first notification received,
+            and discard the others until recalculated; the rationale is that observers
+            were already notified, and don't need further notifications until they
+            recalculate, at which point this object would be recalculated too.
+            After recalculation, this object would again forward the first notification
+            received.
+
+            Although not always correct, this behavior is a lot faster
+            and thus is the current default.  The default can be
+            changed at compile time, or at at run time by calling
+            `LazyObject::Defaults::instance().alwaysForwardNotifications()`;
+            the run-time change won't affect lazy objects already created.
+        */
+        void forwardFirstNotificationOnly();
+
+        /*! This method causes the object to forward all notifications received.
+
+            Although safer, this behavior is a lot slower and thus
+            usually not the default.  The default can be changed at
+            compile time, or at run-time by calling
+            `LazyObject::Defaults::instance().alwaysForwardNotifications()`;
+            the run-time change won't affect lazy objects already
+            created.
+        */
+        void alwaysForwardNotifications();
+        //@}
+
+      protected:
+        mutable bool calculated_ = false, frozen_ = false, failed_ = false, alwaysForward_;
+      private:
+        bool updating_ = false;
+        class UpdateChecker {  // NOLINT(cppcoreguidelines-special-member-functions)
+            LazyObject* subject_;
+          public:
+            explicit UpdateChecker(LazyObject* subject) : subject_(subject) {
+                subject_->updating_ = true;
+            }
+            ~UpdateChecker() {
+                subject_->updating_ = false;
+            }
+        };
+      public:
+        class Defaults;
     };
 
+    //! Per-session settings for the LazyObject class
+    class LazyObject::Defaults : public Singleton<LazyObject::Defaults> {
+        friend class Singleton<LazyObject::Defaults>;
+      private:
+        Defaults() = default;
+
+      public:
+        /*! by default, lazy objects created after calling this method
+            will only forward the first notification after successful
+            recalculation; see
+            LazyObject::forwardFirstNotificationOnly for details.
+        */
+        void forwardFirstNotificationOnly() {
+            forwardsAllNotifications_ = false;
+        }
+
+        /*! by default, lazy objects created after calling this method
+            will always forward notifications; see
+            LazyObject::alwaysForwardNotifications for details.
+        */
+        void alwaysForwardNotifications() {
+            forwardsAllNotifications_ = true;
+        }
+
+        //! returns the current default
+        bool forwardsAllNotifications() const {
+            return forwardsAllNotifications_;
+        }
+
+      private:
+        #ifdef QL_FASTER_LAZY_OBJECTS
+        bool forwardsAllNotifications_ = false;
+        #else
+        bool forwardsAllNotifications_ = true;
+        #endif
+    };
 
     // inline definitions
 
     inline LazyObject::LazyObject()
-    : calculated_(false), frozen_(false), alwaysForward_(false) {}
+    : alwaysForward_(LazyObject::Defaults::instance().forwardsAllNotifications()) {}
 
     inline void LazyObject::update() {
+        if (updating_) {
+            #ifdef QL_THROW_IN_CYCLES
+            QL_FAIL("recursive notification loop detected; you probably created an object cycle");
+            #else
+            return;
+            #endif
+        }
+
+        // This sets updating to true (so the above check breaks the
+        // infinite loop if we enter this method recursively) and will
+        // set it back to false when we exit this scope, either
+        // successfully or because of an exception.
+        UpdateChecker checker(this);
+
         // forwards notifications only the first time
-        if (calculated_ || alwaysForward_) {
+        if (calculated_ || failed_ || alwaysForward_) {
             // set to false early
             // 1) to prevent infinite recursion
             // 2) otherways non-lazy observers would be served obsolete
             //    data because of calculated_ being still true
             calculated_ = false;
+            failed_ = false;
             // observers don't expect notifications from frozen objects
             if (!frozen_)
                 notifyObservers();
@@ -130,10 +217,10 @@ namespace QuantLib {
                 // already true because of non-lazy observers
         }
     }
- 
+
     inline void LazyObject::recalculate() {
         bool wasFrozen = frozen_;
-        calculated_ = frozen_ = false;
+        calculated_ = frozen_ = failed_ = false;
         try {
             calculate();
         } catch (...) {
@@ -158,6 +245,10 @@ namespace QuantLib {
         }
     }
 
+    inline void LazyObject::forwardFirstNotificationOnly() {
+        alwaysForward_ = false;
+    }
+
     inline void LazyObject::alwaysForwardNotifications() {
         alwaysForward_ = true;
     }
@@ -168,13 +259,23 @@ namespace QuantLib {
                                   // case of bootstrapping
             try {
                 performCalculations();
+                failed_ = false;  // needed when calculate() is called
+                                  // directly after a prior failure
             } catch (...) {
                 calculated_ = false;
+                failed_ = true;
                 throw;
             }
         }
     }
 
+    inline bool LazyObject::isCalculated() const {
+        return calculated_;
+    }
+
+    inline void LazyObject::setCalculated(const bool c) const {
+        calculated_ = c;
+    }
 }
 
 #endif

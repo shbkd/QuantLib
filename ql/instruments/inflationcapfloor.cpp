@@ -10,18 +10,19 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
  */
 
+#include <ql/cashflows/cashflows.hpp>
 #include <ql/instruments/inflationcapfloor.hpp>
 #include <ql/math/solvers1d/newtonsafe.hpp>
 #include <ql/quotes/simplequote.hpp>
-#include <ql/cashflows/cashflows.hpp>
 #include <ql/utilities/dataformatters.hpp>
+#include <utility>
 
 namespace QuantLib {
 
@@ -41,11 +42,11 @@ namespace QuantLib {
     }
 
     YoYInflationCapFloor::YoYInflationCapFloor(YoYInflationCapFloor::Type type,
-                       const Leg& yoyLeg,
-                       const std::vector<Rate>& capRates,
-                       const std::vector<Rate>& floorRates)
-    : type_(type), yoyLeg_(yoyLeg),
-    capRates_(capRates), floorRates_(floorRates) {
+                                               Leg yoyLeg,
+                                               std::vector<Rate> capRates,
+                                               std::vector<Rate> floorRates)
+    : type_(type), yoyLeg_(std::move(yoyLeg)), capRates_(std::move(capRates)),
+      floorRates_(std::move(floorRates)) {
         if (type_ == Cap || type_ == Collar) {
             QL_REQUIRE(!capRates_.empty(), "no cap rates given");
             capRates_.reserve(yoyLeg_.size());
@@ -66,9 +67,9 @@ namespace QuantLib {
     }
 
     YoYInflationCapFloor::YoYInflationCapFloor(YoYInflationCapFloor::Type type,
-                       const Leg& yoyLeg,
-                       const std::vector<Rate>& strikes)
-    : type_(type), yoyLeg_(yoyLeg) {
+                                               Leg yoyLeg,
+                                               const std::vector<Rate>& strikes)
+    : type_(type), yoyLeg_(std::move(yoyLeg)) {
         QL_REQUIRE(!strikes.empty(), "no strikes given");
         if (type_ == Cap) {
             capRates_ = strikes;
@@ -130,9 +131,8 @@ namespace QuantLib {
     }
 
     void YoYInflationCapFloor::setupArguments(PricingEngine::arguments* args) const {
-        YoYInflationCapFloor::arguments* arguments =
-        dynamic_cast<YoYInflationCapFloor::arguments*>(args);
-        QL_REQUIRE(arguments != 0, "wrong argument type");
+        auto* arguments = dynamic_cast<YoYInflationCapFloor::arguments*>(args);
+        QL_REQUIRE(arguments != nullptr, "wrong argument type");
 
         Size n = yoyLeg_.size();
 

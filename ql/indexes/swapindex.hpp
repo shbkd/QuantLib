@@ -9,7 +9,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
 
  This program is distributed in the hope that it will be useful, but
@@ -25,6 +25,7 @@
 
 #include <ql/indexes/interestrateindex.hpp>
 #include <ql/termstructures/yieldtermstructure.hpp>
+#include <ql/cashflows/rateaveraging.hpp>
 
 namespace QuantLib {
 
@@ -42,33 +43,33 @@ namespace QuantLib {
         SwapIndex(const std::string& familyName,
                   const Period& tenor,
                   Natural settlementDays,
-                  Currency currency,
+                  const Currency& currency,
                   const Calendar& fixingCalendar,
                   const Period& fixedLegTenor,
                   BusinessDayConvention fixedLegConvention,
                   const DayCounter& fixedLegDayCounter,
-                  const ext::shared_ptr<IborIndex>& iborIndex);
+                  ext::shared_ptr<IborIndex> iborIndex);
         SwapIndex(const std::string& familyName,
                   const Period& tenor,
                   Natural settlementDays,
-                  Currency currency,
+                  const Currency& currency,
                   const Calendar& fixingCalendar,
                   const Period& fixedLegTenor,
                   BusinessDayConvention fixedLegConvention,
                   const DayCounter& fixedLegDayCounter,
-                  const ext::shared_ptr<IborIndex>& iborIndex,
-                  const Handle<YieldTermStructure>& discountingTermStructure);
+                  ext::shared_ptr<IborIndex> iborIndex,
+                  Handle<YieldTermStructure> discountingTermStructure);
         //! \name InterestRateIndex interface
         //@{
-        Date maturityDate(const Date& valueDate) const;
+        Date maturityDate(const Date& valueDate) const override;
         //@}
         //! \name Inspectors
         //@{
         Period fixedLegTenor() const { return fixedLegTenor_; }
         BusinessDayConvention fixedLegConvention() const;
         ext::shared_ptr<IborIndex> iborIndex() const { return iborIndex_; }
-        Handle<YieldTermStructure> forwardingTermStructure() const;
-        Handle<YieldTermStructure> discountingTermStructure() const;
+        const Handle<YieldTermStructure>& forwardingTermStructure() const;
+        const Handle<YieldTermStructure>& discountingTermStructure() const;
         bool exogenousDiscount() const;
         /*! \warning Relinking the term structure underlying the index will
                      not have effect on the returned swap.
@@ -90,7 +91,7 @@ namespace QuantLib {
                         const Period& tenor) const;
         // @}
       protected:
-        Rate forecastFixing(const Date& fixingDate) const;
+        Rate forecastFixing(const Date& fixingDate) const override;
         Period tenor_;
         ext::shared_ptr<IborIndex> iborIndex_;
         Period fixedLegTenor_;
@@ -111,21 +112,25 @@ namespace QuantLib {
                   const std::string& familyName,
                   const Period& tenor,
                   Natural settlementDays,
-                  Currency currency,
+                  const Currency& currency,
                   const ext::shared_ptr<OvernightIndex>& overnightIndex,
-                  bool telescopicValueDates = false);
+                  bool telescopicValueDates = false,
+                  RateAveraging::Type averagingMethod = RateAveraging::Compound);
         //! \name Inspectors
         //@{
         ext::shared_ptr<OvernightIndex> overnightIndex() const;
         /*! \warning Relinking the term structure underlying the index will
                      not have effect on the returned swap.
         */
+        // Intentionally hides the base method to return the concrete swap type.
+        // cppcheck-suppress duplInheritedMember
         ext::shared_ptr<OvernightIndexedSwap> underlyingSwap(
                                                 const Date& fixingDate) const;
         //@}
       protected:
         ext::shared_ptr<OvernightIndex> overnightIndex_;
         bool telescopicValueDates_;
+        RateAveraging::Type averagingMethod_;
         // cache data to avoid swap recreation when the same fixing date
         // is used multiple time to forecast changing fixing
         mutable ext::shared_ptr<OvernightIndexedSwap> lastSwap_;

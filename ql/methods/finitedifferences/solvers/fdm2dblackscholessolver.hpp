@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -35,14 +35,13 @@ namespace QuantLib {
 
     class Fdm2dBlackScholesSolver : public LazyObject {
       public:
-        Fdm2dBlackScholesSolver(
-            const Handle<GeneralizedBlackScholesProcess>& p1,
-            const Handle<GeneralizedBlackScholesProcess>& p2,
-            const Real correlation,
-            const FdmSolverDesc& solverDesc,
-            const FdmSchemeDesc& schemeDesc = FdmSchemeDesc::Hundsdorfer(),
-            bool localVol = false,
-            Real illegalLocalVolOverwrite = -Null<Real>());
+        Fdm2dBlackScholesSolver(Handle<GeneralizedBlackScholesProcess> p1,
+                                Handle<GeneralizedBlackScholesProcess> p2,
+                                Real correlation,
+                                FdmSolverDesc solverDesc,
+                                const FdmSchemeDesc& schemeDesc = FdmSchemeDesc::Hundsdorfer(),
+                                bool localVol = false,
+                                Real illegalLocalVolOverwrite = -Null<Real>());
 
         Real valueAt(Real x, Real y) const;
         Real thetaAt(Real x, Real y) const;
@@ -54,7 +53,7 @@ namespace QuantLib {
         Real gammaXYat(Real x, Real y) const;
 
       protected:
-        void performCalculations() const;
+        void performCalculations() const override;
 
       private:
         const Handle<GeneralizedBlackScholesProcess> p1_;

@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -72,11 +72,11 @@ namespace QuantLib {
         BusinessDayConvention businessDayConvention() const;
         const DayCounter& dayCounter() const;
         //! term structure relevant to the contract (e.g. repo curve)
-        Handle<YieldTermStructure> discountCurve() const;
+        const Handle<YieldTermStructure>& discountCurve() const;
         //! term structure that discounts the underlying's income cash flows
-        Handle<YieldTermStructure> incomeDiscountCurve() const;
+        const Handle<YieldTermStructure>& incomeDiscountCurve() const;
         //! returns whether the instrument is still tradable.
-        bool isExpired() const;
+        bool isExpired() const override;
         //@}
 
         //! returns spot value/price of an underlying financial instrument
@@ -106,20 +106,19 @@ namespace QuantLib {
                                   Real forwardValue,
                                   Date settlementDate,
                                   Compounding compoundingConvention,
-                                  DayCounter dayCounter);
+                                  const DayCounter& dayCounter);
         //@}
       protected:
-        Forward(const DayCounter& dayCounter,
-                const Calendar& calendar,
+        Forward(DayCounter dayCounter,
+                Calendar calendar,
                 BusinessDayConvention businessDayConvention,
                 Natural settlementDays,
-                const ext::shared_ptr<Payoff>& payoff,
+                ext::shared_ptr<Payoff> payoff,
                 const Date& valueDate,
                 const Date& maturityDate,
-                const Handle<YieldTermStructure>& discountCurve =
-                                                Handle<YieldTermStructure>());
+                Handle<YieldTermStructure> discountCurve = Handle<YieldTermStructure>());
 
-        void performCalculations() const;
+        void performCalculations() const override;
         /*! derived classes must set this, typically via spotIncome() */
         mutable Real underlyingIncome_;
         /*! derived classes must set this, typically via spotValue() */
@@ -153,9 +152,9 @@ namespace QuantLib {
         Real strike() const { return strike_; };
         //! \name Payoff interface
         //@{
-        std::string name() const { return "Forward";}
-        std::string description() const;
-        Real operator()(Real price) const;
+        std::string name() const override { return "Forward"; }
+        std::string description() const override;
+        Real operator()(Real price) const override;
         //@}
       protected:
         Position::Type type_;
@@ -178,11 +177,11 @@ namespace QuantLib {
         return dayCounter_;
     }
 
-    inline Handle<YieldTermStructure> Forward::discountCurve() const {
+    inline const Handle<YieldTermStructure>& Forward::discountCurve() const {
         return discountCurve_;
     }
 
-    inline Handle<YieldTermStructure> Forward::incomeDiscountCurve() const {
+    inline const Handle<YieldTermStructure>& Forward::incomeDiscountCurve() const {
         return incomeDiscountCurve_;
     }
 

@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -35,7 +35,7 @@ namespace QuantLib {
     class QuantoOptionResults : public ResultsType {
       public:
         QuantoOptionResults() { reset() ;}
-        void reset() {
+        void reset() override {
             ResultsType::reset();
             qvega = qrho = qlambda = Null<Real>();
         }
@@ -59,9 +59,10 @@ namespace QuantLib {
         Real qrho() const;
         Real qlambda() const;
         //@}
-        void fetchResults(const PricingEngine::results*) const;
+        void fetchResults(const PricingEngine::results*) const override;
+
       private:
-        void setupExpired() const;
+        void setupExpired() const override;
         // results
         mutable Real qvega_, qrho_, qlambda_;
     };

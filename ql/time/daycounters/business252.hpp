@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -25,9 +25,10 @@
 #ifndef quantlib_business252_day_counter_hpp
 #define quantlib_business252_day_counter_hpp
 
-#include <ql/time/daycounter.hpp>
 #include <ql/time/calendar.hpp>
 #include <ql/time/calendars/brazil.hpp>
+#include <ql/time/daycounter.hpp>
+#include <utility>
 
 namespace QuantLib {
 
@@ -35,23 +36,19 @@ namespace QuantLib {
     /*! \ingroup daycounters */
     class Business252 : public DayCounter {
       private:
-        class Impl : public DayCounter::Impl {
+        class Impl final : public DayCounter::Impl {
           private:
             Calendar calendar_;
           public:
-            std::string name() const;
-            Date::serial_type dayCount(const Date& d1,
-                                       const Date& d2) const;
-            Time yearFraction(const Date& d1,
-                              const Date& d2,
-                              const Date&,
-                              const Date&) const;
-            explicit Impl(Calendar c) { calendar_ = c; }
+            std::string name() const override;
+            Date::serial_type dayCount(const Date& d1, const Date& d2) const override;
+            Time
+            yearFraction(const Date& d1, const Date& d2, const Date&, const Date&) const override;
+            explicit Impl(Calendar c) : calendar_(std::move(c)) {}
         };
       public:
-        Business252(Calendar c = Brazil())
-        : DayCounter(ext::shared_ptr<DayCounter::Impl>(
-                                                 new Business252::Impl(c))) {}
+        Business252(const Calendar& c = Brazil())
+        : DayCounter(ext::make_shared<Business252::Impl>(c)) {}
     };
 
 }

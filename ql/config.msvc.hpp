@@ -12,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -25,8 +25,8 @@
 #include <ql/userconfig.hpp>
 
 // first things first
-#if (_MSC_VER < 1600)
-#  error "versions of Visual C++ prior to VC++10 (2010) are no longer supported"
+#if (_MSC_VER < 1910)
+#  error "versions of Visual C++ prior to VC++ 2017 are no longer supported"
 #endif
 
 /*******************************************
@@ -48,16 +48,23 @@
 // conditionally work around compiler glitches
 #define QL_PATCH_MSVC
 
-// prevent auto-link of Boost libs such as serialization
-#define BOOST_ALL_NO_LIB
-
 // Compilation on the x64 platform throws a lot of warnings assigning
 // QuantLib::Size == size_t (64 bit) to QuantLib::Integer == int (32
 // bit under x64 Windows). We disable this warning until a better
 // solution is suggested.
+//
+// This is deliberately not wrapped in warning(push)/warning(pop): the
+// suppression has to stay in effect for the whole translation unit,
+// since it is QuantLib's own inline and template code in the headers
+// that triggers it.  As a side effect it also silences C4267 in the
+// including code for the rest of that translation unit.
+//
+// A cmake build never sees this file -- it selects the generated
+// ql/config.hpp instead -- and gets /wd4267 from cmake/Platform.cmake.
 #ifdef _M_X64
 #pragma warning(disable : 4267)
 #endif
+
 
 #ifndef _CPPRTTI
 #   error Enable Run-Time Type Info (Property Pages | C/C++ | Language)

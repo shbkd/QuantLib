@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -37,8 +37,8 @@ namespace QuantLib {
 
     class VolatilityCube {
       public:
-        VolatilityCube(const std::vector<Handle<InterestRateVolSurface> >&,
-                       const std::vector<Handle<AbcdAtmVolCurve> >&);
+        VolatilityCube(std::vector<Handle<InterestRateVolSurface> >,
+                       std::vector<Handle<AbcdAtmVolCurve> >);
         const Period& minIndexTenor() const;
         const Period& maxIndexTenor() const;
         const std::vector<Handle<InterestRateVolSurface> >& surfaces() const;

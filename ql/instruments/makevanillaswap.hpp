@@ -12,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -32,28 +32,39 @@
 
 namespace QuantLib {
 
-    //! helper class
+    //! vanilla-swap builder
     /*! This class provides a more comfortable way
-        to instantiate standard market swap.
+        to instantiate a standard market swap.
     */
     class MakeVanillaSwap {
       public:
         MakeVanillaSwap(const Period& swapTenor,
+                        const ext::shared_ptr<IborIndex>& iborIndex);
+
+        /*! \deprecated Use the other constructor plus withFixedRate and/or withForwardStart.
+                        Deprecated in version 1.44.
+        */
+        [[deprecated("Use the other constructor plus withFixedRate and/or withForwardStart.")]]
+        MakeVanillaSwap(const Period& swapTenor,
                         const ext::shared_ptr<IborIndex>& iborIndex,
-                        Rate fixedRate = Null<Rate>(),
+                        Rate fixedRate,
                         const Period& forwardStart = 0*Days);
 
         operator VanillaSwap() const;
         operator ext::shared_ptr<VanillaSwap>() const;
 
         MakeVanillaSwap& receiveFixed(bool flag = true);
-        MakeVanillaSwap& withType(VanillaSwap::Type type);
+        MakeVanillaSwap& withType(Swap::Type type);
         MakeVanillaSwap& withNominal(Real n);
+        MakeVanillaSwap& withFixedRate(Rate k);
 
+        MakeVanillaSwap& withForwardStart(const Period& f);
         MakeVanillaSwap& withSettlementDays(Natural settlementDays);
+        MakeVanillaSwap& withSettlementCalendar(const Calendar& cal);
         MakeVanillaSwap& withEffectiveDate(const Date&);
         MakeVanillaSwap& withTerminationDate(const Date&);
         MakeVanillaSwap& withRule(DateGeneration::Rule r);
+        MakeVanillaSwap& withPaymentConvention(BusinessDayConvention bdc);
 
         MakeVanillaSwap& withFixedLegTenor(const Period& t);
         MakeVanillaSwap& withFixedLegCalendar(const Calendar& cal);
@@ -73,6 +84,7 @@ namespace QuantLib {
                                                    BusinessDayConvention bdc);
         MakeVanillaSwap& withFloatingLegRule(DateGeneration::Rule r);
         MakeVanillaSwap& withFloatingLegEndOfMonth(bool flag = true);
+        MakeVanillaSwap& withMaturityEndOfMonth(bool flag = true);
         MakeVanillaSwap& withFloatingLegFirstDate(const Date& d);
         MakeVanillaSwap& withFloatingLegNextToLastDate(const Date& d);
         MakeVanillaSwap& withFloatingLegDayCount(const DayCounter& dc);
@@ -82,27 +94,36 @@ namespace QuantLib {
                               const Handle<YieldTermStructure>& discountCurve);
         MakeVanillaSwap& withPricingEngine(
                               const ext::shared_ptr<PricingEngine>& engine);
+        MakeVanillaSwap& withIndexedCoupons(const std::optional<bool>& b = true);
+        MakeVanillaSwap& withAtParCoupons(bool b = true);
       private:
         Period swapTenor_;
         ext::shared_ptr<IborIndex> iborIndex_;
-        Rate fixedRate_;
-        Period forwardStart_;
 
-        Natural settlementDays_;
+        Rate fixedRate_ = Null<Rate>();
+        Period forwardStart_ = 0*Days;
+
+        Natural settlementDays_ = Null<Natural>();
         Date effectiveDate_, terminationDate_;
         Calendar fixedCalendar_, floatCalendar_;
+        Calendar settlementCalendar_;
 
-        VanillaSwap::Type type_;
-        Real nominal_;
+        Swap::Type type_ = Swap::Payer;
+        Real nominal_ = 1.0;
         Period fixedTenor_, floatTenor_;
-        BusinessDayConvention fixedConvention_, fixedTerminationDateConvention_;
+        BusinessDayConvention fixedConvention_ = ModifiedFollowing,
+                              fixedTerminationDateConvention_ = ModifiedFollowing;
         BusinessDayConvention floatConvention_, floatTerminationDateConvention_;
-        DateGeneration::Rule fixedRule_, floatRule_;
-        bool fixedEndOfMonth_, floatEndOfMonth_;
+        DateGeneration::Rule fixedRule_ = DateGeneration::Backward,
+                             floatRule_ = DateGeneration::Backward;
+        bool fixedEndOfMonth_ = false, floatEndOfMonth_ = false;
+        std::optional<bool> maturityEndOfMonth_;
         Date fixedFirstDate_, fixedNextToLastDate_;
         Date floatFirstDate_, floatNextToLastDate_;
-        Spread floatSpread_;
+        Spread floatSpread_ = 0.0;
         DayCounter fixedDayCount_, floatDayCount_;
+        std::optional<bool> useIndexedCoupons_;
+        std::optional<BusinessDayConvention> paymentConvention_;
 
         ext::shared_ptr<PricingEngine> engine_;
     };

@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -67,11 +67,11 @@ namespace QuantLib {
 
         //! \name Lattice interface
         //@{
-        void initialize(DiscretizedAsset&, Time t) const;
-        void rollback(DiscretizedAsset&, Time to) const;
-        void partialRollback(DiscretizedAsset&, Time to) const;
+        void initialize(DiscretizedAsset&, Time t) const override;
+        void rollback(DiscretizedAsset&, Time to) const override;
+        void partialRollback(DiscretizedAsset&, Time to) const override;
         //! Computes the present value of an asset using Arrow-Debrew prices
-        Real presentValue(DiscretizedAsset&) const;
+        Real presentValue(DiscretizedAsset&) const override;
         //@}
 
         const Array& statePrices(Size i) const;
@@ -149,8 +149,8 @@ namespace QuantLib {
                    "cannot roll the asset back to" << to
                    << " (it is already at t = " << from << ")");
 
-        Integer iFrom = Integer(t_.index(from));
-        Integer iTo = Integer(t_.index(to));
+        auto iFrom = Integer(t_.index(from));
+        auto iTo = Integer(t_.index(to));
 
         for (Integer i=iFrom-1; i>=iTo; --i) {
             Array newValues(this->impl().size(i));
@@ -166,7 +166,11 @@ namespace QuantLib {
     template <class Impl>
     void TreeLattice<Impl>::stepback(Size i, const Array& values,
                                      Array& newValues) const {
-        #pragma omp parallel for
+        // Early tree steps can have very few nodes, where the cost of
+        // spawning an OpenMP thread team outweighs the work being
+        // parallelized. Only parallelize once there's enough work to
+        // amortize that overhead.
+        #pragma omp parallel for if(this->impl().size(i) >= 1024)
         for (long j=0; j<(long)this->impl().size(i); j++) {
             Real value = 0.0;
             for (Size l=0; l<n_; l++) {

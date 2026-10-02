@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -34,17 +34,21 @@ namespace QuantLib {
     }
 
     //! Backward-flat interpolation between discrete points
-    /*! \ingroup interpolations */
+    /*! \ingroup interpolations
+        \warning See the Interpolation class for information about the
+                 required lifetime of the underlying data.
+    */
     class BackwardFlatInterpolation : public Interpolation {
       public:
         /*! \pre the \f$ x \f$ values must be sorted. */
         template <class I1, class I2>
         BackwardFlatInterpolation(const I1& xBegin, const I1& xEnd,
-                                  const I2& yBegin) {
+                                  const I2& yBegin, bool update = true) {
             impl_ = ext::shared_ptr<Interpolation::Impl>(new
                 detail::BackwardFlatInterpolationImpl<I1,I2>(xBegin, xEnd,
                                                              yBegin));
-            impl_->update();
+            if (update)
+                impl_->update();
         }
     };
 
@@ -54,8 +58,8 @@ namespace QuantLib {
       public:
         template <class I1, class I2>
         Interpolation interpolate(const I1& xBegin, const I1& xEnd,
-                                  const I2& yBegin) const {
-            return BackwardFlatInterpolation(xBegin, xEnd, yBegin);
+                                  const I2& yBegin, bool update = true) const {
+            return BackwardFlatInterpolation(xBegin, xEnd, yBegin, update);
         }
         static const bool global = false;
         static const Size requiredPoints = 1;
@@ -64,7 +68,7 @@ namespace QuantLib {
     namespace detail {
 
         template <class I1, class I2>
-        class BackwardFlatInterpolationImpl
+        class BackwardFlatInterpolationImpl final
             : public Interpolation::templateImpl<I1,I2> {
           public:
             BackwardFlatInterpolationImpl(const I1& xBegin, const I1& xEnd,
@@ -72,7 +76,7 @@ namespace QuantLib {
             : Interpolation::templateImpl<I1,I2>(xBegin,xEnd,yBegin,
                                                  BackwardFlat::requiredPoints),
               primitive_(xEnd-xBegin) {}
-            void update() {
+            void update() override {
                 Size n = this->xEnd_-this->xBegin_;
                 primitive_[0] = 0.0;
                 for (Size i=1; i<n; i++) {
@@ -80,7 +84,7 @@ namespace QuantLib {
                     primitive_[i] = primitive_[i-1] + dx*this->yBegin_[i];
                 }
             }
-            Real value(Real x) const {
+            Real value(Real x) const override {
                 if (x <= this->xBegin_[0]
                     || std::distance(this->xBegin_, this->xEnd_) == 1)
                     return this->yBegin_[0];
@@ -91,7 +95,7 @@ namespace QuantLib {
                 else
                     return this->yBegin_[i+1];
             }
-            Real primitive(Real x) const {
+            Real primitive(Real x) const override {
                 if (std::distance(this->xBegin_, this->xEnd_) == 1)
                     return (x - this->xBegin_[0]) * this->yBegin_[0];
 
@@ -99,12 +103,9 @@ namespace QuantLib {
                 Real dx = x-this->xBegin_[i];
                 return primitive_[i] + dx*this->yBegin_[i+1];
             }
-            Real derivative(Real) const {
-                return 0.0;
-            }
-            Real secondDerivative(Real) const {
-                return 0.0;
-            }
+            Real derivative(Real) const override { return 0.0; }
+            Real secondDerivative(Real) const override { return 0.0; }
+
           private:
             std::vector<Real> primitive_;
         };

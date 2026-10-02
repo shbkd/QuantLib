@@ -17,7 +17,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -38,6 +38,7 @@
 #include <ql/utilities/vectors.hpp>
 #include <ql/position.hpp>
 #include <ql/indexes/swapindex.hpp>
+#include <type_traits>
 
 namespace QuantLib {
 
@@ -70,8 +71,13 @@ namespace QuantLib {
                     const std::vector<Rate>& floors,
                     bool isInArrears,
                     bool isZero,
-                    Natural paymentLag = 0,
-                    Calendar paymentCalendar = Calendar()) {
+                    Integer paymentLag = 0,
+                    Calendar paymentCalendar = Calendar(),
+                    Period exCouponPeriod = Period(),
+                    Calendar exCouponCalendar = Calendar(),
+                    BusinessDayConvention exCouponAdjustment = Unadjusted,
+                    bool exCouponEndOfMonth = false,
+                    BusinessDayConvention fixingConvention = Preceding) {
 
         Size n = schedule.size()-1;
         QL_REQUIRE(!nominals.empty(), "no notional given");
@@ -96,12 +102,13 @@ namespace QuantLib {
         Leg leg; leg.reserve(n);
 
         // the following is not always correct
-        Calendar calendar = schedule.calendar();
-        
+        const Calendar& calendar = schedule.calendar();
+
         if (paymentCalendar.empty()) {
             paymentCalendar = calendar;
         }
         Date refStart, start, refEnd, end;
+        Date exCouponDate;
         Date lastPaymentDate = paymentCalendar.advance(schedule.date(n), paymentLag, Days, paymentAdj);
 
         for (Size i=0; i<n; ++i) {
@@ -117,6 +124,13 @@ namespace QuantLib {
                 BusinessDayConvention bdc = schedule.businessDayConvention();
                 refEnd = calendar.adjust(start + schedule.tenor(), bdc);
             }
+            if (exCouponPeriod != Period()) {
+                if (exCouponCalendar.empty()) {
+                    exCouponCalendar = calendar;
+                }
+                exCouponDate = exCouponCalendar.advance(paymentDate, -exCouponPeriod,
+                                                         exCouponAdjustment, exCouponEndOfMonth);
+            }
             if (detail::get(gearings, i, 1.0) == 0.0) { // fixed coupon
                 leg.push_back(ext::shared_ptr<CashFlow>(new
                     FixedRateCoupon(paymentDate,
@@ -124,35 +138,79 @@ namespace QuantLib {
                                     detail::effectiveFixedRate(spreads,caps,
                                                                floors,i),
                                     paymentDayCounter,
-                                    start, end, refStart, refEnd)));
+                                    start, end, refStart, refEnd, 
+						            exCouponDate)));
             } else { // floating coupon
-                if (detail::noOption(caps, floors, i))
-                    leg.push_back(ext::shared_ptr<CashFlow>(new
-                        FloatingCouponType(
-                            paymentDate,
-                            detail::get(nominals, i, 1.0),
-                            start, end,
-                            detail::get(fixingDays, i, index->fixingDays()),
-                            index,
-                            detail::get(gearings, i, 1.0),
-                            detail::get(spreads, i, 0.0),
-                            refStart, refEnd,
-                            paymentDayCounter, isInArrears)));
-                else {
-                    leg.push_back(ext::shared_ptr<CashFlow>(new
-                        CappedFlooredCouponType(
-                               paymentDate,
-                               detail::get(nominals, i, 1.0),
-                               start, end,
-                               detail::get(fixingDays, i, index->fixingDays()),
-                               index,
-                               detail::get(gearings, i, 1.0),
-                               detail::get(spreads, i, 0.0),
-                               detail::get(caps,   i, Null<Rate>()),
-                               detail::get(floors, i, Null<Rate>()),
-                               refStart, refEnd,
-                               paymentDayCounter,
-                               isInArrears)));
+                if (detail::noOption(caps, floors, i)) {
+                    if constexpr (std::is_constructible_v<FloatingCouponType,
+                                      Date, Real, Date, Date, Natural,
+                                      ext::shared_ptr<InterestRateIndexType>,
+                                      Real, Spread, Date, Date,
+                                      DayCounter, bool, Date,
+                                      BusinessDayConvention>) {
+                        leg.push_back(ext::shared_ptr<CashFlow>(new
+                            FloatingCouponType(
+                                paymentDate,
+                                detail::get(nominals, i, 1.0),
+                                start, end,
+                                detail::get(fixingDays, i, index->fixingDays()),
+                                index,
+                                detail::get(gearings, i, 1.0),
+                                detail::get(spreads, i, 0.0),
+                                refStart, refEnd,
+                                paymentDayCounter, isInArrears, exCouponDate,
+                                fixingConvention)));
+                    } else {
+                        leg.push_back(ext::shared_ptr<CashFlow>(new
+                            FloatingCouponType(
+                                paymentDate,
+                                detail::get(nominals, i, 1.0),
+                                start, end,
+                                detail::get(fixingDays, i, index->fixingDays()),
+                                index,
+                                detail::get(gearings, i, 1.0),
+                                detail::get(spreads, i, 0.0),
+                                refStart, refEnd,
+                                paymentDayCounter, isInArrears, exCouponDate)));
+                    }
+                } else {
+                    if constexpr (std::is_constructible_v<CappedFlooredCouponType,
+                                      Date, Real, Date, Date, Natural,
+                                      ext::shared_ptr<InterestRateIndexType>,
+                                      Real, Spread, Rate, Rate, Date, Date,
+                                      DayCounter, bool, Date,
+                                      BusinessDayConvention>) {
+                        leg.push_back(ext::shared_ptr<CashFlow>(new
+                            CappedFlooredCouponType(
+                                   paymentDate,
+                                   detail::get(nominals, i, 1.0),
+                                   start, end,
+                                   detail::get(fixingDays, i, index->fixingDays()),
+                                   index,
+                                   detail::get(gearings, i, 1.0),
+                                   detail::get(spreads, i, 0.0),
+                                   detail::get(caps,   i, Null<Rate>()),
+                                   detail::get(floors, i, Null<Rate>()),
+                                   refStart, refEnd,
+                                   paymentDayCounter,
+                                   isInArrears, exCouponDate,
+                                   fixingConvention)));
+                    } else {
+                        leg.push_back(ext::shared_ptr<CashFlow>(new
+                            CappedFlooredCouponType(
+                                   paymentDate,
+                                   detail::get(nominals, i, 1.0),
+                                   start, end,
+                                   detail::get(fixingDays, i, index->fixingDays()),
+                                   index,
+                                   detail::get(gearings, i, 1.0),
+                                   detail::get(spreads, i, 0.0),
+                                   detail::get(caps,   i, Null<Rate>()),
+                                   detail::get(floors, i, Null<Rate>()),
+                                   refStart, refEnd,
+                                   paymentDayCounter,
+                                   isInArrears, exCouponDate)));
+                    }
                 }
             }
         }
@@ -181,8 +239,8 @@ namespace QuantLib {
                         Position::Type putPosition,
                         bool isPutATMIncluded,
                         const std::vector<Rate>& putDigitalPayoffs,
-                        const ext::shared_ptr<DigitalReplication>& replication)
-    {
+                        const ext::shared_ptr<DigitalReplication>& replication,
+                        bool nakedOption = false) {
         Size n = schedule.size()-1;
         QL_REQUIRE(!nominals.empty(), "no notional given");
         QL_REQUIRE(nominals.size() <= n,
@@ -204,7 +262,7 @@ namespace QuantLib {
         Leg leg; leg.reserve(n);
 
         // the following is not always correct
-        Calendar calendar = schedule.calendar();
+        const Calendar& calendar = schedule.calendar();
 
         Date refStart, start, refEnd, end;
         Date paymentDate;
@@ -250,7 +308,7 @@ namespace QuantLib {
                              putPosition,
                              isPutATMIncluded,
                              detail::get(putDigitalPayoffs, i, Null<Real>()),
-                             replication)));
+                             replication, nakedOption)));
             }
         }
         return leg;

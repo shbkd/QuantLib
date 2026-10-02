@@ -7,6 +7,7 @@
  Copyright (C) 2007 Giorgio Facchinetti
  Copyright (C) 2015 Peter Caspers
  Copyright (C) 2015 Michael von den Driesch
+ Copyright (C) 2026 Kyrylo Protsenko
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -15,7 +16,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -37,27 +38,24 @@ namespace QuantLib {
     class CapFloor;
     class PricingEngine;
 
-    /*! \deprecated No longer used.
-                    Deprecated in version 1.10.
-    */
-    QL_DEPRECATED
-    typedef std::vector<std::vector<ext::shared_ptr<CapFloor> > > CapFloorMatrix;
-
     /*! Helper class to strip optionlet (i.e. caplet/floorlet) volatilities
         (a.k.a. forward-forward volatilities) from the (cap/floor) term
         volatilities of a CapFloorTermVolSurface.
     */
     class OptionletStripper1 : public OptionletStripper {
       public:
-        OptionletStripper1(const ext::shared_ptr< CapFloorTermVolSurface > &,
-                           const ext::shared_ptr< IborIndex > &index,
-                           Rate switchStrikes = Null< Rate >(),
-                           Real accuracy = 1.0e-6, Natural maxIter = 100,
-                           const Handle< YieldTermStructure > &discount =
-                               Handle< YieldTermStructure >(),
-                           const VolatilityType type = ShiftedLognormal,
-                           const Real displacement = 0.0,
-                           bool dontThrow = false);
+        OptionletStripper1(
+            const ext::shared_ptr<CapFloorTermVolSurface>&,
+            const ext::shared_ptr<IborIndex>& index,
+            Rate switchStrikes = Null<Rate>(),
+            Real accuracy = 1.0e-6,
+            Natural maxIter = 100,
+            const Handle<YieldTermStructure>& discount = {},
+            VolatilityType type = ShiftedLognormal,
+            Real displacement = 0.0,
+            bool dontThrow = false,
+            std::optional<Period> optionletFrequency = std::nullopt,
+            Natural paymentLag = 0);
 
         const Matrix& capFloorPrices() const;
         const Matrix &capletVols() const;
@@ -67,7 +65,7 @@ namespace QuantLib {
 
         //! \name LazyObject interface
         //@{
-        void performCalculations() const;
+        void performCalculations() const override;
         //@}
       private:
         mutable Matrix capFloorPrices_, optionletPrices_;

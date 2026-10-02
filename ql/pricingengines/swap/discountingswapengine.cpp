@@ -11,27 +11,29 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include <ql/pricingengines/swap/discountingswapengine.hpp>
 #include <ql/cashflows/cashflows.hpp>
+#include <ql/pricingengines/swap/discountingswapengine.hpp>
 #include <ql/utilities/dataformatters.hpp>
+#include <ql/optional.hpp>
+#include <utility>
 
 namespace QuantLib {
 
     DiscountingSwapEngine::DiscountingSwapEngine(
-                            const Handle<YieldTermStructure>& discountCurve,
-                            boost::optional<bool> includeSettlementDateFlows,
-                            Date settlementDate,
-                            Date npvDate)
-    : discountCurve_(discountCurve),
-      includeSettlementDateFlows_(includeSettlementDateFlows),
-      settlementDate_(settlementDate), npvDate_(npvDate) {
+        Handle<YieldTermStructure> discountCurve,
+        const std::optional<bool>& includeSettlementDateFlows,
+        Date settlementDate,
+        Date npvDate)
+    : discountCurve_(std::move(discountCurve)),
+      includeSettlementDateFlows_(includeSettlementDateFlows), settlementDate_(settlementDate),
+      npvDate_(npvDate) {
         registerWith(discountCurve_);
     }
 
@@ -69,21 +71,19 @@ namespace QuantLib {
         results_.startDiscounts.resize(n);
         results_.endDiscounts.resize(n);
 
-        bool includeRefDateFlows =
-            includeSettlementDateFlows_ ?
-            *includeSettlementDateFlows_ :
-            Settings::instance().includeReferenceDateEvents();
+        bool includeRefDateFlows = includeSettlementDateFlows_ ? // NOLINT(readability-implicit-bool-conversion)
+                                       *includeSettlementDateFlows_ :
+                                       Settings::instance().includeReferenceDateEvents();
 
         for (Size i=0; i<n; ++i) {
             try {
                 const YieldTermStructure& discount_ref = **discountCurve_;
-                CashFlows::npvbps(arguments_.legs[i],
-                                  discount_ref,
-                                  includeRefDateFlows,
-                                  settlementDate,
-                                  results_.valuationDate,
-                                  results_.legNPV[i],
-                                  results_.legBPS[i]);
+                std::tie(results_.legNPV[i], results_.legBPS[i]) =
+                    CashFlows::npvbps(arguments_.legs[i],
+                                      discount_ref,
+                                      includeRefDateFlows,
+                                      settlementDate,
+                                      results_.valuationDate);
                 results_.legNPV[i] *= arguments_.payer[i];
                 results_.legBPS[i] *= arguments_.payer[i];
 

@@ -1,7 +1,7 @@
 /* -*- mode: c++; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- */
 
 /*
- Copyright (C) 2015 Johannes Goettker-Schnetmann
+ Copyright (C) 2015 Johannes Göttker-Schnetmann
  Copyright (C) 2015 Klaus Spanderen
 
  This file is part of QuantLib, a free-software/open-source library
@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -24,14 +24,11 @@
 
 #include <ql/math/functional.hpp>
 #include <ql/math/solvers1d/brent.hpp>
-#include <ql/time/calendars/nullcalendar.hpp>
 #include <ql/pricingengines/blackformula.hpp>
 #include <ql/termstructures/volatility/equityfx/hestonblackvolsurface.hpp>
-
-#include <boost/bind.hpp>
-#include <boost/scoped_ptr.hpp>
-
+#include <ql/time/calendars/nullcalendar.hpp>
 #include <limits>
+#include <utility>
 
 namespace QuantLib {
 
@@ -49,15 +46,13 @@ namespace QuantLib {
     HestonBlackVolSurface::HestonBlackVolSurface(
         const Handle<HestonModel>& hestonModel,
         const AnalyticHestonEngine::ComplexLogFormula cpxLogFormula,
-        const AnalyticHestonEngine::Integration& integration)
-    : BlackVolTermStructure(
-          hestonModel->process()->riskFreeRate()->referenceDate(),
-          NullCalendar(),
-          Following,
-          hestonModel->process()->riskFreeRate()->dayCounter()),
-      hestonModel_(hestonModel),
-      cpxLogFormula_(cpxLogFormula),
-      integration_(integration) {
+        AnalyticHestonEngine::Integration integration)
+    : BlackVolTermStructure(hestonModel->process()->riskFreeRate()->referenceDate(),
+                            NullCalendar(),
+                            Following,
+                            hestonModel->process()->riskFreeRate()->dayCounter()),
+      hestonModel_(hestonModel), cpxLogFormula_(cpxLogFormula),
+      integration_(std::move(integration)) {
         registerWith(hestonModel_);
     }
 
@@ -74,54 +69,48 @@ namespace QuantLib {
         return std::numeric_limits<Real>::max();
     }
 
+    Real HestonBlackVolSurface::atmLevel(Time t) const {
+        const ext::shared_ptr<HestonProcess>& process = hestonModel_->process();
+        return process->s0()->value()
+            * process->dividendYield()->discount(t, true)
+            / process->riskFreeRate()->discount(t, true);
+    }
+
     Real HestonBlackVolSurface::blackVarianceImpl(Time t, Real strike) const {
-        return square<Real>()(blackVolImpl(t, strike))*t;
+        return squared(blackVolImpl(t, strike))*t;
     }
 
     Volatility HestonBlackVolSurface::blackVolImpl(Time t, Real strike) const {
-        const ext::shared_ptr<HestonProcess> process = hestonModel_->process();
+        AnalyticHestonEngine hestonEngine(
+                    hestonModel_.currentLink(), cpxLogFormula_, integration_);
+
+        const ext::shared_ptr<HestonProcess>& process = hestonModel_->process();
 
         const DiscountFactor df = process->riskFreeRate()->discount(t, true);
-        const DiscountFactor div = process->dividendYield()->discount(t, true);
-        const Real spotPrice = process->s0()->value();
 
-        const Real fwd = spotPrice
-            * process->dividendYield()->discount(t, true)
-            / process->riskFreeRate()->discount(t, true);
+        const Real fwd = process->s0()->value()
+            * process->dividendYield()->discount(t, true) / df;
 
+        const ext::shared_ptr<PlainVanillaPayoff> payoff =
+            ext::make_shared<PlainVanillaPayoff>(
+                            fwd > strike ? Option::Put : Option::Call, strike);
 
-        const PlainVanillaPayoff payoff(
-            fwd > strike ? Option::Put : Option::Call, strike);
+        const Real npv = hestonEngine.priceVanillaPayoff(payoff, t);
 
-        const Real kappa = hestonModel_->kappa();
         const Real theta = hestonModel_->theta();
-        const Real rho   = hestonModel_->rho();
-        const Real sigma = hestonModel_->sigma();
-        const Real v0    = hestonModel_->v0();
-
-        const boost::scoped_ptr<AnalyticHestonEngine> hestonEngine(
-            new AnalyticHestonEngine(
-                hestonModel_.currentLink(), cpxLogFormula_, integration_));
-
-        Real npv;
-        Size evaluations;
-
-        AnalyticHestonEngine::doCalculation(
-            df, div, spotPrice, strike, t,
-            kappa, theta, sigma, v0, rho,
-            payoff, integration_, cpxLogFormula_,
-            hestonEngine.get(), npv, evaluations);
-
         if (npv <= 0.0) return std::sqrt(theta);
 
         Brent solver;
         solver.setMaxEvaluations(10000);
         const Volatility guess = std::sqrt(theta);
-        const Real accuracy = std::numeric_limits<Real>::epsilon();
+        constexpr double accuracy = std::numeric_limits<double>::epsilon();
 
-        const boost::function<Real(Real)> f = boost::bind(
-            &blackValue, payoff.optionType(), strike, fwd, t, _1, df, npv);
-
-        return solver.solve(f, accuracy, guess, 0.01);
+        return solver.solve(
+            [&](Volatility _v) {
+                return blackValue(
+                    payoff->optionType(), strike, fwd, t, _v, df, npv);
+            },
+            accuracy, guess, 0.01
+        );
     }
 }

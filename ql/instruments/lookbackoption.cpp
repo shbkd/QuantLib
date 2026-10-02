@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -34,9 +34,8 @@ namespace QuantLib {
 
         OneAssetOption::setupArguments(args);
 
-        ContinuousFloatingLookbackOption::arguments* moreArgs =
-            dynamic_cast<ContinuousFloatingLookbackOption::arguments*>(args);
-        QL_REQUIRE(moreArgs != 0, "wrong argument type");
+        auto* moreArgs = dynamic_cast<ContinuousFloatingLookbackOption::arguments*>(args);
+        QL_REQUIRE(moreArgs != nullptr, "wrong argument type");
         moreArgs->minmax = minmax_;
     }
 
@@ -62,9 +61,8 @@ namespace QuantLib {
 
         OneAssetOption::setupArguments(args);
 
-        ContinuousFixedLookbackOption::arguments* moreArgs =
-            dynamic_cast<ContinuousFixedLookbackOption::arguments*>(args);
-        QL_REQUIRE(moreArgs != 0, "wrong argument type");
+        auto* moreArgs = dynamic_cast<ContinuousFixedLookbackOption::arguments*>(args);
+        QL_REQUIRE(moreArgs != nullptr, "wrong argument type");
         moreArgs->minmax = minmax_;
     }
 
@@ -92,9 +90,8 @@ namespace QuantLib {
 
         ContinuousFloatingLookbackOption::setupArguments(args);
 
-        ContinuousPartialFloatingLookbackOption::arguments* moreArgs =
-            dynamic_cast<ContinuousPartialFloatingLookbackOption::arguments*>(args);
-        QL_REQUIRE(moreArgs != 0, "wrong argument type");
+        auto* moreArgs = dynamic_cast<ContinuousPartialFloatingLookbackOption::arguments*>(args);
+        QL_REQUIRE(moreArgs != nullptr, "wrong argument type");
         moreArgs->lambda = lambda_;
         moreArgs->lookbackPeriodEnd = lookbackPeriodEnd_;
     }
@@ -133,9 +130,8 @@ namespace QuantLib {
 
         ContinuousFixedLookbackOption::setupArguments(args);
 
-        ContinuousPartialFixedLookbackOption::arguments* moreArgs =
-            dynamic_cast<ContinuousPartialFixedLookbackOption::arguments*>(args);
-        QL_REQUIRE(moreArgs != 0, "wrong argument type");
+        auto* moreArgs = dynamic_cast<ContinuousPartialFixedLookbackOption::arguments*>(args);
+        QL_REQUIRE(moreArgs != nullptr, "wrong argument type");
         moreArgs->lookbackPeriodStart = lookbackPeriodStart_;
     }
 

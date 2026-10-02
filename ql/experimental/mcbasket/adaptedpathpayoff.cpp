@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -26,16 +26,15 @@ namespace QuantLib {
     but it is unsigned and 0 has exactly the same behaviour.
    */
   AdaptedPathPayoff::ValuationData::ValuationData(
-                                              const Matrix       & path,
-                                              const std::vector<Handle<YieldTermStructure> > & forwardTermStructures,
-                                              Array              & payments,
-                                              Array              & exercises,
-                                              std::vector<Array> & states) :
-    path_(path),
-    forwardTermStructures_(forwardTermStructures),
-    payments_(payments), exercises_(exercises), states_(states),
-    maximumTimeRead_(0)
-  { }
+      const Matrix& path,
+      const std::vector<Handle<YieldTermStructure> >& forwardTermStructures,
+      Array& payments,
+      Array& exercises,
+      std::vector<Array>& states)
+  : path_(path), forwardTermStructures_(forwardTermStructures), payments_(payments),
+    exercises_(exercises), states_(states)
+
+  {}
 
   Size AdaptedPathPayoff::ValuationData::numberOfTimes() const {
     return path_.columns();

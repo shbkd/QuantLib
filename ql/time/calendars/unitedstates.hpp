@@ -6,6 +6,7 @@
  Copyright (C) 2004 Ferdinando Ametrano
  Copyright (C) 2017 Peter Caspers
  Copyright (C) 2017 Oleg Kulkov
+ Copyright (C) 2023 Skandinaviska Enskilda Banken AB (publ)
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -14,7 +15,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -33,7 +34,7 @@
 namespace QuantLib {
 
     //! United States calendars
-    /*! Public holidays (see: http://www.opm.gov/fedhol/):
+    /*! Public holidays (see https://www.opm.gov/policy-data-oversight/pay-leave/federal-holidays):
         <ul>
         <li>Saturdays</li>
         <li>Sundays</li>
@@ -44,6 +45,8 @@ namespace QuantLib {
         <li>Presidents' Day (a.k.a. Washington's birthday),
             third Monday in February</li>
         <li>Memorial Day, last Monday in May</li>
+        <li>Juneteenth, June 19th (moved to Monday if Sunday or
+            Friday if Saturday)</li>
         <li>Independence Day, July 4th (moved to Monday if Sunday or
             Friday if Saturday)</li>
         <li>Labor Day, first Monday in September</li>
@@ -123,6 +126,28 @@ namespace QuantLib {
         <li>Christmas, December 25th (moved to Monday if Sunday)</li>
         </ul>
 
+        Holidays for the Federal Reserve Bankwire System
+        (data from https://www.federalreserve.gov/aboutthefed/k8.htm
+        and https://www.frbservices.org/about/holiday-schedules):
+         <ul>
+        <li>Saturdays</li>
+        <li>Sundays</li>
+        <li>New Year's Day, January 1st (possibly moved to Monday if
+            actually on Sunday)</li>
+        <li>Martin Luther King's birthday, third Monday in January (since
+            1983)</li>
+        <li>Presidents' Day (a.k.a. Washington's birthday),
+            third Monday in February</li>
+        <li>Memorial Day, last Monday in May</li>
+        <li>Juneteenth, June 19th (moved to Monday if Sunday)</li>
+        <li>Independence Day, July 4th (moved to Monday if Sunday)</li>
+        <li>Labor Day, first Monday in September</li>
+        <li>Columbus Day, second Monday in October</li>
+        <li>Veterans' Day, November 11th (moved to Monday if Sunday)</li>
+        <li>Thanksgiving Day, fourth Thursday in November</li>
+        <li>Christmas, December 25th (moved to Monday if Sunday)</li>
+        </ul>
+
         \ingroup calendars
 
         \test the correctness of the returned results is tested
@@ -132,33 +157,40 @@ namespace QuantLib {
       private:
         class SettlementImpl : public Calendar::WesternImpl {
           public:
-            std::string name() const { return "US settlement"; }
-            bool isBusinessDay(const Date&) const;
+            std::string name() const override { return "US settlement"; }
+            bool isBusinessDay(const Date&) const override;
         };
-        class LiborImpactImpl : public SettlementImpl {
+        class LiborImpactImpl final : public SettlementImpl {
           public:
-            std::string name() const { return "US with Libor impact"; }
-            bool isBusinessDay(const Date&) const;
+            std::string name() const override { return "US with Libor impact"; }
+            bool isBusinessDay(const Date&) const override;
         };
-        class NyseImpl : public Calendar::WesternImpl {
+        class NyseImpl final : public Calendar::WesternImpl {
           public:
-            std::string name() const { return "New York stock exchange"; }
-            bool isBusinessDay(const Date&) const;
+            std::string name() const override { return "New York stock exchange"; }
+            bool isBusinessDay(const Date&) const override;
         };
         class GovernmentBondImpl : public Calendar::WesternImpl {
           public:
-            std::string name() const { return "US government bond market"; }
-            bool isBusinessDay(const Date&) const;
+            std::string name() const override { return "US government bond market"; }
+            bool isBusinessDay(const Date&) const override;
         };
-        class NercImpl : public Calendar::WesternImpl {
+        class SofrImpl final : public GovernmentBondImpl {
           public:
-            std::string name() const { return "North American Energy Reliability Council"; }
-            bool isBusinessDay(const Date&) const;
+            std::string name() const override { return "SOFR fixing calendar"; }
+            bool isBusinessDay(const Date&) const override;
         };
-        class FederalReserveImpl : public Calendar::WesternImpl {
+        class NercImpl final : public Calendar::WesternImpl {
           public:
-            std::string name() const { return "Federal Reserve Bankwire System"; }
-            bool isBusinessDay(const Date&) const;
+            std::string name() const override {
+                return "North American Energy Reliability Council";
+            }
+            bool isBusinessDay(const Date&) const override;
+        };
+        class FederalReserveImpl final : public Calendar::WesternImpl {
+          public:
+            std::string name() const override { return "Federal Reserve Bankwire System"; }
+            bool isBusinessDay(const Date&) const override;
         };
       public:
         //! US calendars
@@ -167,9 +199,11 @@ namespace QuantLib {
                       GovernmentBond, //!< government-bond calendar
                       NERC,           //!< off-peak days for NERC
                       LiborImpact,    //!< Libor impact calendar
-                      FederalReserve  //!< Federal Reserve Bankwire System
+                      FederalReserve, //!< Federal Reserve Bankwire System
+                      SOFR            //!< SOFR fixing calendar
         };
-        UnitedStates(Market market = Settlement);
+
+        explicit UnitedStates(Market market);
     };
 
 }

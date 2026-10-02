@@ -10,19 +10,19 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "extensibleoptions.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
-#include <ql/experimental/exoticoptions/holderextensibleoption.hpp>
-#include <ql/experimental/exoticoptions/writerextensibleoption.hpp>
-#include <ql/experimental/exoticoptions/analyticholderextensibleoptionengine.hpp>
-#include <ql/experimental/exoticoptions/analyticwriterextensibleoptionengine.hpp>
+#include <ql/instruments/holderextensibleoption.hpp>
+#include <ql/instruments/writerextensibleoption.hpp>
+#include <ql/pricingengines/exotic/analyticholderextensibleoptionengine.hpp>
+#include <ql/pricingengines/exotic/analyticwriterextensibleoptionengine.hpp>
 #include <ql/quotes/simplequote.hpp>
 #include <ql/utilities/dataformatters.hpp>
 #include <ql/time/calendars/target.hpp>
@@ -31,7 +31,11 @@
 using namespace QuantLib;
 using namespace boost::unit_test_framework;
 
-void ExtensibleOptionsTest::testAnalyticHolderExtensibleOptionEngine() {
+BOOST_FIXTURE_TEST_SUITE(QuantLibTests, TopLevelFixture)
+
+BOOST_AUTO_TEST_SUITE(ExtensibleOptionsTests)
+
+BOOST_AUTO_TEST_CASE(testAnalyticHolderExtensibleOptionEngine) {
     BOOST_TEST_MESSAGE(
         "Testing analytic engine for holder-extensible option...");
 
@@ -83,8 +87,7 @@ void ExtensibleOptionsTest::testAnalyticHolderExtensibleOptionEngine() {
                     << "\n    error:      " << error);
 }
 
-
-void ExtensibleOptionsTest::testAnalyticWriterExtensibleOptionEngine() {
+BOOST_AUTO_TEST_CASE(testAnalyticWriterExtensibleOptionEngine) {
     BOOST_TEST_MESSAGE("Testing analytic engine for writer-extensible option...");
 
     // What we need for the option (tests):
@@ -148,13 +151,6 @@ void ExtensibleOptionsTest::testAnalyticWriterExtensibleOptionEngine() {
                     << "\n    error:      " << error);
 }
 
-test_suite* ExtensibleOptionsTest::suite() {
-    test_suite* suite = BOOST_TEST_SUITE("Extensible option tests");
+BOOST_AUTO_TEST_SUITE_END()
 
-    suite->add(QUANTLIB_TEST_CASE(
-       &ExtensibleOptionsTest::testAnalyticHolderExtensibleOptionEngine));
-    suite->add(QUANTLIB_TEST_CASE(
-       &ExtensibleOptionsTest::testAnalyticWriterExtensibleOptionEngine));
-
-    return suite;
-}
+BOOST_AUTO_TEST_SUITE_END()

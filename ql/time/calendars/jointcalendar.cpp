@@ -3,6 +3,7 @@
 /*
  Copyright (C) 2003 RiskMap srl
  Copyright (C) 2007 StatPro Italia srl
+ Copyright (C) 2020 Piotr Siejda
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -11,16 +12,17 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include <ql/time/calendars/jointcalendar.hpp>
 #include <ql/errors.hpp>
+#include <ql/time/calendars/jointcalendar.hpp>
 #include <sstream>
+#include <utility>
 
 namespace QuantLib {
 
@@ -31,6 +33,7 @@ namespace QuantLib {
         calendars_[0] = c1;
         calendars_[1] = c2;
     }
+
 
     JointCalendar::Impl::Impl(const Calendar& c1,
                               const Calendar& c2,
@@ -53,6 +56,9 @@ namespace QuantLib {
         calendars_[2] = c3;
         calendars_[3] = c4;
     }
+
+    JointCalendar::Impl::Impl(std::vector<Calendar> cv, JointCalendarRule r)
+    : rule_(r), calendars_(std::move(cv)) {}
 
     std::string JointCalendar::Impl::name() const {
         std::ostringstream out;
@@ -139,5 +145,10 @@ namespace QuantLib {
                                       new JointCalendar::Impl(c1,c2,c3,c4,r));
     }
 
-}
+    JointCalendar::JointCalendar(const std::vector<Calendar> &cv,
+                                 JointCalendarRule r) {
+        impl_ = ext::shared_ptr<Calendar::Impl>(
+                                      new JointCalendar::Impl(cv,r));
+    }
 
+}

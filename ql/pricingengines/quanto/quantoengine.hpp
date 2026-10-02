@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -25,10 +25,11 @@
 #ifndef quantlib_quanto_engine_hpp
 #define quantlib_quanto_engine_hpp
 
+#include <ql/instruments/payoffs.hpp>
 #include <ql/instruments/quantovanillaoption.hpp>
 #include <ql/processes/blackscholesprocess.hpp>
 #include <ql/termstructures/yield/quantotermstructure.hpp>
-#include <ql/instruments/payoffs.hpp>
+#include <utility>
 
 namespace QuantLib {
 
@@ -49,12 +50,12 @@ namespace QuantLib {
         public GenericEngine<typename Instr::arguments,
                              QuantoOptionResults<typename Instr::results> > {
       public:
-        QuantoEngine(
-                 const ext::shared_ptr<GeneralizedBlackScholesProcess>&,
-                 const Handle<YieldTermStructure>& foreignRiskFreeRate,
-                 const Handle<BlackVolTermStructure>& exchangeRateVolatility,
-                 const Handle<Quote>& correlation);
-        void calculate() const;
+        QuantoEngine(ext::shared_ptr<GeneralizedBlackScholesProcess>,
+                     Handle<YieldTermStructure> foreignRiskFreeRate,
+                     Handle<BlackVolTermStructure> exchangeRateVolatility,
+                     Handle<Quote> correlation);
+        void calculate() const override;
+
       protected:
         ext::shared_ptr<GeneralizedBlackScholesProcess> process_;
         Handle<YieldTermStructure> foreignRiskFreeRate_;
@@ -66,14 +67,14 @@ namespace QuantLib {
     // template definitions
 
     template <class Instr, class Engine>
-    QuantoEngine<Instr,Engine>::QuantoEngine(
-             const ext::shared_ptr<GeneralizedBlackScholesProcess>& process,
-             const Handle<YieldTermStructure>& foreignRiskFreeRate,
-             const Handle<BlackVolTermStructure>& exchangeRateVolatility,
-             const Handle<Quote>& correlation)
-    : process_(process), foreignRiskFreeRate_(foreignRiskFreeRate),
-      exchangeRateVolatility_(exchangeRateVolatility),
-      correlation_(correlation) {
+    QuantoEngine<Instr, Engine>::QuantoEngine(
+        ext::shared_ptr<GeneralizedBlackScholesProcess> process,
+        Handle<YieldTermStructure> foreignRiskFreeRate,
+        Handle<BlackVolTermStructure> exchangeRateVolatility,
+        Handle<Quote> correlation)
+    : process_(std::move(process)), foreignRiskFreeRate_(std::move(foreignRiskFreeRate)),
+      exchangeRateVolatility_(std::move(exchangeRateVolatility)),
+      correlation_(std::move(correlation)) {
         this->registerWith(process_);
         this->registerWith(foreignRiskFreeRate_);
         this->registerWith(exchangeRateVolatility_);
@@ -98,26 +99,23 @@ namespace QuantLib {
         Handle<YieldTermStructure> riskFreeRate = process_->riskFreeRate();
         // dividendTS needs modification
         Handle<YieldTermStructure> dividendYield(
-            ext::shared_ptr<YieldTermStructure>(
-                new QuantoTermStructure(process_->dividendYield(),
+            ext::make_shared<QuantoTermStructure>(process_->dividendYield(),
                                         process_->riskFreeRate(),
                                         foreignRiskFreeRate_,
                                         process_->blackVolatility(),
                                         strike,
                                         exchangeRateVolatility_,
                                         exchangeRateATMlevel,
-                                        correlation_->value())));
+                                        correlation_->value()));
         Handle<BlackVolTermStructure> blackVol = process_->blackVolatility();
 
-        ext::shared_ptr<GeneralizedBlackScholesProcess> quantoProcess(
-                  new GeneralizedBlackScholesProcess(spot, dividendYield,
-                                                     riskFreeRate, blackVol));
+        auto quantoProcess = ext::make_shared<GeneralizedBlackScholesProcess>(spot, dividendYield,
+                                                     riskFreeRate, blackVol);
 
-        ext::shared_ptr<Engine> originalEngine(new Engine(quantoProcess));
+        auto originalEngine = ext::make_shared<Engine>(quantoProcess);
         originalEngine->reset();
-        typename Instr::arguments* originalArguments =
-            dynamic_cast<typename Instr::arguments*>(
-                                              originalEngine->getArguments());
+        auto* originalArguments =
+            dynamic_cast<typename Instr::arguments*>(originalEngine->getArguments());
         QL_REQUIRE(originalArguments, "wrong engine type");
 
         *originalArguments = this->arguments_;
@@ -125,9 +123,8 @@ namespace QuantLib {
         originalArguments->validate();
         originalEngine->calculate();
 
-        const typename Instr::results* originalResults =
-            dynamic_cast<const typename Instr::results*>(
-                                                originalEngine->getResults());
+        const auto* originalResults =
+            dynamic_cast<const typename Instr::results*>(originalEngine->getResults());
         QL_REQUIRE(originalResults, "wrong engine type");
 
         this->results_.value = originalResults->value;

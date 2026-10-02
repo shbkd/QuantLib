@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -20,21 +20,19 @@
 /*! \file fdmhullwhitesolver.cpp
 */
 
-#include <ql/models/shortrate/onefactormodels/hullwhite.hpp>
+#include <ql/methods/finitedifferences/operators/fdmhullwhiteop.hpp>
 #include <ql/methods/finitedifferences/solvers/fdm1dimsolver.hpp>
 #include <ql/methods/finitedifferences/solvers/fdmhullwhitesolver.hpp>
-#include <ql/methods/finitedifferences/operators/fdmhullwhiteop.hpp>
 #include <ql/methods/finitedifferences/stepconditions/fdmsnapshotcondition.hpp>
+#include <ql/models/shortrate/onefactormodels/hullwhite.hpp>
+#include <utility>
 
 namespace QuantLib {
 
-    FdmHullWhiteSolver::FdmHullWhiteSolver(
-        const Handle<HullWhite>& model,
-        const FdmSolverDesc& solverDesc,
-        const FdmSchemeDesc& schemeDesc)
-    : model_(model),
-      solverDesc_(solverDesc),
-      schemeDesc_(schemeDesc) {
+    FdmHullWhiteSolver::FdmHullWhiteSolver(Handle<HullWhite> model,
+                                           FdmSolverDesc solverDesc,
+                                           const FdmSchemeDesc& schemeDesc)
+    : model_(std::move(model)), solverDesc_(std::move(solverDesc)), schemeDesc_(schemeDesc) {
         registerWith(model_);
     }
 

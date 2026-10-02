@@ -2,7 +2,7 @@
 
 /*
  Copyright (C) 2006, 2008 Ferdinando Ametrano
- Copyright (C) 2006 François du Vignaud
+ Copyright (C) 2006 FranÃ§ois du Vignaud
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -11,29 +11,30 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include <ql/quotes/eurodollarfuturesquote.hpp>
 #include <ql/pricingengines/blackformula.hpp>
+#include <ql/quotes/eurodollarfuturesquote.hpp>
+#include <utility>
 
 namespace QuantLib {
 
     EurodollarFuturesImpliedStdDevQuote::EurodollarFuturesImpliedStdDevQuote(
-                                const Handle<Quote>& forward,
-                                const Handle<Quote>& callPrice,
-                                const Handle<Quote>& putPrice,
-                                Real strike,
-                                Real guess,
-                                Real accuracy,
-                                Natural maxIter)
-    : impliedStdev_(guess), strike_(100.0-strike),
-      accuracy_(accuracy), maxIter_(maxIter), forward_(forward),
-      callPrice_(callPrice), putPrice_(putPrice) {
+        Handle<Quote> forward,
+        Handle<Quote> callPrice,
+        Handle<Quote> putPrice,
+        Real strike,
+        Real guess,
+        Real accuracy,
+        Natural maxIter)
+    : impliedStdev_(guess), strike_(100.0 - strike), accuracy_(accuracy), maxIter_(maxIter),
+      forward_(std::move(forward)), callPrice_(std::move(callPrice)),
+      putPrice_(std::move(putPrice)) {
         registerWith(forward_);
         registerWith(callPrice_);
         registerWith(putPrice_);

@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -32,7 +32,7 @@ namespace QuantLib {
         const ext::shared_ptr<Basket>& basket,
         Size n,
         Protection::Side side,
-        const Schedule& premiumSchedule,
+        Schedule premiumSchedule,
         Rate upfrontRate,
         Rate premiumRate,
         const DayCounter& dayCounter,
@@ -41,19 +41,19 @@ namespace QuantLib {
         )
     : basket_(basket), n_(n),
       side_(side), nominal_(nominal),
-      premiumSchedule_(premiumSchedule), premiumRate_(premiumRate), 
-      upfrontRate_(upfrontRate), 
+      premiumSchedule_(std::move(premiumSchedule)), premiumRate_(premiumRate),
+      upfrontRate_(upfrontRate),
       dayCounter_(dayCounter), settlePremiumAccrual_(settlePremiumAccrual)
     {
-        QL_REQUIRE(n_ <= basket_->size(), 
+        QL_REQUIRE(n_ <= basket_->size(),
                    "NTD order provided is larger than the basket size.");
 
         // Basket inception must lie before contract protection start.
-        QL_REQUIRE(basket->refDate() <= premiumSchedule.startDate(),
+        QL_REQUIRE(basket->refDate() <= premiumSchedule_.startDate(),
             //using the start date of the schedule might be wrong, think of the CDS rule
             "Basket did not exist before contract start.");
 
-        premiumLeg_ = FixedRateLeg(premiumSchedule)
+        premiumLeg_ = FixedRateLeg(premiumSchedule_)
             .withNotionals(nominal)
             .withCouponRates(premiumRate, dayCounter)
             .withPaymentAdjustment(Unadjusted);
@@ -111,9 +111,8 @@ namespace QuantLib {
     }
 
     void NthToDefault::setupArguments(PricingEngine::arguments* args) const {
-        NthToDefault::arguments* arguments
-            = dynamic_cast<NthToDefault::arguments*>(args);
-        QL_REQUIRE(arguments != 0, "wrong argument type");
+        auto* arguments = dynamic_cast<NthToDefault::arguments*>(args);
+        QL_REQUIRE(arguments != nullptr, "wrong argument type");
         arguments->basket = basket_;
         arguments->side = side_;
         arguments->premiumLeg = premiumLeg_;
@@ -127,9 +126,8 @@ namespace QuantLib {
     void NthToDefault::fetchResults(const PricingEngine::results* r) const {
         Instrument::fetchResults(r);
 
-        const NthToDefault::results* results
-            = dynamic_cast<const NthToDefault::results*>(r);
-        QL_REQUIRE(results != 0, "wrong result type");
+        const auto* results = dynamic_cast<const NthToDefault::results*>(r);
+        QL_REQUIRE(results != nullptr, "wrong result type");
 
         premiumValue_ = results->premiumValue;
         protectionValue_ = results->protectionValue;
@@ -158,4 +156,3 @@ namespace QuantLib {
     }
 
 }
-

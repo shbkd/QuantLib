@@ -2,6 +2,7 @@
 
 /*
  Copyright (C) 2014 Peter Caspers
+ Copyright (C) 2026 Aaditya Panikath
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -10,25 +11,27 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "zabr.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
-
-#include <boost/assign/list_of.hpp>
-
 #include <ql/termstructures/volatility/sabrsmilesection.hpp>
-#include <ql/experimental/volatility/zabrsmilesection.hpp>
+#include <ql/termstructures/volatility/zabrsmilesection.hpp>
 
 using namespace QuantLib;
 using namespace boost::unit_test_framework;
 
-void ZabrTest::testConsistency() {
+BOOST_FIXTURE_TEST_SUITE(QuantLibTests, TopLevelFixture)
+
+BOOST_AUTO_TEST_SUITE(ZabrTests)
+
+BOOST_AUTO_TEST_CASE(testConsistency) {
+    BOOST_TEST_MESSAGE("Testing the consistency of ZABR interpolation...");
 
     Real tol = 1E-4;
 
@@ -40,22 +43,22 @@ void ZabrTest::testConsistency() {
     Real forward = 0.03;
 
     SabrSmileSection sabr(tau, forward,
-                          boost::assign::list_of(alpha)(beta)(nu)(rho));
+                          {alpha, beta, nu, rho});
 
-    ZabrSmileSection<ZabrShortMaturityLognormal> zabr0(
-        tau, forward, boost::assign::list_of(alpha)(beta)(nu)(rho)(1.0));
+    ZabrSmileSection<ZabrShortMaturityLognormal> zabr0(tau, forward,
+                                                       {alpha, beta, nu, rho, 1.0});
 
-    ZabrSmileSection<ZabrShortMaturityNormal> zabr1(
-        tau, forward, boost::assign::list_of(alpha)(beta)(nu)(rho)(1.0));
+    ZabrSmileSection<ZabrShortMaturityNormal> zabr1(tau, forward,
+                                                    {alpha, beta, nu, rho, 1.0});
 
-    ZabrSmileSection<ZabrLocalVolatility> zabr2(
-        tau, forward, boost::assign::list_of(alpha)(beta)(nu)(rho)(1.0));
+    ZabrSmileSection<ZabrLocalVolatility> zabr2(tau, forward,
+                                                {alpha, beta, nu, rho, 1.0});
 
     // for full finite prices reduce the number of intermediate points here
     // below the recommended value to speed up the test
-    ZabrSmileSection<ZabrFullFd> zabr3(
-        tau, forward, boost::assign::list_of(alpha)(beta)(nu)(rho)(1.0),
-        std::vector<Real>(), 2);
+    ZabrSmileSection<ZabrFullFd> zabr3(tau, forward,
+                                       {alpha, beta, nu, rho, 1.0},
+                                       std::vector<Real>(), 2);
 
     Real k = 0.0001;
     while (k <= 0.70) {
@@ -88,12 +91,6 @@ void ZabrTest::testConsistency() {
     }
 }
 
-test_suite *ZabrTest::suite(SpeedLevel speed) {
-    test_suite *suite = BOOST_TEST_SUITE("Zabr model tests");
+BOOST_AUTO_TEST_SUITE_END()
 
-    if (speed == Slow) {
-        suite->add(QUANTLIB_TEST_CASE(&ZabrTest::testConsistency));
-    }
-
-    return suite;
-}
+BOOST_AUTO_TEST_SUITE_END()

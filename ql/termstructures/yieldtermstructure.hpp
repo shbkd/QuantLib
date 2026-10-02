@@ -12,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -33,6 +33,8 @@
 
 namespace QuantLib {
 
+    class MultiCurveBootstrapContributor;
+
     //! Interest-rate term structure
     /*! This abstract class defines the interface of concrete
         interest rate structures which will be derived from this one.
@@ -48,19 +50,17 @@ namespace QuantLib {
             constructors.
         */
         //@{
-        YieldTermStructure(const DayCounter& dc = DayCounter(),
-                           const std::vector<Handle<Quote> >& jumps = std::vector<Handle<Quote> >(),
-                           const std::vector<Date>& jumpDates = std::vector<Date>());
+        explicit YieldTermStructure(const DayCounter& dc = DayCounter());
         YieldTermStructure(const Date& referenceDate,
                            const Calendar& cal = Calendar(),
                            const DayCounter& dc = DayCounter(),
-                           const std::vector<Handle<Quote> >& jumps = std::vector<Handle<Quote> >(),
-                           const std::vector<Date>& jumpDates = std::vector<Date>());
+                           std::vector<Handle<Quote> > jumps = {},
+                           const std::vector<Date>& jumpDates = {});
         YieldTermStructure(Natural settlementDays,
                            const Calendar& cal,
                            const DayCounter& dc = DayCounter(),
-                           const std::vector<Handle<Quote> >& jumps = std::vector<Handle<Quote> >(),
-                           const std::vector<Date>& jumpDates = std::vector<Date>());
+                           std::vector<Handle<Quote> > jumps = {},
+                           const std::vector<Date>& jumpDates = {});
         //@}
 
         /*! \name Discount factors
@@ -154,8 +154,9 @@ namespace QuantLib {
 
         //! \name Observer interface
         //@{
-        void update();
+        void update() override;
         //@}
+
       protected:
         /*! \name Calculations
 
@@ -170,12 +171,12 @@ namespace QuantLib {
         //@}
       private:
         // methods
-        void setJumps();
+        void setJumps(const Date& referenceDate);
         // data members
         std::vector<Handle<Quote> > jumps_;
         std::vector<Date> jumpDates_;
         std::vector<Time> jumpTimes_;
-        Size nJumps_;
+        Size nJumps_ = 0;
         Date latestReference_;
     };
 

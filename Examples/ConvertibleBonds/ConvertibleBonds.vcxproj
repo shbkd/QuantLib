@@ -113,58 +113,59 @@
     <_ProjectFileVersion>10.0.30319.1</_ProjectFileVersion>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">.\bin\</OutDir>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.\bin\</OutDir>
-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\</IntDir>
-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\</IntDir>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</LinkIncremental>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkIncremental>
     <EmbedManifest Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</EmbedManifest>
     <EmbedManifest Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</EmbedManifest>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Release (static runtime)|Win32'">.\bin\</OutDir>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Release (static runtime)|x64'">.\bin\</OutDir>
-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release (static runtime)|Win32'">.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\</IntDir>
-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release (static runtime)|x64'">.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release (static runtime)|Win32'">.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release (static runtime)|x64'">.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\</IntDir>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release (static runtime)|Win32'">false</LinkIncremental>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release (static runtime)|x64'">false</LinkIncremental>
     <EmbedManifest Condition="'$(Configuration)|$(Platform)'=='Release (static runtime)|Win32'">false</EmbedManifest>
     <EmbedManifest Condition="'$(Configuration)|$(Platform)'=='Release (static runtime)|x64'">false</EmbedManifest>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug (static runtime)|Win32'">.\bin\</OutDir>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug (static runtime)|x64'">.\bin\</OutDir>
-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug (static runtime)|Win32'">.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\</IntDir>
-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug (static runtime)|x64'">.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug (static runtime)|Win32'">.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug (static runtime)|x64'">.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\</IntDir>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug (static runtime)|Win32'">true</LinkIncremental>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug (static runtime)|x64'">true</LinkIncremental>
     <EmbedManifest Condition="'$(Configuration)|$(Platform)'=='Debug (static runtime)|Win32'">false</EmbedManifest>
     <EmbedManifest Condition="'$(Configuration)|$(Platform)'=='Debug (static runtime)|x64'">false</EmbedManifest>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">.\bin\</OutDir>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.\bin\</OutDir>
-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\</IntDir>
-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\</IntDir>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</LinkIncremental>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</LinkIncremental>
     <EmbedManifest Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</EmbedManifest>
     <EmbedManifest Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</EmbedManifest>
-    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug (static runtime)|Win32'">ConvertibleBonds-$(qlCompilerTag)-mt-sgd</TargetName>
-    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug (static runtime)|x64'">ConvertibleBonds-$(qlCompilerTag)-x64-mt-sgd</TargetName>
-    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">ConvertibleBonds-$(qlCompilerTag)-mt-gd</TargetName>
-    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">ConvertibleBonds-$(qlCompilerTag)-x64-mt-gd</TargetName>
-    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release (static runtime)|Win32'">ConvertibleBonds-$(qlCompilerTag)-mt-s</TargetName>
-    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release (static runtime)|x64'">ConvertibleBonds-$(qlCompilerTag)-x64-mt-s</TargetName>
-    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">ConvertibleBonds-$(qlCompilerTag)-mt</TargetName>
-    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">ConvertibleBonds-$(qlCompilerTag)-x64-mt</TargetName>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug (static runtime)|Win32'">ConvertibleBonds-mt-sgd</TargetName>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug (static runtime)|x64'">ConvertibleBonds-x64-mt-sgd</TargetName>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">ConvertibleBonds-mt-gd</TargetName>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">ConvertibleBonds-x64-mt-gd</TargetName>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release (static runtime)|Win32'">ConvertibleBonds-mt-s</TargetName>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release (static runtime)|x64'">ConvertibleBonds-x64-mt-s</TargetName>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">ConvertibleBonds-mt</TargetName>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">ConvertibleBonds-x64-mt</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Midl>
-      <TypeLibraryName>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\ConvertibleBonds.tlb</TypeLibraryName>
+      <TypeLibraryName>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\ConvertibleBonds.tlb</TypeLibraryName>
       <HeaderFileName>
       </HeaderFileName>
     </Midl>
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
+      <LanguageStandard>stdcpp17</LanguageStandard>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <IntrinsicFunctions>false</IntrinsicFunctions>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <AdditionalIncludeDirectories>..\..;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>NDEBUG;WIN32;_CONSOLE;_SCL_SECURE_NO_DEPRECATE;_CRT_SECURE_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;WIN32;_CONSOLE;_SCL_SECURE_NO_DEPRECATE;_SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING;_SILENCE_CXX17_OLD_ALLOCATOR_MEMBERS_DEPRECATION_WARNING;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -174,15 +175,16 @@
       <PrecompiledHeader>
       </PrecompiledHeader>
       <PrecompiledHeaderFile>quantlib.hpp</PrecompiledHeaderFile>
-      <PrecompiledHeaderOutputFile>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\ConvertibleBonds.pch</PrecompiledHeaderOutputFile>
-      <AssemblerListingLocation>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\</AssemblerListingLocation>
-      <ObjectFileName>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\</ObjectFileName>
-      <ProgramDataBaseFileName>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\</ProgramDataBaseFileName>
+      <PrecompiledHeaderOutputFile>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\ConvertibleBonds.pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\</AssemblerListingLocation>
+      <ObjectFileName>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\</ObjectFileName>
+      <ProgramDataBaseFileName>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\</ProgramDataBaseFileName>
       <BrowseInformation>true</BrowseInformation>
-      <BrowseInformationFile>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\</BrowseInformationFile>
+      <BrowseInformationFile>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\</BrowseInformationFile>
       <WarningLevel>Level3</WarningLevel>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <CompileAs>Default</CompileAs>
+      <IncludeInUnityFile>false</IncludeInUnityFile>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -192,7 +194,7 @@
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>..\..\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <ProgramDatabaseFile>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\ConvertibleBonds.pdb</ProgramDatabaseFile>
+      <ProgramDatabaseFile>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\ConvertibleBonds.pdb</ProgramDatabaseFile>
       <SubSystem>Console</SubSystem>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention>
@@ -202,17 +204,18 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Midl>
-      <TypeLibraryName>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\ConvertibleBonds.tlb</TypeLibraryName>
+      <TypeLibraryName>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\ConvertibleBonds.tlb</TypeLibraryName>
       <HeaderFileName>
       </HeaderFileName>
     </Midl>
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
+      <LanguageStandard>stdcpp17</LanguageStandard>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <IntrinsicFunctions>false</IntrinsicFunctions>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <AdditionalIncludeDirectories>..\..;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>NDEBUG;WIN32;_CONSOLE;_SCL_SECURE_NO_DEPRECATE;_CRT_SECURE_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;WIN32;_CONSOLE;_SCL_SECURE_NO_DEPRECATE;_SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING;_SILENCE_CXX17_OLD_ALLOCATOR_MEMBERS_DEPRECATION_WARNING;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -222,15 +225,16 @@
       <PrecompiledHeader>
       </PrecompiledHeader>
       <PrecompiledHeaderFile>quantlib.hpp</PrecompiledHeaderFile>
-      <PrecompiledHeaderOutputFile>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\ConvertibleBonds.pch</PrecompiledHeaderOutputFile>
-      <AssemblerListingLocation>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\</AssemblerListingLocation>
-      <ObjectFileName>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\</ObjectFileName>
-      <ProgramDataBaseFileName>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\</ProgramDataBaseFileName>
+      <PrecompiledHeaderOutputFile>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\ConvertibleBonds.pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\</AssemblerListingLocation>
+      <ObjectFileName>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\</ObjectFileName>
+      <ProgramDataBaseFileName>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\</ProgramDataBaseFileName>
       <BrowseInformation>true</BrowseInformation>
-      <BrowseInformationFile>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\</BrowseInformationFile>
+      <BrowseInformationFile>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\</BrowseInformationFile>
       <WarningLevel>Level3</WarningLevel>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <CompileAs>Default</CompileAs>
+      <IncludeInUnityFile>false</IncludeInUnityFile>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -240,7 +244,7 @@
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>..\..\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <ProgramDatabaseFile>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\ConvertibleBonds.pdb</ProgramDatabaseFile>
+      <ProgramDatabaseFile>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\ConvertibleBonds.pdb</ProgramDatabaseFile>
       <SubSystem>Console</SubSystem>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention>
@@ -249,17 +253,18 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release (static runtime)|Win32'">
     <Midl>
-      <TypeLibraryName>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\ConvertibleBonds.tlb</TypeLibraryName>
+      <TypeLibraryName>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\ConvertibleBonds.tlb</TypeLibraryName>
       <HeaderFileName>
       </HeaderFileName>
     </Midl>
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
+      <LanguageStandard>stdcpp17</LanguageStandard>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <IntrinsicFunctions>false</IntrinsicFunctions>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <AdditionalIncludeDirectories>..\..;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>NDEBUG;WIN32;_CONSOLE;_SCL_SECURE_NO_DEPRECATE;_CRT_SECURE_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;WIN32;_CONSOLE;_SCL_SECURE_NO_DEPRECATE;_SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING;_SILENCE_CXX17_OLD_ALLOCATOR_MEMBERS_DEPRECATION_WARNING;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -269,15 +274,16 @@
       <PrecompiledHeader>
       </PrecompiledHeader>
       <PrecompiledHeaderFile>quantlib.hpp</PrecompiledHeaderFile>
-      <PrecompiledHeaderOutputFile>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\ConvertibleBonds.pch</PrecompiledHeaderOutputFile>
-      <AssemblerListingLocation>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\</AssemblerListingLocation>
-      <ObjectFileName>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\</ObjectFileName>
-      <ProgramDataBaseFileName>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\</ProgramDataBaseFileName>
+      <PrecompiledHeaderOutputFile>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\ConvertibleBonds.pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\</AssemblerListingLocation>
+      <ObjectFileName>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\</ObjectFileName>
+      <ProgramDataBaseFileName>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\</ProgramDataBaseFileName>
       <BrowseInformation>true</BrowseInformation>
-      <BrowseInformationFile>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\</BrowseInformationFile>
+      <BrowseInformationFile>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\</BrowseInformationFile>
       <WarningLevel>Level3</WarningLevel>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <CompileAs>Default</CompileAs>
+      <IncludeInUnityFile>false</IncludeInUnityFile>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -287,7 +293,7 @@
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>..\..\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <ProgramDatabaseFile>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\ConvertibleBonds.pdb</ProgramDatabaseFile>
+      <ProgramDatabaseFile>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\ConvertibleBonds.pdb</ProgramDatabaseFile>
       <SubSystem>Console</SubSystem>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention>
@@ -297,17 +303,18 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release (static runtime)|x64'">
     <Midl>
-      <TypeLibraryName>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\ConvertibleBonds.tlb</TypeLibraryName>
+      <TypeLibraryName>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\ConvertibleBonds.tlb</TypeLibraryName>
       <HeaderFileName>
       </HeaderFileName>
     </Midl>
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
+      <LanguageStandard>stdcpp17</LanguageStandard>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <IntrinsicFunctions>false</IntrinsicFunctions>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <AdditionalIncludeDirectories>..\..;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>NDEBUG;WIN32;_CONSOLE;_SCL_SECURE_NO_DEPRECATE;_CRT_SECURE_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;WIN32;_CONSOLE;_SCL_SECURE_NO_DEPRECATE;_SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING;_SILENCE_CXX17_OLD_ALLOCATOR_MEMBERS_DEPRECATION_WARNING;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -317,15 +324,16 @@
       <PrecompiledHeader>
       </PrecompiledHeader>
       <PrecompiledHeaderFile>quantlib.hpp</PrecompiledHeaderFile>
-      <PrecompiledHeaderOutputFile>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\ConvertibleBonds.pch</PrecompiledHeaderOutputFile>
-      <AssemblerListingLocation>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\</AssemblerListingLocation>
-      <ObjectFileName>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\</ObjectFileName>
-      <ProgramDataBaseFileName>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\</ProgramDataBaseFileName>
+      <PrecompiledHeaderOutputFile>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\ConvertibleBonds.pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\</AssemblerListingLocation>
+      <ObjectFileName>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\</ObjectFileName>
+      <ProgramDataBaseFileName>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\</ProgramDataBaseFileName>
       <BrowseInformation>true</BrowseInformation>
-      <BrowseInformationFile>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\</BrowseInformationFile>
+      <BrowseInformationFile>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\</BrowseInformationFile>
       <WarningLevel>Level3</WarningLevel>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <CompileAs>Default</CompileAs>
+      <IncludeInUnityFile>false</IncludeInUnityFile>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -335,7 +343,7 @@
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>..\..\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <ProgramDatabaseFile>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\ConvertibleBonds.pdb</ProgramDatabaseFile>
+      <ProgramDatabaseFile>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\ConvertibleBonds.pdb</ProgramDatabaseFile>
       <SubSystem>Console</SubSystem>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention>
@@ -344,15 +352,16 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug (static runtime)|Win32'">
     <Midl>
-      <TypeLibraryName>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\ConvertibleBonds.tlb</TypeLibraryName>
+      <TypeLibraryName>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\ConvertibleBonds.tlb</TypeLibraryName>
       <HeaderFileName>
       </HeaderFileName>
     </Midl>
     <ClCompile>
       <Optimization>Disabled</Optimization>
+      <LanguageStandard>stdcpp17</LanguageStandard>
       <IntrinsicFunctions>false</IntrinsicFunctions>
       <AdditionalIncludeDirectories>..\..;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>_DEBUG;WIN32;_CONSOLE;_SCL_SECURE_NO_DEPRECATE;_CRT_SECURE_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;WIN32;_CONSOLE;_SCL_SECURE_NO_DEPRECATE;_SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING;_SILENCE_CXX17_OLD_ALLOCATOR_MEMBERS_DEPRECATION_WARNING;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <DisableLanguageExtensions>false</DisableLanguageExtensions>
@@ -361,16 +370,17 @@
       <PrecompiledHeader>
       </PrecompiledHeader>
       <PrecompiledHeaderFile>quantlib.hpp</PrecompiledHeaderFile>
-      <PrecompiledHeaderOutputFile>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\ConvertibleBonds.pch</PrecompiledHeaderOutputFile>
-      <AssemblerListingLocation>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\</AssemblerListingLocation>
-      <ObjectFileName>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\</ObjectFileName>
-      <ProgramDataBaseFileName>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\</ProgramDataBaseFileName>
+      <PrecompiledHeaderOutputFile>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\ConvertibleBonds.pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\</AssemblerListingLocation>
+      <ObjectFileName>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\</ObjectFileName>
+      <ProgramDataBaseFileName>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\</ProgramDataBaseFileName>
       <BrowseInformation>true</BrowseInformation>
-      <BrowseInformationFile>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\</BrowseInformationFile>
+      <BrowseInformationFile>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\</BrowseInformationFile>
       <WarningLevel>Level3</WarningLevel>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <CompileAs>Default</CompileAs>
+      <IncludeInUnityFile>false</IncludeInUnityFile>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -381,7 +391,7 @@
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>..\..\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <ProgramDatabaseFile>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\ConvertibleBonds.pdb</ProgramDatabaseFile>
+      <ProgramDatabaseFile>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\ConvertibleBonds.pdb</ProgramDatabaseFile>
       <SubSystem>Console</SubSystem>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention>
@@ -392,15 +402,16 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug (static runtime)|x64'">
     <Midl>
-      <TypeLibraryName>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\ConvertibleBonds.tlb</TypeLibraryName>
+      <TypeLibraryName>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\ConvertibleBonds.tlb</TypeLibraryName>
       <HeaderFileName>
       </HeaderFileName>
     </Midl>
     <ClCompile>
       <Optimization>Disabled</Optimization>
+      <LanguageStandard>stdcpp17</LanguageStandard>
       <IntrinsicFunctions>false</IntrinsicFunctions>
       <AdditionalIncludeDirectories>..\..;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>_DEBUG;WIN32;_CONSOLE;_SCL_SECURE_NO_DEPRECATE;_CRT_SECURE_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;WIN32;_CONSOLE;_SCL_SECURE_NO_DEPRECATE;_SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING;_SILENCE_CXX17_OLD_ALLOCATOR_MEMBERS_DEPRECATION_WARNING;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <DisableLanguageExtensions>false</DisableLanguageExtensions>
@@ -409,16 +420,17 @@
       <PrecompiledHeader>
       </PrecompiledHeader>
       <PrecompiledHeaderFile>quantlib.hpp</PrecompiledHeaderFile>
-      <PrecompiledHeaderOutputFile>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\ConvertibleBonds.pch</PrecompiledHeaderOutputFile>
-      <AssemblerListingLocation>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\</AssemblerListingLocation>
-      <ObjectFileName>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\</ObjectFileName>
-      <ProgramDataBaseFileName>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\</ProgramDataBaseFileName>
+      <PrecompiledHeaderOutputFile>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\ConvertibleBonds.pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\</AssemblerListingLocation>
+      <ObjectFileName>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\</ObjectFileName>
+      <ProgramDataBaseFileName>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\</ProgramDataBaseFileName>
       <BrowseInformation>true</BrowseInformation>
-      <BrowseInformationFile>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\</BrowseInformationFile>
+      <BrowseInformationFile>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\</BrowseInformationFile>
       <WarningLevel>Level3</WarningLevel>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <CompileAs>Default</CompileAs>
+      <IncludeInUnityFile>false</IncludeInUnityFile>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -429,7 +441,7 @@
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>..\..\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <ProgramDatabaseFile>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\ConvertibleBonds.pdb</ProgramDatabaseFile>
+      <ProgramDatabaseFile>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\ConvertibleBonds.pdb</ProgramDatabaseFile>
       <SubSystem>Console</SubSystem>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention>
@@ -438,15 +450,16 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Midl>
-      <TypeLibraryName>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\ConvertibleBonds.tlb</TypeLibraryName>
+      <TypeLibraryName>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\ConvertibleBonds.tlb</TypeLibraryName>
       <HeaderFileName>
       </HeaderFileName>
     </Midl>
     <ClCompile>
       <Optimization>Disabled</Optimization>
+      <LanguageStandard>stdcpp17</LanguageStandard>
       <IntrinsicFunctions>false</IntrinsicFunctions>
       <AdditionalIncludeDirectories>..\..;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>_DEBUG;WIN32;_CONSOLE;_SCL_SECURE_NO_DEPRECATE;_CRT_SECURE_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;WIN32;_CONSOLE;_SCL_SECURE_NO_DEPRECATE;_SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING;_SILENCE_CXX17_OLD_ALLOCATOR_MEMBERS_DEPRECATION_WARNING;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <DisableLanguageExtensions>false</DisableLanguageExtensions>
@@ -455,16 +468,17 @@
       <PrecompiledHeader>
       </PrecompiledHeader>
       <PrecompiledHeaderFile>quantlib.hpp</PrecompiledHeaderFile>
-      <PrecompiledHeaderOutputFile>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\ConvertibleBonds.pch</PrecompiledHeaderOutputFile>
-      <AssemblerListingLocation>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\</AssemblerListingLocation>
-      <ObjectFileName>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\</ObjectFileName>
-      <ProgramDataBaseFileName>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\</ProgramDataBaseFileName>
+      <PrecompiledHeaderOutputFile>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\ConvertibleBonds.pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\</AssemblerListingLocation>
+      <ObjectFileName>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\</ObjectFileName>
+      <ProgramDataBaseFileName>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\</ProgramDataBaseFileName>
       <BrowseInformation>true</BrowseInformation>
-      <BrowseInformationFile>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\</BrowseInformationFile>
+      <BrowseInformationFile>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\</BrowseInformationFile>
       <WarningLevel>Level3</WarningLevel>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <CompileAs>Default</CompileAs>
+      <IncludeInUnityFile>false</IncludeInUnityFile>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -475,7 +489,7 @@
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>..\..\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <ProgramDatabaseFile>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\ConvertibleBonds.pdb</ProgramDatabaseFile>
+      <ProgramDatabaseFile>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\ConvertibleBonds.pdb</ProgramDatabaseFile>
       <SubSystem>Console</SubSystem>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention>
@@ -486,15 +500,16 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Midl>
-      <TypeLibraryName>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\ConvertibleBonds.tlb</TypeLibraryName>
+      <TypeLibraryName>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\ConvertibleBonds.tlb</TypeLibraryName>
       <HeaderFileName>
       </HeaderFileName>
     </Midl>
     <ClCompile>
       <Optimization>Disabled</Optimization>
+      <LanguageStandard>stdcpp17</LanguageStandard>
       <IntrinsicFunctions>false</IntrinsicFunctions>
       <AdditionalIncludeDirectories>..\..;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>_DEBUG;WIN32;_CONSOLE;_SCL_SECURE_NO_DEPRECATE;_CRT_SECURE_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;WIN32;_CONSOLE;_SCL_SECURE_NO_DEPRECATE;_SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING;_SILENCE_CXX17_OLD_ALLOCATOR_MEMBERS_DEPRECATION_WARNING;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <DisableLanguageExtensions>false</DisableLanguageExtensions>
@@ -503,16 +518,17 @@
       <PrecompiledHeader>
       </PrecompiledHeader>
       <PrecompiledHeaderFile>quantlib.hpp</PrecompiledHeaderFile>
-      <PrecompiledHeaderOutputFile>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\ConvertibleBonds.pch</PrecompiledHeaderOutputFile>
-      <AssemblerListingLocation>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\</AssemblerListingLocation>
-      <ObjectFileName>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\</ObjectFileName>
-      <ProgramDataBaseFileName>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\</ProgramDataBaseFileName>
+      <PrecompiledHeaderOutputFile>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\ConvertibleBonds.pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\</AssemblerListingLocation>
+      <ObjectFileName>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\</ObjectFileName>
+      <ProgramDataBaseFileName>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\</ProgramDataBaseFileName>
       <BrowseInformation>true</BrowseInformation>
-      <BrowseInformationFile>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\</BrowseInformationFile>
+      <BrowseInformationFile>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\</BrowseInformationFile>
       <WarningLevel>Level3</WarningLevel>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <CompileAs>Default</CompileAs>
+      <IncludeInUnityFile>false</IncludeInUnityFile>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -523,7 +539,7 @@
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>..\..\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <ProgramDatabaseFile>.\build\$(qlCompilerTag)\$(Platform)\$(Configuration)\ConvertibleBonds.pdb</ProgramDatabaseFile>
+      <ProgramDatabaseFile>.\build\$(PlatformToolset)\$(Platform)\$(Configuration)\ConvertibleBonds.pdb</ProgramDatabaseFile>
       <SubSystem>Console</SubSystem>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention>
@@ -534,15 +550,13 @@
     <ClCompile Include="ConvertibleBonds.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="ReadMe.txt" />
-  </ItemGroup>
-  <ItemGroup>
     <ProjectReference Include="..\..\QuantLib.vcxproj">
       <Project>{ad0a27da-91da-46a2-acbd-296c419ed3aa}</Project>
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <Import Project="..\..\Build.props" Condition="Exists('..\..\Build.props')" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
 </Project>

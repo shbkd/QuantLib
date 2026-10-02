@@ -12,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -20,17 +20,29 @@
 */
 
 #include <ql/time/calendars/romania.hpp>
+#include <ql/errors.hpp>
 
 namespace QuantLib {
 
-    Romania::Romania() {
+    Romania::Romania(Market market) {
         // all calendar instances share the same implementation instance
-        static ext::shared_ptr<Calendar::Impl> impl(new Romania::Impl);
-        impl_ = impl;
+        static ext::shared_ptr<Calendar::Impl> publicImpl =
+            ext::make_shared<Romania::PublicImpl>();
+        static ext::shared_ptr<Calendar::Impl> bvbImpl =
+            ext::make_shared<Romania::BVBImpl>();
+        switch (market) {
+          case Public:
+            impl_ = publicImpl;
+            break;
+          case BVB:
+            impl_ = bvbImpl;
+            break;
+          default:
+            QL_FAIL("unknown market");
+        }
     }
 
-
-    bool Romania::Impl::isBusinessDay(const Date& date) const {
+    bool Romania::PublicImpl::isBusinessDay(const Date& date) const {
         Weekday w = date.weekday();
         Day d = date.dayOfMonth(), dd = date.dayOfYear();
         Month m = date.month();
@@ -61,8 +73,23 @@ namespace QuantLib {
             || (d == 25 && m == December)
             // 2nd Day of Chritsmas
             || (d == 26 && m == December))
-            return false;
+            return false; // NOLINT(readability-simplify-boolean-expr)
         return true;
     }
 
+    bool Romania::BVBImpl::isBusinessDay(const Date& date) const {
+        if (!PublicImpl::isBusinessDay(date))
+            return false;
+        Day d = date.dayOfMonth();
+        Month m = date.month();
+        Year y = date.year();
+        if (// one-off closing days
+            (d == 24 && m == December && y == 2014) ||
+            (d == 31 && m == December && y == 2014)
+            )
+            return false; // NOLINT(readability-simplify-boolean-expr)
+        return true;
+    }
+            
 }
+

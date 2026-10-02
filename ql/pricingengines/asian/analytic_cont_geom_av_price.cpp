@@ -11,24 +11,25 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
+#include <ql/exercise.hpp>
 #include <ql/pricingengines/asian/analytic_cont_geom_av_price.hpp>
 #include <ql/pricingengines/blackcalculator.hpp>
 #include <ql/processes/blackscholesprocess.hpp>
-#include <ql/exercise.hpp>
+#include <utility>
 
 namespace QuantLib {
 
     AnalyticContinuousGeometricAveragePriceAsianEngine::
-    AnalyticContinuousGeometricAveragePriceAsianEngine(
-            const ext::shared_ptr<GeneralizedBlackScholesProcess>& process)
-    : process_(process) {
+        AnalyticContinuousGeometricAveragePriceAsianEngine(
+            ext::shared_ptr<GeneralizedBlackScholesProcess> process)
+    : process_(std::move(process)) {
         registerWith(process_);
     }
 
@@ -38,6 +39,14 @@ namespace QuantLib {
                    "not a geometric average option");
         QL_REQUIRE(arguments_.exercise->type() == Exercise::European,
                    "not an European Option");
+
+        // Check if this is a seasoned option
+        if (arguments_.startDate != Date()) {
+            QL_FAIL("seasoned continuous geometric Asian options not yet supported - "
+                    "requires adjustment of forward price and variance based on "
+                    "accumulated geometric average. This feature needs mathematical "
+                    "review and implementation.");
+        }
 
         Date exercise = arguments_.exercise->lastDate();
 
@@ -59,9 +68,9 @@ namespace QuantLib {
 
         Spread dividendYield = 0.5 * (
             process_->riskFreeRate()->zeroRate(exercise, rfdc,
-                                               Continuous, NoFrequency) +
+                                               Continuous, NoFrequency).rate() +
             process_->dividendYield()->zeroRate(exercise, divdc,
-                                                Continuous, NoFrequency) +
+                                                Continuous, NoFrequency).rate() +
             volatility*volatility/6.0);
 
         Time t_q = divdc.yearFraction(

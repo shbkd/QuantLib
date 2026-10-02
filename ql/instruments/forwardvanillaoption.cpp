@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -33,9 +33,8 @@ namespace QuantLib {
     void ForwardVanillaOption::setupArguments(
                                        PricingEngine::arguments* args) const {
         OneAssetOption::setupArguments(args);
-        ForwardVanillaOption::arguments* arguments =
-            dynamic_cast<ForwardVanillaOption::arguments*>(args);
-        QL_REQUIRE(arguments != 0, "wrong argument type");
+        auto* arguments = dynamic_cast<ForwardVanillaOption::arguments*>(args);
+        QL_REQUIRE(arguments != nullptr, "wrong argument type");
 
         arguments->moneyness = moneyness_;
         arguments->resetDate = resetDate_;
@@ -45,10 +44,8 @@ namespace QuantLib {
     void ForwardVanillaOption::fetchResults(
                                       const PricingEngine::results* r) const {
         OneAssetOption::fetchResults(r);
-        const ForwardVanillaOption::results* results =
-            dynamic_cast<const ForwardVanillaOption::results*>(r);
-        QL_ENSURE(results != 0,
-                  "no results returned from pricing engine");
+        const auto* results = dynamic_cast<const ForwardVanillaOption::results*>(r);
+        QL_ENSURE(results != nullptr, "no results returned from pricing engine");
         delta_       = results->delta;
         gamma_       = results->gamma;
         theta_       = results->theta;

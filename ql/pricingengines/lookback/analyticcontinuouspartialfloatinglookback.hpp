@@ -12,14 +12,14 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-/*! \file analyticcontinuousfloatinglookback.hpp
+/*! \file analyticcontinuouspartialfloatinglookback.hpp
     \brief Analytic engine for continuous floating-strike lookback
 */
 
@@ -47,8 +47,9 @@ namespace QuantLib {
         : public ContinuousPartialFloatingLookbackOption::engine {
       public:
         AnalyticContinuousPartialFloatingLookbackEngine(
-            const ext::shared_ptr<GeneralizedBlackScholesProcess>& process);
-        void calculate() const;
+            ext::shared_ptr<GeneralizedBlackScholesProcess> process);
+        void calculate() const override;
+
       private:
         ext::shared_ptr<GeneralizedBlackScholesProcess> process_;
         CumulativeNormalDistribution f_;

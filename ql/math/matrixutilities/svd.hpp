@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -54,17 +54,17 @@ namespace QuantLib {
     class SVD {
       public:
         // constructor
-        SVD(const Matrix&);
+        explicit SVD(const Matrix&);
         // results
         const Matrix& U() const;
         const Matrix& V() const;
         const Array& singularValues() const;
-        Disposable<Matrix> S() const;
+        Matrix S() const;
         Real norm2() const;
         Real cond()  const;
         Size rank()  const;
         // utilities
-        Disposable<Array> solveFor(const Array&) const;
+        Array solveFor(const Array&) const;
       private:
         Matrix U_, V_;
         Array s_;

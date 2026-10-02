@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -64,7 +64,7 @@ namespace QuantLib {
         \f]
      */
     class CappedFlooredYoYInflationCoupon : public YoYInflationCoupon {
-    public:
+      public:
         // we may watch an underlying coupon ...
         CappedFlooredYoYInflationCoupon(
                 const ext::shared_ptr<YoYInflationCoupon>& underlying,
@@ -79,6 +79,7 @@ namespace QuantLib {
                                         Natural fixingDays,
                                         const ext::shared_ptr<YoYInflationIndex>& index,
                                         const Period& observationLag,
+                                        const CPI::InterpolationType interpolation,
                                         const DayCounter& dayCounter,
                                         Real gearing = 1.0,
                                         Spread spread = 0.0,
@@ -87,8 +88,9 @@ namespace QuantLib {
                                         const Date& refPeriodStart = Date(),
                                         const Date& refPeriodEnd = Date())
         : YoYInflationCoupon(paymentDate, nominal, startDate, endDate,
-                             fixingDays, index, observationLag,  dayCounter,
-                             gearing, spread, refPeriodStart, refPeriodEnd),
+                             fixingDays, index, observationLag, interpolation,
+                             dayCounter, gearing, spread,
+                             refPeriodStart, refPeriodEnd),
           isFloored_(false), isCapped_(false) {
             setCommon(cap, floor);
         }
@@ -96,7 +98,7 @@ namespace QuantLib {
         //! \name augmented Coupon interface
         //@{
         //! swap(let) rate
-        Rate rate() const;
+        Rate rate() const override;
         //! cap
         Rate cap() const;
         //! floor
@@ -109,27 +111,30 @@ namespace QuantLib {
 
         //! \name Observer interface
         //@{
-        void update();
+        void update() override;
         //@}
 
         //! \name Visitability
         //@{
-        virtual void accept(AcyclicVisitor& v);
+        void accept(AcyclicVisitor& v) override;
         //@}
+
+        //! this returns the expected rate before cap and floor are applied
+        Rate underlyingRate() const;
 
         bool isCapped() const { return isCapped_; }
         bool isFloored() const { return isFloored_; }
 
         void setPricer(const ext::shared_ptr<YoYInflationCouponPricer>&);
 
-    protected:
-        virtual void setCommon(Rate cap, Rate floor);
-
+      protected:
         // data, we only use underlying_ if it was constructed that way,
         // generally we use the shared_ptr conversion to boolean to test
         ext::shared_ptr<YoYInflationCoupon> underlying_;
         bool isFloored_, isCapped_;
         Rate cap_, floor_;
+      private:
+        void setCommon(Rate cap, Rate floor);
     };
 
 }

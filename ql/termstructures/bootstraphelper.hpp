@@ -12,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -26,19 +26,19 @@
 #ifndef quantlib_bootstrap_helper_hpp
 #define quantlib_bootstrap_helper_hpp
 
-#include <ql/quote.hpp>
-#include <ql/time/date.hpp>
 #include <ql/handle.hpp>
 #include <ql/patterns/observable.hpp>
 #include <ql/patterns/visitor.hpp>
+#include <ql/quote.hpp>
 #include <ql/quotes/simplequote.hpp>
 #include <ql/settings.hpp>
+#include <ql/time/date.hpp>
+#include <utility>
 
 namespace QuantLib {
 
     struct Pillar {
-        //! Enumeration for pillar determination alternatives
-        /*! These alternatives specify the determination of the pillar date. */
+        //! Alternatives ways of determining the pillar date
         enum Choice {
             MaturityDate,     //! instruments maturity date
             LastRelevantDate, //! last date relevant for instrument pricing
@@ -61,9 +61,8 @@ namespace QuantLib {
     template <class TS>
     class BootstrapHelper : public Observer, public Observable {
       public:
-        explicit BootstrapHelper(const Handle<Quote>& quote);
-        explicit BootstrapHelper(Real quote);
-        virtual ~BootstrapHelper() {}
+        explicit BootstrapHelper(const std::variant<Spread, Handle<Quote>>& quote);
+        ~BootstrapHelper() override = default;
         //! \name BootstrapHelper interface
         //@{
         const Handle<Quote>& quote() const { return quote_; }
@@ -107,7 +106,7 @@ namespace QuantLib {
         //@}
         //! \name Observer interface
         //@{
-        virtual void update();
+        void update() override;
         //@}
         //! \name Visitability
         //@{
@@ -122,17 +121,29 @@ namespace QuantLib {
 
     //! Bootstrap helper with date schedule relative to global evaluation date
     /*! Derived classes must takes care of rebuilding the date schedule when
-        the global evaluation date changes
+        the global evaluation date changes.
+
+        \warning Using this helper together with a bootstrapped curve constructed 
+                 with a fixed reference date causes the curve to re-bootstrap on 
+                 every evaluation date change, even though the result is identical. 
+                 This is because the helper registers with the global evaluation 
+                 date and notifies the curve on every change. To avoid the unnecessary 
+                 work, either:
+                 - call \c freeze() on the curve after the initial bootstrap; 
+                 - use the fixed-effective-date constructors of the helpers so that 
+                 they do not register with the global evaluation date at all.
     */
     template <class TS>
     class RelativeDateBootstrapHelper : public BootstrapHelper<TS> {
       public:
-        explicit RelativeDateBootstrapHelper(const Handle<Quote>& quote);
-        explicit RelativeDateBootstrapHelper(Real quote);
+        explicit RelativeDateBootstrapHelper(
+            const std::variant<Spread, Handle<Quote>>& quote,
+            bool updateDates = true);
+
         //! \name Observer interface
         //@{
-        void update() {
-            if (evaluationDate_ != Settings::instance().evaluationDate()) {
+        void update() override {
+            if (updateDates_ && evaluationDate_ != Settings::instance().evaluationDate()) {
                 evaluationDate_ = Settings::instance().evaluationDate();
                 initializeDates();
             }
@@ -142,24 +153,20 @@ namespace QuantLib {
       protected:
         virtual void initializeDates() = 0;
         Date evaluationDate_;
+        bool updateDates_;
     };
 
     // template definitions
 
     template <class TS>
-    BootstrapHelper<TS>::BootstrapHelper(const Handle<Quote>& quote)
-    : quote_(quote), termStructure_(0) {
+    BootstrapHelper<TS>::BootstrapHelper(const std::variant<Spread, Handle<Quote>>& quote)
+    : quote_(handleFromVariant(quote)), termStructure_(nullptr) {
         registerWith(quote_);
     }
 
     template <class TS>
-    BootstrapHelper<TS>::BootstrapHelper(Real quote)
-    : quote_(Handle<Quote>(ext::shared_ptr<Quote>(new SimpleQuote(quote)))),
-      termStructure_(0) {}
-
-    template <class TS>
     void BootstrapHelper<TS>::setTermStructure(TS* t) {
-        QL_REQUIRE(t != 0, "null term structure given");
+        QL_REQUIRE(t != nullptr, "null term structure given");
         termStructure_ = t;
     }
 
@@ -203,28 +210,24 @@ namespace QuantLib {
 
     template <class TS>
     void BootstrapHelper<TS>::accept(AcyclicVisitor& v) {
-        Visitor<BootstrapHelper<TS> >* v1 =
-            dynamic_cast<Visitor<BootstrapHelper<TS> >*>(&v);
-        if (v1 != 0)
+        auto* v1 = dynamic_cast<Visitor<BootstrapHelper<TS> >*>(&v);
+        if (v1 != nullptr)
             v1->visit(*this);
         else
             QL_FAIL("not a bootstrap-helper visitor");
     }
 
-    template <class TS>
-    RelativeDateBootstrapHelper<TS>::RelativeDateBootstrapHelper(
-                                                    const Handle<Quote>& quote)
-    : BootstrapHelper<TS>(quote) {
-        this->registerWith(Settings::instance().evaluationDate());
-        evaluationDate_ = Settings::instance().evaluationDate();
-    }
 
     template <class TS>
-    RelativeDateBootstrapHelper<TS>::RelativeDateBootstrapHelper(Real quote)
-    : BootstrapHelper<TS>(quote) {
-        this->registerWith(Settings::instance().evaluationDate());
-        evaluationDate_ = Settings::instance().evaluationDate();
+    RelativeDateBootstrapHelper<TS>::RelativeDateBootstrapHelper(
+        const std::variant<Spread, Handle<Quote>>& quote, bool updateDates)
+    : BootstrapHelper<TS>(quote), updateDates_(updateDates) {
+        if (updateDates) {
+            this->registerWith(Settings::instance().evaluationDate());
+            evaluationDate_ = Settings::instance().evaluationDate();
+        }
     }
+
 
     inline std::ostream& operator<<(std::ostream& out,
                                     Pillar::Choice t) {

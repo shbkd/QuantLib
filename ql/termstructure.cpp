@@ -10,38 +10,29 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include <ql/termstructure.hpp>
 #include <ql/math/comparison.hpp>
+#include <ql/termstructure.hpp>
+#include <utility>
 
 namespace QuantLib {
 
-    TermStructure::TermStructure(const DayCounter& dc)
-    : moving_(false),
-      updated_(true),
-      settlementDays_(Null<Natural>()),
-      dayCounter_(dc) {}
+    TermStructure::TermStructure(DayCounter dc)
+    : settlementDays_(Null<Natural>()), dayCounter_(std::move(dc)) {}
 
-    TermStructure::TermStructure(const Date& referenceDate,
-                                 const Calendar& cal,
-                                 const DayCounter& dc)
-    : moving_(false), updated_(true), calendar_(cal),
-      referenceDate_(referenceDate),
-      settlementDays_(Null<Natural>()),
-      dayCounter_(dc) {}
+    TermStructure::TermStructure(const Date& referenceDate, Calendar cal, DayCounter dc)
+    : calendar_(std::move(cal)), referenceDate_(referenceDate), settlementDays_(Null<Natural>()),
+      dayCounter_(std::move(dc)) {}
 
-    TermStructure::TermStructure(Natural settlementDays,
-                                 const Calendar& cal,
-                                 const DayCounter& dc)
-    : moving_(true), updated_(false), calendar_(cal),
-      settlementDays_(settlementDays),
-      dayCounter_(dc) {
+    TermStructure::TermStructure(Natural settlementDays, Calendar cal, DayCounter dc)
+    : moving_(true), updated_(false), calendar_(std::move(cal)), settlementDays_(settlementDays),
+      dayCounter_(std::move(dc)) {
         registerWith(Settings::instance().evaluationDate());
     }
 

@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -19,30 +19,29 @@
 
 #include <ql/experimental/commodities/energyswap.hpp>
 #include <ql/settings.hpp>
+#include <utility>
 
 namespace QuantLib {
 
-    EnergySwap::EnergySwap(
-                      const Calendar& calendar,
-                      const Currency& payCurrency,
-                      const Currency& receiveCurrency,
-                      const PricingPeriods& pricingPeriods,
-                      const CommodityType& commodityType,
-                      const ext::shared_ptr<SecondaryCosts>& secondaryCosts)
-    : EnergyCommodity(commodityType, secondaryCosts),
-      calendar_(calendar), payCurrency_(payCurrency),
-      receiveCurrency_(receiveCurrency), pricingPeriods_(pricingPeriods) {}
+    EnergySwap::EnergySwap(Calendar calendar,
+                           Currency payCurrency,
+                           Currency receiveCurrency,
+                           PricingPeriods pricingPeriods,
+                           const CommodityType& commodityType,
+                           const ext::shared_ptr<SecondaryCosts>& secondaryCosts)
+    : EnergyCommodity(commodityType, secondaryCosts), calendar_(std::move(calendar)),
+      payCurrency_(std::move(payCurrency)), receiveCurrency_(std::move(receiveCurrency)),
+      pricingPeriods_(std::move(pricingPeriods)) {}
 
     const CommodityType& EnergySwap::commodityType() const {
-        QL_REQUIRE(pricingPeriods_.size() > 0, "no pricing periods");
+        QL_REQUIRE(!pricingPeriods_.empty(), "no pricing periods");
         return pricingPeriods_[0]->quantity().commodityType();
     }
 
     Quantity EnergySwap::quantity() const {
         Real totalQuantityAmount = 0;
-        for (PricingPeriods::const_iterator pi = pricingPeriods_.begin();
-             pi != pricingPeriods_.end(); ++pi) {
-            totalQuantityAmount += (*pi)->quantity().amount();
+        for (const auto& pricingPeriod : pricingPeriods_) {
+            totalQuantityAmount += pricingPeriod->quantity().amount();
         }
         return Quantity(pricingPeriods_[0]->quantity().commodityType(),
                         pricingPeriods_[0]->quantity().unitOfMeasure(),

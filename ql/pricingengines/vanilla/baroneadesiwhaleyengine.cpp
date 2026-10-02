@@ -11,25 +11,28 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include <ql/pricingengines/vanilla/baroneadesiwhaleyengine.hpp>
+#include <ql/exercise.hpp>
+#include <ql/math/comparison.hpp>
+#include <ql/math/distributions/normaldistribution.hpp>
 #include <ql/pricingengines/blackcalculator.hpp>
 #include <ql/pricingengines/blackformula.hpp>
-#include <ql/math/distributions/normaldistribution.hpp>
-#include <ql/math/comparison.hpp>
-#include <ql/exercise.hpp>
+#include <ql/pricingengines/vanilla/baroneadesiwhaleyengine.hpp>
+#include <algorithm>
+#include <cmath>
+#include <utility>
 
 namespace QuantLib {
 
     BaroneAdesiWhaleyApproximationEngine::BaroneAdesiWhaleyApproximationEngine(
-              const ext::shared_ptr<GeneralizedBlackScholesProcess>& process)
-    : process_(process) {
+        ext::shared_ptr<GeneralizedBlackScholesProcess> process)
+    : process_(std::move(process)) {
         registerWith(process_);
     }
 
@@ -40,6 +43,11 @@ namespace QuantLib {
         DiscountFactor riskFreeDiscount,
         DiscountFactor dividendDiscount,
         Real variance, Real tolerance) {
+
+        QL_REQUIRE(riskFreeDiscount <= 1.0,
+                   "the Barone-Adesi-Whaley approximation is not applicable "
+                   "with negative interest rates "
+                   "(risk-free discount factor: " << riskFreeDiscount << ")");
 
         // Calculation of seed value, Si
         Real n= 2.0*std::log(dividendDiscount/riskFreeDiscount)/(variance);
@@ -62,6 +70,10 @@ namespace QuantLib {
             h = (bT - 2.0*std::sqrt(variance)) * payoff->strike() /
                 (payoff->strike() - Su);
             Si = Su + (payoff->strike() - Su) * std::exp(h);
+            // for a vanishing variance h diverges and the seed overflows; Su is
+            // its finite limit (the critical price tends to the strike)
+            if (!(Si > 0.0) || !std::isfinite(Si))
+                Si = Su;
             break;
           default:
             QL_FAIL("unknown option type");
@@ -75,8 +87,8 @@ namespace QuantLib {
             std::sqrt(variance);
         CumulativeNormalDistribution cumNormalDist;
         Real K = (!close(riskFreeDiscount, 1.0, 1000))
-                ? -2.0*std::log(riskFreeDiscount)
-                   / (variance*(1.0-riskFreeDiscount))
+                ? Real(-2.0*std::log(riskFreeDiscount)
+                   / (variance*(1.0-riskFreeDiscount)))
                  : 2.0/variance;
         Real temp = blackFormula(payoff->optionType(), payoff->strike(),
                 forwardSi, std::sqrt(variance))*riskFreeDiscount;
@@ -158,8 +170,15 @@ namespace QuantLib {
         BlackCalculator black(payoff, forwardPrice, std::sqrt(variance),
                               riskFreeDiscount);
 
-        if (dividendDiscount>=1.0 && payoff->optionType()==Option::Call) {
-            // early exercise never optimal
+        // early exercise never optimal; the put case must be caught here
+        // because criticalPrice() rejects a risk-free discount factor above 1
+        bool earlyExerciseNeverOptimal =
+            (dividendDiscount >= 1.0 && dividendDiscount >= riskFreeDiscount
+             && payoff->optionType() == Option::Call)
+            || (riskFreeDiscount >= 1.0 && riskFreeDiscount >= dividendDiscount
+                && payoff->optionType() == Option::Put);
+
+        if (earlyExerciseNeverOptimal) {
             results_.value        = black.value();
             results_.delta        = black.delta(spot);
             results_.deltaForward = black.deltaForward();
@@ -186,6 +205,10 @@ namespace QuantLib {
 
             results_.strikeSensitivity  = black.strikeSensitivity();
             results_.itmCashProbability = black.itmCashProbability();
+        } else if (variance < QL_EPSILON) {
+            // no time value: the critical-price calculation degenerates, and the
+            // American price is just the European one floored at intrinsic
+            results_.value = std::max(black.value(), (*payoff)(spot));
         } else {
             // early exercise can be optimal
             CumulativeNormalDistribution cumNormalDist;
@@ -197,8 +220,8 @@ namespace QuantLib {
                 /std::sqrt(variance);
             Real n = 2.0*std::log(dividendDiscount/riskFreeDiscount)/variance;
             Real K = (!close(riskFreeDiscount, 1.0, 1000))
-                    ? -2.0*std::log(riskFreeDiscount)
-                       / (variance*(1.0-riskFreeDiscount))
+                    ? Real(-2.0*std::log(riskFreeDiscount)
+                       / (variance*(1.0-riskFreeDiscount)))
                      : 2.0/variance;
             Real Q, a;
             switch (payoff->optionType()) {

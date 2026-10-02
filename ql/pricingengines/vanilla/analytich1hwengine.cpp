@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -26,8 +26,7 @@
 
 namespace QuantLib {
     // integration helper class
-    class AnalyticH1HWEngine::Fj_Helper
-        : public std::unary_function<std::complex<Real>, Real> {
+    class AnalyticH1HWEngine::Fj_Helper {
 
       public:
         Fj_Helper(const Handle<HestonModel>& hestonModel,
@@ -127,12 +126,10 @@ namespace QuantLib {
         }
 
         const std::complex<Real> I4 =
-            -1.0/lambda_* std::complex<Real>(u*u, ((j_ == 1u)? -u : u))
-              *(  b/c*(1.0 - std::exp(-c*term_))
-                + a*term_
-                + a/lambda_*(std::exp(-lambda_*term_) - 1.0)
-                + b/(c-lambda_)*std::exp(-c*term_)
-                    *(1.0 - std::exp(-term_*(lambda_-c))) );
+            -1.0 / lambda_ * std::complex<Real>(u * u, ((j_ == 1U) ? -u : u)) *
+            (b / c * (1.0 - std::exp(-c * term_)) + a * term_ +
+             a / lambda_ * (std::exp(-lambda_ * term_) - 1.0) +
+             b / (c - lambda_) * std::exp(-c * term_) * (1.0 - std::exp(-term_ * (lambda_ - c))));
 
         return eta_*rhoSr_*I4;
     }

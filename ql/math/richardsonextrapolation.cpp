@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -44,7 +44,7 @@ namespace QuantLib {
     }
 
     RichardsonExtrapolation::RichardsonExtrapolation(
-        const boost::function<Real (Real)>& f, Real delta_h, Real n)
+        const std::function<Real (Real)>& f, Real delta_h, Real n)
     : delta_h_(delta_h),
       fdelta_h_(f(delta_h)),
       n_(n),
@@ -70,8 +70,20 @@ namespace QuantLib {
         const Real ft = f_(delta_h_/t);
         const Real fs = f_(delta_h_/s);
 
-        const Real k = Brent().solve(RichardsonEqn(fdelta_h_, ft, fs, t, s),
-                                     1e-8, 0.05, 10);
+        const RichardsonEqn eqn(fdelta_h_, ft, fs, t, s);
+
+        const Real step = 0.1;
+        Real left = 0.05;
+        Real fr = eqn(left + step), fl = eqn(left);
+        while (fr*fl > 0.0 && left < 15.1) {
+            left+=step;
+            fl = fr;
+            fr = eqn(left + step);
+        }
+
+        QL_REQUIRE(left < 15.1,"could not estimate the order of convergence");
+
+        const Real k = Brent().solve(eqn, 1e-8, left+0.5*step, left, left+step);
 
         const Real ts = std::pow(s, k);
 

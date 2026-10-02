@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -57,22 +57,22 @@ namespace QuantLib {
         //! \name FloatingRateCoupon interface
         //@{
         //! not applicable here; use fixingDates() instead
-        Date fixingDate() const;
+        Date fixingDate() const override;
         //! fixing dates of the rates to be averaged
         std::vector<Date> fixingDates() const;
 
         //! not applicable here; use indexFixings() instead
-        Rate indexFixing() const;
+        Rate indexFixing() const override;
         //! fixings of the underlying index to be averaged
         std::vector<Rate> indexFixings() const;
 
         //! not applicable here
-        Rate convexityAdjustment() const;
+        Rate convexityAdjustment() const override;
         //@}
 
         //! \name Visitability
         //@{
-        void accept(AcyclicVisitor&);
+        void accept(AcyclicVisitor&) override;
         //@}
       private:
         Schedule fixingSchedule_;
@@ -82,8 +82,7 @@ namespace QuantLib {
     //! helper class building a sequence of average BMA coupons
     class AverageBMALeg {
       public:
-        AverageBMALeg(const Schedule& schedule,
-                      const ext::shared_ptr<BMAIndex>& index);
+        AverageBMALeg(Schedule schedule, ext::shared_ptr<BMAIndex> index);
         AverageBMALeg& withNotionals(Real notional);
         AverageBMALeg& withNotionals(const std::vector<Real>& notionals);
         AverageBMALeg& withPaymentDayCounter(const DayCounter&);
@@ -98,7 +97,7 @@ namespace QuantLib {
         ext::shared_ptr<BMAIndex> index_;
         std::vector<Real> notionals_;
         DayCounter paymentDayCounter_;
-        BusinessDayConvention paymentAdjustment_;
+        BusinessDayConvention paymentAdjustment_ = Following;
         std::vector<Real> gearings_;
         std::vector<Spread> spreads_;
     };

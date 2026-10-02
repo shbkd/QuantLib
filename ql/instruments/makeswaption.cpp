@@ -11,44 +11,41 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
+#include <ql/cashflows/cashflows.hpp>
+#include <ql/exercise.hpp>
+#include <ql/indexes/swapindex.hpp>
+#include <ql/instruments/makeois.hpp>
 #include <ql/instruments/makeswaption.hpp>
 #include <ql/instruments/makevanillaswap.hpp>
-#include <ql/cashflows/cashflows.hpp>
-#include <ql/indexes/swapindex.hpp>
 #include <ql/pricingengines/swap/discountingswapengine.hpp>
-#include <ql/exercise.hpp>
+#include <ql/optional.hpp>
 #include <ql/settings.hpp>
+#include <utility>
 
 namespace QuantLib {
 
-    MakeSwaption::MakeSwaption(const ext::shared_ptr<SwapIndex>& swapIndex,
+    MakeSwaption::MakeSwaption(ext::shared_ptr<SwapIndex> swapIndex,
                                const Period& optionTenor,
                                Rate strike)
-    : swapIndex_(swapIndex),
-      delivery_(Settlement::Physical),
-      optionTenor_(optionTenor),
-      optionConvention_(ModifiedFollowing),
-      fixingDate_(Null<Date>()),
-      strike_(strike),
-      underlyingType_(VanillaSwap::Payer),
-      nominal_(1.0) {}
+    : swapIndex_(std::move(swapIndex)), delivery_(Settlement::Physical),
+      settlementMethod_(Settlement::PhysicalOTC), optionTenor_(optionTenor),
+      optionConvention_(ModifiedFollowing), strike_(strike),
+      underlyingType_(Swap::Payer), nominal_(1.0) {}
 
-    MakeSwaption::MakeSwaption(const ext::shared_ptr<SwapIndex>& swapIndex,
+    MakeSwaption::MakeSwaption(ext::shared_ptr<SwapIndex> swapIndex,
                                const Date& fixingDate,
                                Rate strike)
-    : swapIndex_(swapIndex),
-      delivery_(Settlement::Physical),
-      optionConvention_(ModifiedFollowing),
-      fixingDate_(fixingDate),
-      strike_(strike),
-      underlyingType_(VanillaSwap::Payer) {}
+    : swapIndex_(std::move(swapIndex)), delivery_(Settlement::Physical),
+      settlementMethod_(Settlement::PhysicalOTC), optionConvention_(ModifiedFollowing),
+      fixingDate_(fixingDate), strike_(strike), underlyingType_(Swap::Payer),
+      nominal_(1.0) {}
 
     MakeSwaption::operator Swaption() const {
         ext::shared_ptr<Swaption> swaption = *this;
@@ -57,15 +54,17 @@ namespace QuantLib {
 
     MakeSwaption::operator ext::shared_ptr<Swaption>() const {
 
-        const Calendar& fixingCalendar = swapIndex_->fixingCalendar();
+        const Calendar& calendar = exerciseCalendar_.empty()
+            ? swapIndex_->fixingCalendar()
+            : exerciseCalendar_;
         Date refDate = Settings::instance().evaluationDate();
         // if the evaluation date is not a business day
         // then move to the next business day
-        refDate = fixingCalendar.adjust(refDate);
-        if (fixingDate_ == Null<Date>())
-            fixingDate_ = fixingCalendar.advance(refDate, optionTenor_,
-                                                 optionConvention_);
-        if (exerciseDate_ == Null<Date>()) {
+        refDate = calendar.adjust(refDate);
+        if (fixingDate_ == Date())
+            fixingDate_ = calendar.advance(refDate, optionTenor_,
+                                           optionConvention_);
+        if (exerciseDate_ == Date()) {
             exercise_ = ext::shared_ptr<Exercise>(new
                 EuropeanExercise(fixingDate_));
         } else {
@@ -76,44 +75,87 @@ namespace QuantLib {
                 EuropeanExercise(exerciseDate_));
         }
 
-        Rate usedStrike = strike_;
+        Rate usedStrike;
+        ext::shared_ptr<OvernightIndexedSwapIndex> OIswap_index = ext::dynamic_pointer_cast<OvernightIndexedSwapIndex>(swapIndex_);
         if (strike_ == Null<Rate>()) {
             // ATM on curve(s) attached to index
             QL_REQUIRE(!swapIndex_->forwardingTermStructure().empty(),
                        "null term structure set to this instance of " <<
                        swapIndex_->name());
-            ext::shared_ptr<VanillaSwap> temp =
-                swapIndex_->underlyingSwap(fixingDate_);
-            temp->setPricingEngine(
-                ext::shared_ptr<PricingEngine>(new DiscountingSwapEngine(
-                    swapIndex_->exogenousDiscount()
+            if (OIswap_index) {
+                auto temp = OIswap_index->underlyingSwap(fixingDate_);
+                temp->setPricingEngine(
+                    ext::make_shared<DiscountingSwapEngine>(
+                        swapIndex_->exogenousDiscount()
                         ? swapIndex_->discountingTermStructure()
                         : swapIndex_->forwardingTermStructure(),
-                    false)));
-            usedStrike = temp->fairRate();
+                        false
+                    )
+                );
+                usedStrike = temp->fairRate();
+            } else {
+                auto temp = swapIndex_->underlyingSwap(fixingDate_);
+                temp->setPricingEngine(
+                    ext::make_shared<DiscountingSwapEngine>(
+                        swapIndex_->exogenousDiscount()
+                        ? swapIndex_->discountingTermStructure()
+                        : swapIndex_->forwardingTermStructure(),
+                        false
+                    )
+                );
+                usedStrike = temp->fairRate();
+            }
+        } else {
+            usedStrike = strike_;
         }
 
         BusinessDayConvention bdc = swapIndex_->fixedLegConvention();
-        underlyingSwap_ =
-            MakeVanillaSwap(swapIndex_->tenor(),
-                            swapIndex_->iborIndex(), usedStrike)
-            .withEffectiveDate(swapIndex_->valueDate(fixingDate_))
-            .withFixedLegCalendar(swapIndex_->fixingCalendar())
-            .withFixedLegDayCount(swapIndex_->dayCounter())
-            .withFixedLegTenor(swapIndex_->fixedLegTenor())
-            .withFixedLegConvention(bdc)
-            .withFixedLegTerminationDateConvention(bdc)
-            .withType(underlyingType_)
-            .withNominal(nominal_);
-
-        ext::shared_ptr<Swaption> swaption(new
-            Swaption(underlyingSwap_, exercise_, delivery_));
+        if (OIswap_index) {
+            underlyingSwap_ =
+                (ext::shared_ptr<OvernightIndexedSwap>)(
+                    MakeOIS(swapIndex_->tenor(),
+                            OIswap_index->overnightIndex())
+                    .withFixedRate(usedStrike)
+                    .withEffectiveDate(swapIndex_->valueDate(fixingDate_))
+                    .withPaymentCalendar(swapIndex_->fixingCalendar())
+                    .withFixedLegDayCount(swapIndex_->dayCounter())
+                    .withPaymentAdjustment(bdc)
+                    .withFixedLegConvention(bdc)
+                    .withFixedLegTerminationDateConvention(bdc)
+                    .withType(underlyingType_)
+                    .withNominal(nominal_)
+                    );
+        } else {
+            underlyingSwap_ =
+                (ext::shared_ptr<VanillaSwap>)(
+                    MakeVanillaSwap(swapIndex_->tenor(),
+                                    swapIndex_->iborIndex())
+                    .withFixedRate(usedStrike)
+                    .withEffectiveDate(swapIndex_->valueDate(fixingDate_))
+                    .withFixedLegCalendar(swapIndex_->fixingCalendar())
+                    .withFixedLegDayCount(swapIndex_->dayCounter())
+                    .withFixedLegTenor(swapIndex_->fixedLegTenor())
+                    .withFixedLegConvention(bdc)
+                    .withFixedLegTerminationDateConvention(bdc)
+                    .withType(underlyingType_)
+                    .withNominal(nominal_)
+                    .withIndexedCoupons(useIndexedCoupons_)
+                    );
+        }
+        ext::shared_ptr<Swaption> swaption = ext::make_shared<Swaption>(
+            underlyingSwap_, exercise_, delivery_, settlementMethod_);
         swaption->setPricingEngine(engine_);
         return swaption;
     }
 
     MakeSwaption& MakeSwaption::withSettlementType(Settlement::Type delivery) {
         delivery_ = delivery;
+        return *this;
+    }
+
+    MakeSwaption& MakeSwaption::withSettlementMethod(
+        Settlement::Method settlementMethod) {
+        settlementMethod_ = settlementMethod;
         return *this;
     }
 
@@ -128,7 +170,12 @@ namespace QuantLib {
         return *this;
     }
 
-    MakeSwaption& MakeSwaption::withUnderlyingType(const VanillaSwap::Type type) {
+    MakeSwaption& MakeSwaption::withExerciseCalendar(const Calendar& cal) {
+        exerciseCalendar_ = cal;
+        return *this;
+    }
+
+    MakeSwaption& MakeSwaption::withUnderlyingType(const Swap::Type type) {
         underlyingType_ = type;
         return *this;
     }
@@ -141,6 +188,16 @@ namespace QuantLib {
 
     MakeSwaption& MakeSwaption::withNominal(Real n) {
         nominal_ = n;
+        return *this;
+    }
+
+    MakeSwaption& MakeSwaption::withIndexedCoupons(const std::optional<bool>& b) {
+        useIndexedCoupons_ = b;
+        return *this;
+    }
+
+    MakeSwaption& MakeSwaption::withAtParCoupons(bool b) {
+        useIndexedCoupons_ = !b;
         return *this;
     }
 

@@ -2,6 +2,7 @@
 
 /*
  Copyright (C) 2013, 2015 Peter Caspers
+ Copyright (C) 2026 Kyrylo Protsenko
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -10,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -18,45 +19,73 @@
 */
 
 #include <ql/models/shortrate/onefactormodels/gaussian1dmodel.hpp>
+#include <ql/cashflows/overnightindexedcoupon.hpp>
 #include <ql/math/interpolations/cubicinterpolation.hpp>
 #include <ql/payoff.hpp>
-
-using std::exp;
+#include <cmath>
 
 namespace QuantLib {
 
-Real Gaussian1dModel::forwardRate(const Date &fixing,
-                                  const Date &referenceDate, const Real y,
-                                  ext::shared_ptr<IborIndex> iborIdx) const {
+    Real Gaussian1dModel::forwardRate(const Date& fixing,
+                                      const Date& referenceDate,
+                                      const Real y,
+                                      const ext::shared_ptr<IborIndex>& iborIdx) const {
 
-    QL_REQUIRE(iborIdx != NULL, "no ibor index given");
+        QL_REQUIRE(iborIdx != nullptr, "no ibor index given");
+
+        calculate();
+
+        if (fixing <= (evaluationDate_ + (enforcesTodaysHistoricFixings_ ? 0 : -1)))
+            return iborIdx->fixing(fixing);
+
+        Handle<YieldTermStructure> yts = iborIdx->forwardingTermStructure(); // might be empty, then
+                                                                             // use model curve
+
+        Date valueDate = iborIdx->valueDate(fixing);
+        Date endDate = iborIdx->fixingCalendar().advance(
+            valueDate, iborIdx->tenor(), iborIdx->businessDayConvention(), iborIdx->endOfMonth());
+        // FIXME Here we should use the calculation date calendar ?
+        Real dcf = iborIdx->dayCounter().yearFraction(valueDate, endDate);
+
+        return (zerobond(valueDate, referenceDate, y, yts) -
+                zerobond(endDate, referenceDate, y, yts)) /
+               (dcf * zerobond(endDate, referenceDate, y, yts));
+}
+
+Real Gaussian1dModel::compoundedRate(
+    const OvernightIndexedCoupon& coupon,
+    const Date& referenceDate,
+    const Real y,
+    const Handle<YieldTermStructure>& yts) const {
 
     calculate();
 
-    if (fixing <= (evaluationDate_ + (enforcesTodaysHistoricFixings_ ? 0 : -1)))
-        return iborIdx->fixing(fixing);
-
-    Handle<YieldTermStructure> yts =
-        iborIdx->forwardingTermStructure(); // might be empty, then use
-                                            // model curve
-
-    Date valueDate = iborIdx->valueDate(fixing);
-    Date endDate = iborIdx->fixingCalendar().advance(
-        valueDate, iborIdx->tenor(), iborIdx->businessDayConvention(),
-        iborIdx->endOfMonth());
-    // FIXME Here we should use the calculation date calendar ?
-    Real dcf = iborIdx->dayCounter().yearFraction(valueDate, endDate);
-
-    return (zerobond(valueDate, referenceDate, y, yts) -
-            zerobond(endDate, referenceDate, y, yts)) /
-           (dcf * zerobond(endDate, referenceDate, y, yts));
+    const bool observationShift =
+        coupon.applyObservationShift() && coupon.fixingDays() > 0;
+    const auto& rateDates =
+        observationShift ? coupon.valueDates() : coupon.interestDates();
+    const Date& rateStart = rateDates.front();
+    const Date& rateEnd = rateDates.back();
+    const Time rateAccrualTime =
+        coupon.index()->dayCounter().yearFraction(rateStart, rateEnd);
+    const Handle<YieldTermStructure>& projectionCurve =
+        yts.empty() ? termStructure() : yts;
+    const Real compounding =
+        rateStart < referenceDate
+            ? projectionCurve->discount(rateStart, true) /
+                  projectionCurve->discount(referenceDate, true)
+            : zerobond(rateStart, referenceDate, y, yts);
+    return (compounding / zerobond(rateEnd, referenceDate, y, yts) - 1.0) /
+           rateAccrualTime;
 }
 
-Real Gaussian1dModel::swapRate(const Date &fixing, const Period &tenor,
-                               const Date &referenceDate, const Real y,
-                               ext::shared_ptr<SwapIndex> swapIdx) const {
+Real Gaussian1dModel::swapRate(const Date& fixing,
+                               const Period& tenor,
+                               const Date& referenceDate,
+                               const Real y,
+                               const ext::shared_ptr<SwapIndex>& swapIdx) const {
 
-    QL_REQUIRE(swapIdx != NULL, "no swap index given");
+    QL_REQUIRE(swapIdx != nullptr, "no swap index given");
 
     calculate();
 
@@ -78,7 +107,7 @@ Real Gaussian1dModel::swapRate(const Date &fixing, const Period &tenor,
 
     ext::shared_ptr<OvernightIndexedSwapIndex> oisIdx =
         ext::dynamic_pointer_cast<OvernightIndexedSwapIndex>(swapIdx);
-    if (oisIdx != NULL) {
+    if (oisIdx != nullptr) {
         floatSched = sched;
     } else {
         floatSched = underlying->floatingSchedule();
@@ -110,11 +139,13 @@ Real Gaussian1dModel::swapRate(const Date &fixing, const Period &tenor,
     return floatleg / annuity;
 }
 
-Real Gaussian1dModel::swapAnnuity(const Date &fixing, const Period &tenor,
-                                  const Date &referenceDate, const Real y,
-                                  ext::shared_ptr<SwapIndex> swapIdx) const {
+Real Gaussian1dModel::swapAnnuity(const Date& fixing,
+                                  const Period& tenor,
+                                  const Date& referenceDate,
+                                  const Real y,
+                                  const ext::shared_ptr<SwapIndex>& swapIdx) const {
 
-    QL_REQUIRE(swapIdx != NULL, "no swap index given");
+    QL_REQUIRE(swapIdx != nullptr, "no swap index given");
 
     calculate();
 
@@ -149,7 +180,7 @@ Real Gaussian1dModel::zerobondOption(
 
     Time fixingTime = termStructure()->timeFromReference(expiry);
     Time referenceTime =
-        referenceDate == Null<Date>()
+        referenceDate == Date()
             ? 0.0
             : termStructure()->timeFromReference(referenceDate);
 
@@ -211,12 +242,12 @@ Real Gaussian1dModel::gaussianPolynomialIntegral(
                                ca = 2.0 * c, da = M_SQRT2 * d;
     const boost::math::ntl::RR x0 = y0 * M_SQRT1_2, x1 = y1 * M_SQRT1_2;
     const boost::math::ntl::RR res =
-        (0.125 * (3.0 * aa + 2.0 * ca + 4.0 * e) * boost::math::erf(x1) -
-         1.0 / (4.0 * M_SQRTPI) * exp(-x1 * x1) *
+        (0.125 * (3.0 * aa + 2.0 * ca + 4.0 * e) * std::erf(x1) -
+         1.0 / (4.0 * M_SQRTPI) * std::exp(-x1 * x1) *
              (2.0 * aa * x1 * x1 * x1 + 3.0 * aa * x1 +
               2.0 * ba * (x1 * x1 + 1.0) + 2.0 * ca * x1 + 2.0 * da)) -
-        (0.125 * (3.0 * aa + 2.0 * ca + 4.0 * e) * boost::math::erf(x0) -
-         1.0 / (4.0 * M_SQRTPI) * exp(-x0 * x0) *
+        (0.125 * (3.0 * aa + 2.0 * ca + 4.0 * e) * std::erf(x0) -
+         1.0 / (4.0 * M_SQRTPI) * std::exp(-x0 * x0) *
              (2.0 * aa * x0 * x0 * x0 + 3.0 * aa * x0 +
               2.0 * ba * (x0 * x0 + 1.0) + 2.0 * ca * x0 + 2.0 * da));
     return NTL::to_double(res.value());
@@ -224,12 +255,12 @@ Real Gaussian1dModel::gaussianPolynomialIntegral(
     const Real aa = 4.0 * a, ba = 2.0 * M_SQRT2 * b, ca = 2.0 * c,
                da = M_SQRT2 * d;
     const Real x0 = y0 * M_SQRT1_2, x1 = y1 * M_SQRT1_2;
-    return (0.125 * (3.0 * aa + 2.0 * ca + 4.0 * e) * boost::math::erf(x1) -
-            1.0 / (4.0 * M_SQRTPI) * exp(-x1 * x1) *
+    return (0.125 * (3.0 * aa + 2.0 * ca + 4.0 * e) * std::erf(x1) -
+            1.0 / (4.0 * M_SQRTPI) * std::exp(-x1 * x1) *
                 (2.0 * aa * x1 * x1 * x1 + 3.0 * aa * x1 +
                  2.0 * ba * (x1 * x1 + 1.0) + 2.0 * ca * x1 + 2.0 * da)) -
-           (0.125 * (3.0 * aa + 2.0 * ca + 4.0 * e) * boost::math::erf(x0) -
-            1.0 / (4.0 * M_SQRTPI) * exp(-x0 * x0) *
+           (0.125 * (3.0 * aa + 2.0 * ca + 4.0 * e) * std::erf(x0) -
+            1.0 / (4.0 * M_SQRTPI) * std::exp(-x0 * x0) *
                 (2.0 * aa * x0 * x0 * x0 + 3.0 * aa * x0 +
                  2.0 * ba * (x0 * x0 + 1.0) + 2.0 * ca * x0 + 2.0 * da));
 #endif
@@ -244,14 +275,12 @@ Real Gaussian1dModel::gaussianShiftedPolynomialIntegral(
         a * h * h * h * h - b * h * h * h + c * h * h - d * h + e, x0, x1);
 }
 
-const Disposable<Array> Gaussian1dModel::yGrid(const Real stdDevs,
-                                               const int gridPoints,
-                                               const Real T, const Real t,
-                                               const Real y) const {
+Array Gaussian1dModel::yGrid(
+    const Real stdDevs, const int gridPoints, const Real T, const Real t, const Real y) const {
 
     // we use that the standard deviation is independent of $x$ here !
 
-    QL_REQUIRE(stateProcess_ != NULL, "state process not set");
+    QL_REQUIRE(stateProcess_ != nullptr, "state process not set");
 
     Array result(2 * gridPoints + 1, 0.0);
 

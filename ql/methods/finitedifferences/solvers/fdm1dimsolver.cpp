@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -21,41 +21,32 @@
 #include <ql/methods/finitedifferences/finitedifferencemodel.hpp>
 #include <ql/methods/finitedifferences/meshers/fdmmesher.hpp>
 #include <ql/methods/finitedifferences/operators/fdmlinearoplayout.hpp>
-#include <ql/methods/finitedifferences/utilities/fdminnervaluecalculator.hpp>
 #include <ql/methods/finitedifferences/solvers/fdm1dimsolver.hpp>
-#include <ql/methods/finitedifferences/stepconditions/fdmstepconditioncomposite.hpp>
 #include <ql/methods/finitedifferences/stepconditions/fdmsnapshotcondition.hpp>
+#include <ql/methods/finitedifferences/stepconditions/fdmstepconditioncomposite.hpp>
+#include <ql/methods/finitedifferences/utilities/fdminnervaluecalculator.hpp>
+#include <utility>
 
 namespace QuantLib {
 
-    Fdm1DimSolver::Fdm1DimSolver(
-                             const FdmSolverDesc& solverDesc,
-                             const FdmSchemeDesc& schemeDesc,
-                             const ext::shared_ptr<FdmLinearOpComposite>& op)
-    : solverDesc_(solverDesc),
-      schemeDesc_(schemeDesc),
-      op_(op),
+    Fdm1DimSolver::Fdm1DimSolver(const FdmSolverDesc& solverDesc,
+                                 const FdmSchemeDesc& schemeDesc,
+                                 ext::shared_ptr<FdmLinearOpComposite> op)
+    : solverDesc_(solverDesc), schemeDesc_(schemeDesc), op_(std::move(op)),
       thetaCondition_(ext::make_shared<FdmSnapshotCondition>(
-        0.99*std::min(1.0/365.0,
-           solverDesc.condition->stoppingTimes().empty()
-                    ? solverDesc.maturity
-                    : solverDesc.condition->stoppingTimes().front()))),
-      conditions_(FdmStepConditionComposite::joinConditions(thetaCondition_,
-                                                         solverDesc.condition)),
-      x_            (solverDesc.mesher->layout()->size()),
-      initialValues_(solverDesc.mesher->layout()->size()),
-      resultValues_ (solverDesc.mesher->layout()->size()) {
+          0.99 * std::min(1.0 / 365.0,
+                          solverDesc.condition->stoppingTimes().empty() ?
+                              solverDesc.maturity :
+                              solverDesc.condition->stoppingTimes().front()))),
+      conditions_(FdmStepConditionComposite::joinConditions(thetaCondition_, solverDesc.condition)),
+      x_(solverDesc.mesher->layout()->size()), initialValues_(solverDesc.mesher->layout()->size()),
+      resultValues_(solverDesc.mesher->layout()->size()) {
 
-        const ext::shared_ptr<FdmMesher> mesher = solverDesc.mesher;
-        const ext::shared_ptr<FdmLinearOpLayout> layout = mesher->layout();
-
-        const FdmLinearOpIterator endIter = layout->end();
-        for (FdmLinearOpIterator iter = layout->begin(); iter != endIter;
-             ++iter) {
+        for (const auto& iter : *solverDesc.mesher->layout()) {
             initialValues_[iter.index()]
                  = solverDesc_.calculator->avgInnerValue(iter,
                                                          solverDesc.maturity);
-            x_[iter.index()] = mesher->location(iter, 0);
+            x_[iter.index()] = solverDesc.mesher->location(iter, 0);
         }
     }
 
@@ -79,8 +70,8 @@ namespace QuantLib {
     }
 
     Real Fdm1DimSolver::thetaAt(Real x) const {
-        QL_REQUIRE(conditions_->stoppingTimes().front() > 0.0,
-                   "stopping time at zero-> can't calculate theta");
+        if (conditions_->stoppingTimes().front() == 0.0)
+            return Null<Real>();
 
         calculate();
         Array thetaValues(resultValues_.size());

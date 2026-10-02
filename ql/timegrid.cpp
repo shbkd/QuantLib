@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -78,8 +78,8 @@ namespace QuantLib {
     }
 
     Size TimeGrid::closestIndex(Time t) const {
-        const_iterator begin = times_.begin(), end = times_.end();
-        const_iterator result = std::lower_bound(begin, end, t);
+        auto begin = times_.begin(), end = times_.end();
+        auto result = std::lower_bound(begin, end, t);
         if (result == begin) {
             return 0;
         } else if (result == end) {

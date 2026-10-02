@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -33,18 +33,20 @@ namespace QuantLib {
     /*! \ingroup instruments */
     class EnergyFuture : public EnergyCommodity {
       public:
-        EnergyFuture(Integer buySell, const Quantity& quantity,
-                     const CommodityUnitCost& tradePrice,
-                     const ext::shared_ptr<CommodityIndex>& index,
+        EnergyFuture(Integer buySell,
+                     Quantity quantity,
+                     CommodityUnitCost tradePrice,
+                     ext::shared_ptr<CommodityIndex> index,
                      const CommodityType& commodityType,
                      const ext::shared_ptr<SecondaryCosts>& secondaryCosts);
-        bool isExpired() const;
+        bool isExpired() const override;
         //Integer buySell{} const { return buySell_; }
-        Quantity quantity() const { return quantity_; }
+        Quantity quantity() const override { return quantity_; }
         const CommodityUnitCost& tradePrice() const { return tradePrice_; }
-        const ext::shared_ptr<CommodityIndex> index() const { return index_; }
+        ext::shared_ptr<CommodityIndex> index() const { return index_; }
+
       protected:
-        void performCalculations() const;
+        void performCalculations() const override;
         Integer buySell_;
         Quantity quantity_;
         CommodityUnitCost tradePrice_;

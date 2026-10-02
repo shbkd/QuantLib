@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -34,21 +34,18 @@ namespace QuantLib {
     */
 
     namespace detail {
-        class UpdatedYInterpolation {
+        class UpdatedYInterpolation : public Interpolation::Impl {
           public:
-            virtual ~UpdatedYInterpolation() {}
-            virtual Real value(const Array& yValues, Real x) const = 0;
+            virtual Real updatedValue(const Array& yValues, Real x) const = 0;
         };
 
         template <class I1, class I2>
-        class LagrangeInterpolationImpl
-            : public Interpolation::templateImpl<I1,I2>,
-              public UpdatedYInterpolation {
-
+        class LagrangeInterpolationImpl final
+            : public Interpolation::templateImpl<I1, I2, UpdatedYInterpolation> {
           public:
             LagrangeInterpolationImpl(const I1& xBegin, const I1& xEnd,
                                       const I2& yBegin)
-            : Interpolation::templateImpl<I1,I2>(xBegin, xEnd, yBegin),
+            : Interpolation::templateImpl<I1, I2, UpdatedYInterpolation>(xBegin, xEnd, yBegin),
               n_(std::distance(xBegin, xEnd)),
               lambda_(n_) {
                 #if defined(QL_EXTRA_SAFETY_CHECKS)
@@ -57,7 +54,7 @@ namespace QuantLib {
                 #endif
             }
 
-            void update() {
+            void update() override {
                 const Real cM1 = 4.0/(*(this->xEnd_-1) - *(this->xBegin_));
 
                 for (Size i=0; i < n_; ++i) {
@@ -72,11 +69,9 @@ namespace QuantLib {
                 }
             }
 
-            Real value(Real x) const {
-                return _value(this->yBegin_, x);
-            }
+            Real value(Real x) const override { return _value(this->yBegin_, x); }
 
-            Real derivative(Real x) const {
+            Real derivative(Real x) const override {
                 Real n=0.0, d=0.0, nd=0.0, dd=0.0;
                 for (Size i=0; i < n_; ++i) {
                     const Real x_i = this->xBegin_[i];
@@ -101,33 +96,37 @@ namespace QuantLib {
                 return (nd * d - n * dd)/(d*d);
             }
 
-            Real primitive(Real) const {
+            Real primitive(Real) const override {
                 QL_FAIL("LagrangeInterpolation primitive is not implemented");
             }
 
-            Real secondDerivative(Real) const {
+            Real secondDerivative(Real) const override {
                 QL_FAIL("LagrangeInterpolation secondDerivative "
                         "is not implemented");
             }
 
-            Real value(const Array& y, Real x) const {
+            Real updatedValue(const Array& y, Real x) const override {
                 return _value(y.begin(), x);
             }
 
-            private:
-              template <class Iterator>
-              Real _value(const Iterator& yBegin, Real x) const {
-                  Real n=0.0, d=0.0;
-                  for (Size i=0; i < n_; ++i) {
-                      const Real x_i = this->xBegin_[i];
-                      if (close_enough(x, x_i))
-                          return yBegin[i];
+          private:
+            template <class Iterator>
+            Real _value(const Iterator& yBegin, Real x) const {
 
-                      const Real alpha = lambda_[i]/(x-x_i);
-                      n += alpha * yBegin[i];
-                      d += alpha;
-                  }
-                  return n/d;
+                const Real eps = 10*QL_EPSILON*std::abs(x);
+                const auto iter = std::lower_bound(
+                    this->xBegin_, this->xEnd_, x - eps);
+                if (iter != this->xEnd_ && *iter - x < eps) {
+                    return yBegin[std::distance(this->xBegin_, iter)];
+                }
+
+                Real n = 0.0, d = 0.0;
+                for (Size i = 0; i < n_; ++i) {
+                    const Real alpha = lambda_[i] / (x - this->xBegin_[i]);
+                    n += alpha * yBegin[i];
+                    d += alpha;
+                }
+                return n / d;
               }
 
               const Size n_;
@@ -135,6 +134,10 @@ namespace QuantLib {
         };
     }
 
+    /*! \ingroup interpolations
+        \warning See the Interpolation class for information about the
+                 required lifetime of the underlying data.
+    */
     class LagrangeInterpolation : public Interpolation {
       public:
         template <class I1, class I2>
@@ -147,8 +150,8 @@ namespace QuantLib {
 
         // interpolate with new set of y values for a new x value
         Real value(const Array& y, Real x) const {
-            return ext::dynamic_pointer_cast<detail::UpdatedYInterpolation>
-                (impl_)->value(y, x);
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-type-static-cast-downcast)
+            return static_cast<detail::UpdatedYInterpolation&>(*impl_).updatedValue(y, x);
         }
     };
 

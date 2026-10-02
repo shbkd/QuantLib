@@ -11,7 +11,7 @@ QuantLib is free software: you can redistribute it and/or modify it
 under the terms of the QuantLib license.  You should have received a
 copy of the license along with this program; if not, please email
 <quantlib-dev@lists.sf.net>. The license is also available online at
-<http://quantlib.org/license.shtml>.
+<https://www.quantlib.org/license.shtml>.
 
 This program is distributed in the hope that it will be useful, but WITHOUT
 ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -162,7 +162,7 @@ namespace QuantLib {
             Real S2 = capletVariance/theta - constQuadraticTerm;
 
             // if S2 < 0, there are no solutions so we take the best we can. 
-            Real S = S2 > 0 ? std::sqrt(S2) : 0;
+            Real S = S2 > 0 ? Real(std::sqrt(S2)) : 0;
 
             Real R = std::sqrt(thisSwapVariance);
 

@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -19,16 +19,14 @@
 */
 
 #include <ql/pricingengines/capfloor/mchullwhiteengine.hpp>
+#include <utility>
 
-namespace QuantLib {
+namespace QuantLib::detail {
 
-    namespace detail {
-
-        HullWhiteCapFloorPricer::HullWhiteCapFloorPricer(
-                                    const CapFloor::arguments& args,
-                                    const ext::shared_ptr<HullWhite>& model,
-                                    Time forwardMeasureTime)
-        : args_(args), model_(model), forwardMeasureTime_(forwardMeasureTime) {
+        HullWhiteCapFloorPricer::HullWhiteCapFloorPricer(const CapFloor::arguments& args,
+                                                         ext::shared_ptr<HullWhite> model,
+                                                         Time forwardMeasureTime)
+        : args_(args), model_(std::move(model)), forwardMeasureTime_(forwardMeasureTime) {
             endDiscount_ =
                 model_->termStructure()->discount(forwardMeasureTime_);
 
@@ -109,6 +107,4 @@ namespace QuantLib {
         }
 
     }
-
-}
 

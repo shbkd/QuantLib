@@ -12,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -54,10 +54,10 @@ namespace QuantLib {
                            const ext::shared_ptr<Fdm1dMesher>& m4);
 
 
-        Real dplus(const FdmLinearOpIterator& iter, Size direction) const;
-        Real dminus(const FdmLinearOpIterator& iter, Size direction) const;
-        Real location(const FdmLinearOpIterator& iter, Size direction) const;
-        Disposable<Array> locations(Size direction) const;
+        Real dplus(const FdmLinearOpIterator& iter, Size direction) const override;
+        Real dminus(const FdmLinearOpIterator& iter, Size direction) const override;
+        Real location(const FdmLinearOpIterator& iter, Size direction) const override;
+        Array locations(Size direction) const override;
 
         const std::vector<ext::shared_ptr<Fdm1dMesher> >&
             getFdm1dMeshers() const;

@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -39,7 +39,7 @@ namespace QuantLib {
         //! \name Constructors
         //@{
         FlatForward(const Date& referenceDate,
-                    const Handle<Quote>& forward,
+                    Handle<Quote> forward,
                     const DayCounter& dayCounter,
                     Compounding compounding = Continuous,
                     Frequency frequency = Annual);
@@ -50,7 +50,7 @@ namespace QuantLib {
                     Frequency frequency = Annual);
         FlatForward(Natural settlementDays,
                     const Calendar& calendar,
-                    const Handle<Quote>& forward,
+                    Handle<Quote> forward,
                     const DayCounter& dayCounter,
                     Compounding compounding = Continuous,
                     Frequency frequency = Annual);
@@ -68,22 +68,22 @@ namespace QuantLib {
 
         //! \name TermStructure interface
         //@{
-        Date maxDate() const { return Date::maxDate(); }
+        Date maxDate() const override { return Date::maxDate(); }
         //@}
 
         //! \name Observer interface
         //@{
-        void update();
+        void update() override;
         //@}
       private:
         //! \name LazyObject interface
         //@{
-        void performCalculations() const;
+        void performCalculations() const override;
         //@}
 
         //! \name YieldTermStructure implementation
         //@{
-        DiscountFactor discountImpl(Time) const;
+        DiscountFactor discountImpl(Time) const override;
         //@}
 
         Handle<Quote> forward_;

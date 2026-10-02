@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -19,18 +19,16 @@
 
 #include <ql/models/marketmodels/products/multistep/cashrebate.hpp>
 #include <ql/models/marketmodels/utilities.hpp>
-#include <ql/auto_ptr.hpp>
+#include <utility>
 
 namespace QuantLib {
 
-    MarketModelCashRebate::MarketModelCashRebate(
-                              const EvolutionDescription& evolution,
-                              const std::vector<Time>& paymentTimes,
-                              const Matrix& amounts,
-                              Size numberOfProducts)
-    : evolution_(evolution), paymentTimes_(paymentTimes),
-      amounts_(amounts), numberOfProducts_(numberOfProducts)
-    {
+    MarketModelCashRebate::MarketModelCashRebate(EvolutionDescription evolution,
+                                                 const std::vector<Time>& paymentTimes,
+                                                 Matrix amounts,
+                                                 Size numberOfProducts)
+    : evolution_(std::move(evolution)), paymentTimes_(paymentTimes), amounts_(std::move(amounts)),
+      numberOfProducts_(numberOfProducts) {
 
         checkIncreasingTimes(paymentTimes);
 
@@ -95,11 +93,10 @@ namespace QuantLib {
         return true;
     }
 
-    QL_UNIQUE_OR_AUTO_PTR<MarketModelMultiProduct>
+    std::unique_ptr<MarketModelMultiProduct>
     MarketModelCashRebate::clone() const 
     {
-        return QL_UNIQUE_OR_AUTO_PTR<MarketModelMultiProduct>(
-                                            new MarketModelCashRebate(*this));
+        return std::make_unique<MarketModelCashRebate>(*this);
     }
 
 }

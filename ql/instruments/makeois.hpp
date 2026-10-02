@@ -4,6 +4,7 @@
  Copyright (C) 2009 Ferdinando Ametrano
  Copyright (C) 2017 Joseph Jeisman
  Copyright (C) 2017 Fabrice Lecuyer
+ Copyright (C) 2026 Sergio Araujo
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -12,7 +13,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -27,6 +28,7 @@
 #define quantlib_makeois_hpp
 
 #include <ql/instruments/overnightindexedswap.hpp>
+#include <ql/optional.hpp>
 #include <ql/time/dategenerationrule.hpp>
 #include <ql/termstructures/yieldtermstructure.hpp>
 
@@ -39,28 +41,55 @@ namespace QuantLib {
     class MakeOIS {
       public:
         MakeOIS(const Period& swapTenor,
+                const ext::shared_ptr<OvernightIndex>& overnightIndex);
+
+        /*! \deprecated Use the other constructor plus withFixedRate and/or withForwardStart.
+                        Deprecated in version 1.44.
+        */
+        [[deprecated("Use the other constructor plus withFixedRate and/or withForwardStart.")]]
+        MakeOIS(const Period& swapTenor,
                 const ext::shared_ptr<OvernightIndex>& overnightIndex,
-                Rate fixedRate = Null<Rate>(),
+                Rate fixedRate,
                 const Period& fwdStart = 0*Days);
 
         operator OvernightIndexedSwap() const;
         operator ext::shared_ptr<OvernightIndexedSwap>() const ;
 
         MakeOIS& receiveFixed(bool flag = true);
-        MakeOIS& withType(OvernightIndexedSwap::Type type);
+        MakeOIS& withType(Swap::Type type);
         MakeOIS& withNominal(Real n);
+        MakeOIS& withFixedRate(Rate k);
+
+        MakeOIS& withForwardStart(const Period& f);
 
         MakeOIS& withSettlementDays(Natural settlementDays);
+        MakeOIS& withSettlementCalendar(const Calendar& cal);
         MakeOIS& withEffectiveDate(const Date&);
         MakeOIS& withTerminationDate(const Date&);
         MakeOIS& withRule(DateGeneration::Rule r);
+        MakeOIS& withFixedLegRule(DateGeneration::Rule r);
+        MakeOIS& withOvernightLegRule(DateGeneration::Rule r);
 
         MakeOIS& withPaymentFrequency(Frequency f);
+        MakeOIS& withFixedLegPaymentFrequency(Frequency f);
+        MakeOIS& withOvernightLegPaymentFrequency(Frequency f);
         MakeOIS& withPaymentAdjustment(BusinessDayConvention convention);
-        MakeOIS& withPaymentLag(Natural lag);
+        MakeOIS& withPaymentLag(Integer lag);
         MakeOIS& withPaymentCalendar(const Calendar& cal);
+        MakeOIS& withCalendar(const Calendar& cal);
+        MakeOIS& withFixedLegCalendar(const Calendar& cal);
+        MakeOIS& withOvernightLegCalendar(const Calendar& cal);
 
+        MakeOIS& withConvention(BusinessDayConvention bdc);
+        MakeOIS& withFixedLegConvention(BusinessDayConvention bdc);
+        MakeOIS& withOvernightLegConvention(BusinessDayConvention bdc);
+        MakeOIS& withTerminationDateConvention(BusinessDayConvention bdc);
+        MakeOIS& withFixedLegTerminationDateConvention(BusinessDayConvention bdc);
+        MakeOIS& withOvernightLegTerminationDateConvention(BusinessDayConvention bdc);
         MakeOIS& withEndOfMonth(bool flag = true);
+        MakeOIS& withFixedLegEndOfMonth(bool flag = true);
+        MakeOIS& withOvernightLegEndOfMonth(bool flag = true);
+        MakeOIS& withMaturityEndOfMonth(bool flag = true);
 
         MakeOIS& withFixedLegDayCount(const DayCounter& dc);
 
@@ -71,35 +100,55 @@ namespace QuantLib {
 
         MakeOIS &withTelescopicValueDates(bool telescopicValueDates);
 
+        MakeOIS& withAveragingMethod(RateAveraging::Type averagingMethod);
+
+        MakeOIS& withLookbackDays(Natural lookbackDays);
+        MakeOIS& withLockoutDays(Natural lockoutDays);
+        MakeOIS& withObservationShift(bool applyObservationShift = true);
+        MakeOIS& withRoundingPrecision(const std::optional<Integer>& roundingPrecision);
+
         MakeOIS& withPricingEngine(
                               const ext::shared_ptr<PricingEngine>& engine);
       private:
         Period swapTenor_;
         ext::shared_ptr<OvernightIndex> overnightIndex_;
-        Rate fixedRate_;
-        Period forwardStart_;
+        Rate fixedRate_ = Null<Rate>();
+        Period forwardStart_ = 0*Days;
 
-        Natural settlementDays_;
+        Natural settlementDays_ = Null<Natural>();
         Date effectiveDate_, terminationDate_;
-        Calendar calendar_;
+        Calendar fixedCalendar_, overnightCalendar_;
+        Calendar settlementCalendar_;
 
-        Frequency paymentFrequency_;
+        Frequency fixedPaymentFrequency_ = Annual;
+        Frequency overnightPaymentFrequency_ = Annual;
         Calendar paymentCalendar_;
-        BusinessDayConvention paymentAdjustment_;
-        Natural paymentLag_;
+        BusinessDayConvention paymentAdjustment_ = Following;
+        Integer paymentLag_ = 0;
 
-        DateGeneration::Rule rule_;
-        bool endOfMonth_, isDefaultEOM_;
+        BusinessDayConvention fixedConvention_ = ModifiedFollowing,
+                              fixedTerminationDateConvention_ = ModifiedFollowing,
+                              overnightConvention_ = ModifiedFollowing,
+                              overnightTerminationDateConvention_ = ModifiedFollowing;
+        DateGeneration::Rule fixedRule_ = DateGeneration::Backward;
+        DateGeneration::Rule overnightRule_ = DateGeneration::Backward;
+        bool fixedEndOfMonth_ = false, overnightEndOfMonth_ = false, isDefaultEOM_ = true;
+        std::optional<bool> maturityEndOfMonth_;
 
-        OvernightIndexedSwap::Type type_;
-        Real nominal_;
+        Swap::Type type_ = Swap::Payer;
+        Real nominal_ = 1.0;
 
-        Spread overnightSpread_;
+        Spread overnightSpread_ = 0.0;
         DayCounter fixedDayCount_;
 
         ext::shared_ptr<PricingEngine> engine_;
 
-        bool telescopicValueDates_;
+        bool telescopicValueDates_ = false;
+        RateAveraging::Type averagingMethod_ = RateAveraging::Compound;
+        Natural lookbackDays_ = Null<Natural>();
+        Natural lockoutDays_ = 0;
+        bool applyObservationShift_ = false;
+        std::optional<Integer> roundingPrecision_;
     };
 
 }

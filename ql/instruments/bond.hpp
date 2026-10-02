@@ -15,7 +15,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -49,6 +49,12 @@ namespace QuantLib {
                  cash flow at the same date. In particular, if there's
                  one single redemption, it must be the last cash flow,
 
+        \note Pricing methods (cleanPrice, dirtyPrice, settlementValue, etc.)
+              assume and return values as a percentage of par (per 100).
+              For bonds with a face value other than 100 (e.g., 25), the actual
+              cash price must be calculated by the user: `cash price = quote * face / 100`.
+              Yield and Z-spread methods also expect prices to be passed per 100.
+
         \ingroup instruments
 
         \test
@@ -58,13 +64,30 @@ namespace QuantLib {
     */
     class Bond : public Instrument {
       public:
+        //! Bond price information
+        class Price {
+          public:
+            enum Type { Dirty, Clean };
+            Price() : amount_(Null<Real>()), type_(Bond::Price::Clean) {}
+            Price(Real amount, Type type) : amount_(amount), type_(type) {}
+            Real amount() const {
+                QL_REQUIRE(amount_ != Null<Real>(), "no amount given");
+                return amount_;
+            }
+            Type type() const { return type_; }
+            bool isValid() const { return amount_ != Null<Real>(); }
+          private:
+            Real amount_;
+            Type type_;
+        };
+
         //! constructor for amortizing or non-amortizing bonds.
         /*! Redemptions and maturity are calculated from the coupon
             data, if available.  Therefore, redemptions must not be
             included in the passed cash flows.
         */
         Bond(Natural settlementDays,
-             const Calendar& calendar,
+             Calendar calendar,
              const Date& issueDate = Date(),
              const Leg& coupons = Leg());
 
@@ -74,7 +97,7 @@ namespace QuantLib {
                      later than the redemption date.
         */
         Bond(Natural settlementDays,
-             const Calendar& calendar,
+             Calendar calendar,
              Real faceAmount,
              const Date& maturityDate,
              const Date& issueDate = Date(),
@@ -86,11 +109,11 @@ namespace QuantLib {
 
         //! \name Instrument interface
         //@{
-        bool isExpired() const;
+        bool isExpired() const override;
         //@}
         //! \name Observable interface
         //@{
-        void deepUpdate();
+        void deepUpdate() override;
         //@}
         //! \name Inspectors
         //@{
@@ -154,7 +177,9 @@ namespace QuantLib {
                    Compounding comp,
                    Frequency freq,
                    Real accuracy = 1.0e-8,
-                   Size maxEvaluations = 100) const;
+                   Size maxEvaluations = 100,
+                   Real guess = 0.05,
+                   Bond::Price::Type priceType = Bond::Price::Clean) const;
 
         //! clean price given a yield and settlement date
         /*! The default bond settlement is used if no date is given. */
@@ -176,15 +201,16 @@ namespace QuantLib {
         /*! The default bond settlement date is used for calculation. */
         Real settlementValue(Real cleanPrice) const;
 
-        //! yield given a (clean) price and settlement date
+        //! yield given a price and settlement date
         /*! The default bond settlement is used if no date is given. */
-        Rate yield(Real cleanPrice,
+        Rate yield(Bond::Price price,
                    const DayCounter& dc,
                    Compounding comp,
                    Frequency freq,
                    Date settlementDate = Date(),
                    Real accuracy = 1.0e-8,
-                   Size maxEvaluations = 100) const;
+                   Size maxEvaluations = 100,
+                   Real guess = 0.05) const;
 
         //! accrued amount at a given date
         /*! The default bond settlement is used if no date is given. */
@@ -214,9 +240,9 @@ namespace QuantLib {
         Date previousCashFlowDate(Date d = Date()) const;
 
       protected:
-        void setupExpired() const;
-        void setupArguments(PricingEngine::arguments*) const;
-        void fetchResults(const PricingEngine::results*) const;
+        void setupExpired() const override;
+        void setupArguments(PricingEngine::arguments*) const override;
+        void fetchResults(const PricingEngine::results*) const override;
 
         /*! This method can be called by derived classes in order to
             build redemption payments from the existing cash flows.
@@ -277,13 +303,13 @@ namespace QuantLib {
         Date settlementDate;
         Leg cashflows;
         Calendar calendar;
-        void validate() const;
+        void validate() const override;
     };
 
     class Bond::results : public Instrument::results {
       public:
         Real settlementValue;
-        void reset() {
+        void reset() override {
             settlementValue = Null<Real>();
             Instrument::results::reset();
         }

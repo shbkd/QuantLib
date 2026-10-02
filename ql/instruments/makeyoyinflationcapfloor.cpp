@@ -12,31 +12,31 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
  */
 
-#include <ql/instruments/makeyoyinflationcapfloor.hpp>
 #include <ql/cashflows/cashflows.hpp>
+#include <ql/instruments/makeyoyinflationcapfloor.hpp>
 #include <ql/time/daycounters/thirty360.hpp>
+#include <utility>
 
 namespace QuantLib {
 
     MakeYoYInflationCapFloor::MakeYoYInflationCapFloor(YoYInflationCapFloor::Type capFloorType,
-                                const Size& length, const Calendar& cal,
-                                const ext::shared_ptr<YoYInflationIndex>& index,
-                                const Period& observationLag, Rate strike,
-                                const Period& forwardStart)
-    : capFloorType_(capFloorType), length_(length),
-      calendar_(cal), index_(index), observationLag_(observationLag),
-      strike_(strike), firstCapletExcluded_(false),
-      asOptionlet_(false), effectiveDate_(Date()), forwardStart_(forwardStart),
-      dayCounter_(Thirty360()), roll_(ModifiedFollowing), fixingDays_(0),
-      nominal_(1000000.0)
-     {}
+                                                       ext::shared_ptr<YoYInflationIndex> index,
+                                                       const Size& length,
+                                                       Calendar cal,
+                                                       const Period& observationLag,
+                                                       CPI::InterpolationType interpolation)
+    : capFloorType_(capFloorType), length_(length), calendar_(std::move(cal)),
+      index_(std::move(index)), observationLag_(observationLag),
+      interpolation_(interpolation), strike_(Null<Rate>()),
+
+      dayCounter_(Thirty360(Thirty360::BondBasis)) {}
 
     MakeYoYInflationCapFloor::operator YoYInflationCapFloor() const {
         ext::shared_ptr<YoYInflationCapFloor> capfloor = *this;
@@ -60,7 +60,7 @@ namespace QuantLib {
                           Unadjusted, Unadjusted, // ref periods & acc periods
                           DateGeneration::Forward, false);
         Leg leg = yoyInflationLeg(schedule, calendar_, index_,
-                                  observationLag_)
+                                  observationLag_, interpolation_)
         .withPaymentAdjustment(roll_)
         .withPaymentDayCounter(dayCounter_)
         .withNotionals(nominal_)
@@ -71,20 +71,15 @@ namespace QuantLib {
 
         // only leaves the last coupon
         if (asOptionlet_ && leg.size() > 1) {
-            Leg::iterator end = leg.end();  // Sun Studio needs an lvalue
+            auto end = leg.end(); // Sun Studio needs an lvalue
             leg.erase(leg.begin(), --end);
         }
 
         std::vector<Rate> strikeVector(1, strike_);
         if (strike_ == Null<Rate>()) {
             // ATM on the forecasting curve
-            QL_REQUIRE(!index_->yoyInflationTermStructure().empty(),
-                       "no forecasting yoy term structure set for " <<
-                       index_->name());
-            Handle<YieldTermStructure> fc
-            = index_->yoyInflationTermStructure()->nominalTermStructure();
-            strikeVector[0] = CashFlows::atmRate(leg,**fc,
-                                                 false, fc->referenceDate());
+            strikeVector[0] = CashFlows::atmRate(leg, **nominalTermStructure_,
+                                                 false, nominalTermStructure_->referenceDate());
         }
 
         ext::shared_ptr<YoYInflationCapFloor> capFloor(new
@@ -130,6 +125,27 @@ namespace QuantLib {
     MakeYoYInflationCapFloor& MakeYoYInflationCapFloor::withPricingEngine(
         const ext::shared_ptr<PricingEngine>& engine) {
         engine_ = engine;
+        return *this;
+    }
+
+    MakeYoYInflationCapFloor&
+    MakeYoYInflationCapFloor::withStrike(Rate strike) {
+        QL_REQUIRE(nominalTermStructure_.empty(), "ATM strike already given");
+        strike_ = strike;
+        return *this;
+    }
+
+    MakeYoYInflationCapFloor&
+    MakeYoYInflationCapFloor::withAtmStrike(
+                      const Handle<YieldTermStructure>& nominalTermStructure) {
+        QL_REQUIRE(strike_ == Null<Rate>(), "explicit strike already given");
+        nominalTermStructure_ = nominalTermStructure;
+        return *this;
+    }
+
+    MakeYoYInflationCapFloor&
+    MakeYoYInflationCapFloor::withForwardStart(Period forwardStart) {
+        forwardStart_ = forwardStart;
         return *this;
     }
 

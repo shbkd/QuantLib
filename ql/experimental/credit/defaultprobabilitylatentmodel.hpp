@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -29,15 +29,15 @@ namespace QuantLib {
 
     /*! \brief Default event Latent Model.
 
-     This is a model for joint default events based on a generic Latent 
-      Model. It models solely the default events in a portfolio, not making any 
+     This is a model for joint default events based on a generic Latent
+      Model. It models solely the default events in a portfolio, not making any
       reference to severities, exposures, etc...
      An implicit correspondence is stablished between the variables modelled and
-     the names in the basket given by the basket and model variable access 
+     the names in the basket given by the basket and model variable access
      indices.
      The class is parametric on the Latent Model copula.
 
-     \todo Consider QL_REQUIRE(basket_, "No portfolio basket set.") test in 
+     \todo Consider QL_REQUIRE(basket_, "No portfolio basket set.") test in
      debug model only for performance reasons.
     */
     template<class copulaPolicy>
@@ -52,7 +52,7 @@ namespace QuantLib {
         using LatentModel<copulaPolicy>::cumulativeZ;
         using LatentModel<copulaPolicy>::integratedExpectedValue;// which one?
     protected:
-        // not a handle, the model doesnt keep any cached magnitudes, no need 
+        // not a handle, the model doesnt keep any cached magnitudes, no need
         //  for notifications, still...
         mutable ext::shared_ptr<Basket> basket_;
         ext::shared_ptr<LMIntegration> integration_;
@@ -60,7 +60,7 @@ namespace QuantLib {
         typedef typename copulaPolicy::initTraits initTraits;
     public:
         /*!
-        @param factorWeights Latent model independent factors weights for each 
+        @param factorWeights Latent model independent factors weights for each
             variable.
         @param integralType Integration type.
         @param ini Copula initialization if any.
@@ -71,7 +71,7 @@ namespace QuantLib {
             const std::vector<std::vector<Real> >& factorWeights,
             LatentModelIntegrationType::LatentModelIntegrationType integralType,
             const initTraits& ini = initTraits()
-            ) 
+            )
         : LatentModel<copulaPolicy>(factorWeights, ini),
           integration_(LatentModel<copulaPolicy>::IntegrationFactory::
             createLMIntegration(factorWeights[0].size(), integralType))
@@ -87,20 +87,20 @@ namespace QuantLib {
             createLMIntegration(1, integralType))
         { }
         /* \todo
-            Add other constructors as in LatentModel for ease of use. (less 
+            Add other constructors as in LatentModel for ease of use. (less
             dimensions, factors, etcc...)
         */
 
-        /* To interface with loss models. It is possible to change the basket 
+        /* To interface with loss models. It is possible to change the basket
         since there are no cached magnitudes.
         */
-        void resetBasket(const ext::shared_ptr<Basket> basket) const {
+        void resetBasket(const ext::shared_ptr<Basket>& basket) const {
             basket_ = basket;
             // in the future change 'size' to 'liveSize'
-            QL_REQUIRE(basket_->size() == factorWeights_.size(), 
+            QL_REQUIRE(basket_->size() == factorWeights_.size(),
                 "Incompatible new basket and model sizes.");
         }
-    public:
+
         /*! Returns the probability of default of a given name conditional on
         the realization of a given set of values of the model independent
         factors. The date at which the probability is given is implicit in the
@@ -112,7 +112,7 @@ namespace QuantLib {
         cumulative inversion.
         */
         Probability conditionalDefaultProbability(Probability prob, Size iName,
-            const std::vector<Real>& mktFactors) const 
+            const std::vector<Real>& mktFactors) const
         {
             // we can be called from the outside (from an integrable loss model)
             //   but we are called often at integration points. This or
@@ -128,10 +128,12 @@ namespace QuantLib {
                 inverseCumulativeY(prob, iName), iName, mktFactors);
         }
     protected:
-        void update() {
-            if(basket_) basket_->notifyObservers();
-            LatentModel<copulaPolicy>::update();
-        }
+      void update() override {
+          if (basket_ != nullptr)
+              basket_->notifyObservers();
+          LatentModel<copulaPolicy>::update();
+      }
+
     public:// open since users access it for performance on joint integrations.
 
         /*! Returns the probability of default of a given name conditional on
@@ -141,24 +143,24 @@ namespace QuantLib {
         Same intention as above but provides a performance opportunity, if the
         integration is along the market factors (as usually is) avoids computing
         the inverse of the probability on each call.
-        @param invCumYProb Inverse cumul of the unconditional probability of 
+        @param invCumYProb Inverse cumul of the unconditional probability of
           default, has to follow the same copula law for results to be coherent
         @param iName desired name.
         @param m Value of LM independent factors.
         */
-        Probability conditionalDefaultProbabilityInvP(Real invCumYProb, 
-            Size iName, 
+        Probability conditionalDefaultProbabilityInvP(Real invCumYProb,
+            Size iName,
             const std::vector<Real>& m) const {
-            Real sumMs = 
-                std::inner_product(factorWeights_[iName].begin(), 
-                    factorWeights_[iName].end(), m.begin(), 0.);
-            Real res = cumulativeZ((invCumYProb - sumMs) / 
+            Real sumMs =
+                std::inner_product(factorWeights_[iName].begin(),
+                    factorWeights_[iName].end(), m.begin(), Real(0.));
+            Real res = cumulativeZ((invCumYProb - sumMs) /
                     idiosyncFctrs_[iName] );
             #if defined(QL_EXTRA_SAFETY_CHECKS)
             QL_REQUIRE (res >= 0. && res <= 1.,
                         "conditional probability " << res << "out of range");
             #endif
-        
+
             return res;
         }
     protected:
@@ -175,7 +177,7 @@ namespace QuantLib {
         outside the call.
         */
         Probability conditionalDefaultProbability(const Date& date, Size iName,
-            const std::vector<Real>& mktFactors) const 
+            const std::vector<Real>& mktFactors) const
         {
             const ext::shared_ptr<Pool>& pool = basket_->pool();
             Probability pDefUncond =
@@ -184,15 +186,15 @@ namespace QuantLib {
                   ->defaultProbability(date);
             return conditionalDefaultProbability(pDefUncond, iName, mktFactors);
         }
-        /*! Conditional default probability product, intermediate step in the 
+        /*! Conditional default probability product, intermediate step in the
             correlation calculation.*/
-        Probability condProbProduct(Real invCumYProb1, Real invCumYProb2, 
-            Size iName1, Size iName2, 
+        Probability condProbProduct(Real invCumYProb1, Real invCumYProb2,
+            Size iName1, Size iName2,
             const std::vector<Real>& mktFactors) const {
-            return 
-                conditionalDefaultProbabilityInvP(invCumYProb1, iName1, 
+            return
+                conditionalDefaultProbabilityInvP(invCumYProb1, iName1,
                     mktFactors) *
-                conditionalDefaultProbabilityInvP(invCumYProb2, iName2, 
+                conditionalDefaultProbabilityInvP(invCumYProb2, iName2,
                     mktFactors);
         }
         //! Conditional probability of n default events or more.
@@ -200,10 +202,10 @@ namespace QuantLib {
         Real conditionalProbAtLeastNEvents(Size n, const Date& date,
             const std::vector<Real>& mktFactors) const;
         //! access to integration:
-        const ext::shared_ptr<LMIntegration>& 
-            integration() const { return integration_; }
-    public:
-        /*! Computes the unconditional probability of default of a given name. 
+        const ext::shared_ptr<LMIntegration>& integration() const override { return integration_; }
+
+      public:
+        /*! Computes the unconditional probability of default of a given name.
         Trivial method for testing
         */
         Probability probOfDefault(Size iName, const Date& d) const {
@@ -216,37 +218,27 @@ namespace QuantLib {
             if (pUncond < 1.e-10) return 0.;
 
             return integratedExpectedValue(
-              boost::function<Real (const std::vector<Real>& v1)>(
-                boost::bind(
-                &DefaultLatentModel<copulaPolicy>
-                    ::conditionalDefaultProbabilityInvP,
-                this,
-                inverseCumulativeY(pUncond, iName),
-                iName, 
-                _1)
-              ));
+                [&](const std::vector<Real>& v1) {
+                    return conditionalDefaultProbabilityInvP(
+                        inverseCumulativeY(pUncond, iName), iName, v1);
+                });
         }
-        /*! Pearsons' default probability correlation. 
+        /*! Pearsons' default probability correlation.
             Users should consider specialization on the copula type for specific
-            distributions since that might simplify the integrations, most 
+            distributions since that might simplify the integrations, most
             importantly if this is to be used in calibration of observations for
             factor coefficients as it is expensive to integrate directly.
         */
         Real defaultCorrelation(const Date& d, Size iNamei, Size iNamej) const;
 
-        /*! Returns the probaility of having a given or larger number of 
+        /*! Returns the probaility of having a given or larger number of
         defaults in the basket portfolio at a given time.
         */
         Probability probAtLeastNEvents(Size n, const Date& date) const {
             return integratedExpectedValue(
-             boost::function<Real (const std::vector<Real>& v1)>(
-              boost::bind(
-              &DefaultLatentModel<copulaPolicy>::conditionalProbAtLeastNEvents,
-              this,
-              n,
-              boost::cref(date),
-              _1)
-             ));
+                [&](const std::vector<Real>& v1) {
+                    return conditionalProbAtLeastNEvents(n, date, v1);
+                });
         }
     };
 
@@ -254,8 +246,8 @@ namespace QuantLib {
     //---- Defines -----------------------------------------------------------
 
     template<class CP>
-    Real DefaultLatentModel<CP>::defaultCorrelation(const Date& d, 
-        Size iNamei, Size iNamej) const 
+    Real DefaultLatentModel<CP>::defaultCorrelation(const Date& d,
+        Size iNamei, Size iNamej) const
     {
         QL_REQUIRE(basket_, "No portfolio basket set.");
 
@@ -274,10 +266,8 @@ namespace QuantLib {
         Real E1i1j; // joint default covariance term
         if(iNamei !=iNamej) {
             E1i1j = integratedExpectedValue(
-              boost::function<Real (const std::vector<Real>& v1)>(
-                boost::bind(
-                &DefaultLatentModel<CP>::condProbProduct,
-                this, invPi, invPj, iNamei, iNamej, _1) ));
+                [&](const std::vector<Real>& v1) {
+                    return condProbProduct(invPi, invPj, iNamei, iNamej, v1); });
         }else{
             E1i1j = pi;
         }
@@ -286,14 +276,14 @@ namespace QuantLib {
 
 
     template<class CP>
-    Real DefaultLatentModel<CP>::conditionalProbAtLeastNEvents(Size n, 
+    Real DefaultLatentModel<CP>::conditionalProbAtLeastNEvents(Size n,
         const Date& date,
         const std::vector<Real>& mktFactors) const {
             QL_REQUIRE(basket_, "No portfolio basket set.");
 
-            /* \todo 
+            /* \todo
             This algorithm traverses all permutations starting form the
-            lowest one. This is inneficient, there shouldnt be any need to 
+            lowest one. This is inneficient, there shouldnt be any need to
             go through the invalid ones. Use combinations of n elements.
 
             See integration in O'Kane for homogeneous ntds.
@@ -302,11 +292,11 @@ namespace QuantLib {
             Size poolSize = basket_->size();//move to 'livesize'
             const ext::shared_ptr<Pool>& pool = basket_->pool();
 
-            BigNatural limit = 
-                static_cast<BigNatural>(std::pow(2., (int)(poolSize)));
+            auto limit = static_cast<BigNatural>(std::pow(2., (int)(poolSize)));
 
             // Precalc conditional probabilities
             std::vector<Probability> pDefCond;
+            pDefCond.reserve(poolSize);
             for(Size i=0; i<poolSize; i++)
                 pDefCond.push_back(conditionalDefaultProbability(
                     pool->get(pool->names()[i]).
@@ -314,22 +304,30 @@ namespace QuantLib {
                     defaultProbability(date), i, mktFactors));
 
             Probability probNEventsOrMore = 0.;
-            for(BigNatural mask = 
-                  static_cast<BigNatural>(std::pow(2., (int)(n))-1);
-                mask < limit; mask++) 
-            {
-                // cheap permutations
-                boost::dynamic_bitset<> bsetMask(poolSize, mask);
-                if(bsetMask.count() >= n) {
+            // cheap permutations
+            // dynamic_bitset (std::vector) memory manipulations moved out of the hot loop
+            auto mask = static_cast<BigNatural>((1 << (int)(n)) - 1);
+            boost::dynamic_bitset<> bsetMask(poolSize, mask);
+            auto bits_set = bsetMask.count();
+            auto increaseMask = [&]() {
+                for (Size i = 0; i < bsetMask.size(); i++) {
+                    // NOLINTBEGIN(modernize-use-bool-literals)
+                    if (bsetMask[i]) {bsetMask[i] = 0; bits_set--;}
+                    else {bsetMask[i] = 1; bits_set++; break;}
+                    // NOLINTEND(modernize-use-bool-literals)
+                }
+            };
+            for (; mask < limit; mask++) {
+                if (bits_set >= n) {
                     Probability pConfig = 1;
-                    for(Size i=0; i<bsetMask.size(); i++)
-                        pConfig *= 
-                          (bsetMask[i] ? pDefCond[i] : (1.- pDefCond[i]));
+                    for (Size i = 0; i < bsetMask.size(); i++)
+                        pConfig *= (bsetMask[i] ? pDefCond[i] : (1. - pDefCond[i]));
                     probNEventsOrMore += pConfig;
                 }
+                increaseMask();
             }
             return probNEventsOrMore;
-        }
+    }
 
 
     // often used:

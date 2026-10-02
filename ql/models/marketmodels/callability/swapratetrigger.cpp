@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -19,15 +19,15 @@
 
 #include <ql/models/marketmodels/callability/swapratetrigger.hpp>
 #include <ql/models/marketmodels/utilities.hpp>
-#include <ql/auto_ptr.hpp>
+#include <utility>
 
 namespace QuantLib {
 
     SwapRateTrigger::SwapRateTrigger(const std::vector<Time>& rateTimes,
-                                     const std::vector<Rate>& swapTriggers,
+                                     std::vector<Rate> swapTriggers,
                                      const std::vector<Time>& exerciseTimes)
-    : rateTimes_(rateTimes), swapTriggers_(swapTriggers),
-      exerciseTimes_(exerciseTimes), rateIndex_(exerciseTimes.size()) {
+    : rateTimes_(rateTimes), swapTriggers_(std::move(swapTriggers)), exerciseTimes_(exerciseTimes),
+      rateIndex_(exerciseTimes.size()) {
 
         checkIncreasingTimes(rateTimes);
         QL_REQUIRE(rateTimes.size()>1,
@@ -68,10 +68,9 @@ namespace QuantLib {
         ++currentIndex_;
     }
 
-    QL_UNIQUE_OR_AUTO_PTR<ExerciseStrategy<CurveState> >
+    std::unique_ptr<ExerciseStrategy<CurveState>>
     SwapRateTrigger::clone() const {
-        return QL_UNIQUE_OR_AUTO_PTR<ExerciseStrategy<CurveState> >(
-                                                  new SwapRateTrigger(*this));
+        return std::make_unique<SwapRateTrigger>(*this);
     }
 
 }

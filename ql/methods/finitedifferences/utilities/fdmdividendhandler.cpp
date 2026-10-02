@@ -12,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -40,14 +40,12 @@ namespace QuantLib {
         dividends_.reserve(schedule.size());
         dividendDates_.reserve(schedule.size());
         dividendTimes_.reserve(schedule.size());
-        for (DividendSchedule::const_iterator iter=schedule.begin();
-              iter!=schedule.end(); ++iter) {
-             dividends_.push_back((*iter)->amount());
-             dividendDates_.push_back((*iter)->date());
-             dividendTimes_.push_back(
-                     dayCounter.yearFraction(referenceDate,(*iter)->date()));
-         }
-      
+        for (const auto& iter : schedule) {
+            dividends_.push_back(iter->amount());
+            dividendDates_.push_back(iter->date());
+            dividendTimes_.push_back(dayCounter.yearFraction(referenceDate, iter->date()));
+        }
+
          Array tmp = mesher_->locations(equityDirection);
          Size spacing = mesher_->layout()->spacing()[equityDirection];
          for (Size i = 0; i < x_.size(); ++i) {
@@ -70,8 +68,7 @@ namespace QuantLib {
     void FdmDividendHandler::applyTo(Array& a, Time t) const {
         Array aCopy(a);
 
-        std::vector<Time>::const_iterator iter
-            = std::find(dividendTimes_.begin(), dividendTimes_.end(), t);
+        auto iter = std::find(dividendTimes_.begin(), dividendTimes_.end(), t);
 
         if (iter != dividendTimes_.end()) {
             const Real dividend = dividends_[iter - dividendTimes_.begin()];

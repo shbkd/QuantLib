@@ -12,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -26,10 +26,9 @@
 #ifndef quantlib_forward_curve_hpp
 #define quantlib_forward_curve_hpp
 
-#include <ql/termstructures/yield/forwardstructure.hpp>
+#include <ql/termstructures/yield/zeroyieldstructure.hpp>
 #include <ql/termstructures/interpolatedcurve.hpp>
 #include <ql/math/interpolations/backwardflatinterpolation.hpp>
-#include <ql/math/comparison.hpp>
 #include <utility>
 
 namespace QuantLib {
@@ -37,7 +36,7 @@ namespace QuantLib {
     //! YieldTermStructure based on interpolation of forward rates
     /*! \ingroup yieldtermstructures */
     template <class Interpolator>
-    class InterpolatedForwardCurve : public ForwardRateStructure,
+    class InterpolatedForwardCurve : public ZeroYieldStructure,
                                      protected InterpolatedCurve<Interpolator> {
       public:
         // constructor
@@ -46,10 +45,9 @@ namespace QuantLib {
             const std::vector<Rate>& forwards,
             const DayCounter& dayCounter,
             const Calendar& cal = Calendar(),
-            const std::vector<Handle<Quote> >& jumps =
-                                                std::vector<Handle<Quote> >(),
-            const std::vector<Date>& jumpDates = std::vector<Date>(),
-            const Interpolator& interpolator = Interpolator());
+            const std::vector<Handle<Quote> >& jumps = {},
+            const std::vector<Date>& jumpDates = {},
+            const Interpolator& interpolator = {});
         InterpolatedForwardCurve(
             const std::vector<Date>& dates,
             const std::vector<Rate>& forwards,
@@ -63,7 +61,7 @@ namespace QuantLib {
             const Interpolator& interpolator);
         //! \name TermStructure interface
         //@{
-        Date maxDate() const;
+        Date maxDate() const override;
         //@}
         //! \name other inspectors
         //@{
@@ -73,29 +71,28 @@ namespace QuantLib {
         const std::vector<Rate>& forwards() const;
         std::vector<std::pair<Date, Real> > nodes() const;
         //@}
+
       protected:
-        InterpolatedForwardCurve(
+        explicit InterpolatedForwardCurve(
             const DayCounter&,
-            const std::vector<Handle<Quote> >& jumps = std::vector<Handle<Quote> >(),
-            const std::vector<Date>& jumpDates = std::vector<Date>(),
-            const Interpolator& interpolator = Interpolator());
+            const Interpolator& interpolator = {});
         InterpolatedForwardCurve(
             const Date& referenceDate,
             const DayCounter&,
-            const std::vector<Handle<Quote> >& jumps = std::vector<Handle<Quote> >(),
-            const std::vector<Date>& jumpDates = std::vector<Date>(),
-            const Interpolator& interpolator = Interpolator());
+            const std::vector<Handle<Quote> >& jumps = {},
+            const std::vector<Date>& jumpDates = {},
+            const Interpolator& interpolator = {});
         InterpolatedForwardCurve(
             Natural settlementDays,
             const Calendar&,
             const DayCounter&,
-            const std::vector<Handle<Quote> >& jumps = std::vector<Handle<Quote> >(),
-            const std::vector<Date>& jumpDates = std::vector<Date>(),
-            const Interpolator& interpolator = Interpolator());
-        //! \name ForwardRateStructure implementation
+            const std::vector<Handle<Quote> >& jumps = {},
+            const std::vector<Date>& jumpDates = {},
+            const Interpolator& interpolator = {});
+
+        //! \name ZeroYieldStructure implementation
         //@{
-        Rate forwardImpl(Time t) const;
-        Rate zeroYieldImpl(Time t) const;
+        Rate zeroYieldImpl(Time t) const override;
         //@}
         mutable std::vector<Date> dates_;
       private:
@@ -155,26 +152,18 @@ namespace QuantLib {
     // template definitions
 
     template <class T>
-    Rate InterpolatedForwardCurve<T>::forwardImpl(Time t) const {
-        if (t <= this->times_.back())
-            return this->interpolation_(t, true);
-
-        // flat fwd extrapolation
-        return this->data_.back();
-    }
-
-    template <class T>
     Rate InterpolatedForwardCurve<T>::zeroYieldImpl(Time t) const {
         if (t == 0.0)
-            return forwardImpl(0.0);
+            return this->interpolation_(t, true);
 
+        const Time maxTime = this->times_.back();
         Real integral;
-        if (t <= this->times_.back()) {
+        if (t <= maxTime) {
             integral = this->interpolation_.primitive(t, true);
         } else {
             // flat fwd extrapolation
-            integral = this->interpolation_.primitive(this->times_.back(), true)
-                     + this->data_.back()*(t - this->times_.back());
+            integral = this->interpolation_.primitive(maxTime, true)
+                     + this->data_.back()*(t - maxTime);
         }
         return integral/t;
     }
@@ -182,11 +171,8 @@ namespace QuantLib {
     template <class T>
     InterpolatedForwardCurve<T>::InterpolatedForwardCurve(
                                     const DayCounter& dayCounter,
-                                    const std::vector<Handle<Quote> >& jumps,
-                                    const std::vector<Date>& jumpDates,
                                     const T& interpolator)
-    : ForwardRateStructure(dayCounter, jumps, jumpDates),
-      InterpolatedCurve<T>(interpolator) {}
+    : ZeroYieldStructure(dayCounter), InterpolatedCurve<T>(interpolator) {}
 
     template <class T>
     InterpolatedForwardCurve<T>::InterpolatedForwardCurve(
@@ -195,7 +181,7 @@ namespace QuantLib {
                                     const std::vector<Handle<Quote> >& jumps,
                                     const std::vector<Date>& jumpDates,
                                     const T& interpolator)
-    : ForwardRateStructure(referenceDate, Calendar(), dayCounter, jumps, jumpDates),
+    : ZeroYieldStructure(referenceDate, Calendar(), dayCounter, jumps, jumpDates),
       InterpolatedCurve<T>(interpolator) {}
 
     template <class T>
@@ -206,7 +192,7 @@ namespace QuantLib {
                                     const std::vector<Handle<Quote> >& jumps,
                                     const std::vector<Date>& jumpDates,
                                     const T& interpolator)
-    : ForwardRateStructure(settlementDays, calendar, dayCounter, jumps, jumpDates),
+    : ZeroYieldStructure(settlementDays, calendar, dayCounter, jumps, jumpDates),
       InterpolatedCurve<T>(interpolator) {}
 
     template <class T>
@@ -218,7 +204,7 @@ namespace QuantLib {
                                     const std::vector<Handle<Quote> >& jumps,
                                     const std::vector<Date>& jumpDates,
                                     const T& interpolator)
-    : ForwardRateStructure(dates.at(0), calendar, dayCounter, jumps, jumpDates),
+    : ZeroYieldStructure(dates.at(0), calendar, dayCounter, jumps, jumpDates),
       InterpolatedCurve<T>(std::vector<Time>(), forwards, interpolator),
       dates_(dates)
     {
@@ -232,7 +218,7 @@ namespace QuantLib {
             const DayCounter& dayCounter,
             const Calendar& calendar,
             const T& interpolator)
-    : ForwardRateStructure(dates.at(0), calendar, dayCounter),
+    : ZeroYieldStructure(dates.at(0), calendar, dayCounter),
       InterpolatedCurve<T>(std::vector<Time>(), forwards, interpolator),
       dates_(dates)
     {
@@ -245,7 +231,7 @@ namespace QuantLib {
             const std::vector<Rate>& forwards,
             const DayCounter& dayCounter,
             const T& interpolator)
-    : ForwardRateStructure(dates.at(0), Calendar(), dayCounter),
+    : ZeroYieldStructure(dates.at(0), Calendar(), dayCounter),
       InterpolatedCurve<T>(std::vector<Time>(), forwards, interpolator),
       dates_(dates)
     {
@@ -262,26 +248,8 @@ namespace QuantLib {
         QL_REQUIRE(this->data_.size() == dates_.size(),
                    "dates/data count mismatch");
 
-        this->times_.resize(dates_.size());
-        this->times_[0]=0.0;
-        for (Size i=1; i<dates_.size(); ++i) {
-            QL_REQUIRE(dates_[i] > dates_[i-1],
-                       "invalid date (" << dates_[i] << ", vs "
-                       << dates_[i-1] << ")");
-            this->times_[i] = dayCounter().yearFraction(dates_[0], dates_[i]);
-            QL_REQUIRE(!close(this->times_[i], this->times_[i-1]),
-                       "two dates correspond to the same time "
-                       "under this curve's day count convention");
-            #if !defined(QL_NEGATIVE_RATES)
-            QL_REQUIRE(this->data_[i] >= 0.0, "negative forward");
-            #endif
-        }
-
-        this->interpolation_ =
-            this->interpolator_.interpolate(this->times_.begin(),
-                                            this->times_.end(),
-                                            this->data_.begin());
-        this->interpolation_.update();
+        this->setupTimes(dates_, dates_[0], dayCounter());
+        this->setupInterpolation();
     }
 
 }

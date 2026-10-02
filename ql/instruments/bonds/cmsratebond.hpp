@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -42,20 +42,15 @@ namespace QuantLib {
       public:
         CmsRateBond(Natural settlementDays,
                     Real faceAmount,
-                    const Schedule& schedule,
+                    Schedule schedule,
                     const ext::shared_ptr<SwapIndex>& index,
                     const DayCounter& paymentDayCounter,
-                    BusinessDayConvention paymentConvention
-                                    = Following,
+                    BusinessDayConvention paymentConvention = Following,
                     Natural fixingDays = Null<Natural>(),
-                    const std::vector<Real>& gearings
-                                    = std::vector<Real>(1, 1.0),
-                    const std::vector<Spread>& spreads
-                                    = std::vector<Spread>(1, 0.0),
-                    const std::vector<Rate>& caps
-                                    = std::vector<Rate>(),
-                    const std::vector<Rate>& floors
-                                    = std::vector<Rate>(),
+                    const std::vector<Real>& gearings = { 1.0 },
+                    const std::vector<Spread>& spreads = { 0.0 },
+                    const std::vector<Rate>& caps = {},
+                    const std::vector<Rate>& floors = {},
                     bool inArrears = false,
                     Real redemption = 100.0,
                     const Date& issueDate = Date());

@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -40,18 +40,17 @@ namespace QuantLib {
         typedef traits::condition_type condition_type;
 
         // constructors
-        MethodOfLinesScheme(
-            const Real eps, const Real relInitStepSize,
-            const ext::shared_ptr<FdmLinearOpComposite>& map,
-            const bc_set& bcSet = bc_set());
+        MethodOfLinesScheme(Real eps,
+                            Real relInitStepSize,
+                            ext::shared_ptr<FdmLinearOpComposite> map,
+                            const bc_set& bcSet = bc_set());
 
         void step(array_type& a, Time t);
         void setStep(Time dt);
 
       protected:
         //apply for QuantLib's Runge-Kutta implementation
-        Disposable<std::vector<Real> >
-            apply(Time, const std::vector<Real>&) const;
+        std::vector<Real> apply(Time, const std::vector<Real>&) const;
 
         Time dt_;
         const Real eps_, relInitStepSize_;

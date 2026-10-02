@@ -12,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -20,23 +20,22 @@
 */
 
 #include <ql/processes/merton76process.hpp>
+#include <utility>
 
 namespace QuantLib {
 
-    Merton76Process::Merton76Process(
-             const Handle<Quote>& stateVariable,
-             const Handle<YieldTermStructure>& dividendTS,
-             const Handle<YieldTermStructure>& riskFreeTS,
-             const Handle<BlackVolTermStructure>& blackVolTS,
-             const Handle<Quote>& jumpInt,
-             const Handle<Quote>& logJMean,
-             const Handle<Quote>& logJVol,
-             const ext::shared_ptr<discretization>& disc)
-    : blackProcess_(new BlackScholesMertonProcess(stateVariable, dividendTS,
-                                                  riskFreeTS, blackVolTS,
-                                                  disc)),
-      jumpIntensity_(jumpInt), logMeanJump_(logJMean),
-      logJumpVolatility_(logJVol) {
+    Merton76Process::Merton76Process(const Handle<Quote>& stateVariable,
+                                     const Handle<YieldTermStructure>& dividendTS,
+                                     const Handle<YieldTermStructure>& riskFreeTS,
+                                     const Handle<BlackVolTermStructure>& blackVolTS,
+                                     Handle<Quote> jumpInt,
+                                     Handle<Quote> logJMean,
+                                     Handle<Quote> logJVol,
+                                     const ext::shared_ptr<discretization>& disc)
+    : StochasticProcess1D(disc), blackProcess_(
+          new BlackScholesMertonProcess(stateVariable, dividendTS, riskFreeTS, blackVolTS, disc)),
+      jumpIntensity_(std::move(jumpInt)), logMeanJump_(std::move(logJMean)),
+      logJumpVolatility_(std::move(logJVol)) {
         registerWith(blackProcess_);
         registerWith(jumpIntensity_);
         registerWith(logMeanJump_);

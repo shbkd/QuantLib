@@ -7,6 +7,7 @@
  Copyright (C) 2007, 2008, 2009 Ferdinando Ametrano
  Copyright (C) 2007 Chiara Fornarola
  Copyright (C) 2008 Simon Ibbotson
+ Copyright (C) 2022 Oleg Kulkov
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -15,29 +16,28 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include <ql/instruments/bond.hpp>
 #include <ql/cashflows/cashflows.hpp>
 #include <ql/cashflows/floatingratecoupon.hpp>
-#include <ql/math/solvers1d/brent.hpp>
 #include <ql/cashflows/simplecashflow.hpp>
-#include <ql/pricingengines/bond/discountingbondengine.hpp>
+#include <ql/instruments/bond.hpp>
+#include <ql/math/solvers1d/brent.hpp>
 #include <ql/pricingengines/bond/bondfunctions.hpp>
+#include <ql/pricingengines/bond/discountingbondengine.hpp>
+#include <ql/shared_ptr.hpp>
+#include <utility>
 
 namespace QuantLib {
 
-    Bond::Bond(Natural settlementDays,
-               const Calendar& calendar,
-               const Date& issueDate,
-               const Leg& coupons)
-    : settlementDays_(settlementDays), calendar_(calendar),
-      cashflows_(coupons), issueDate_(issueDate) {
+    Bond::Bond(Natural settlementDays, Calendar calendar, const Date& issueDate, const Leg& coupons)
+    : settlementDays_(settlementDays), calendar_(std::move(calendar)), cashflows_(coupons),
+      issueDate_(issueDate) {
 
         if (!coupons.empty()) {
             std::sort(cashflows_.begin(), cashflows_.end(),
@@ -56,20 +56,18 @@ namespace QuantLib {
         }
 
         registerWith(Settings::instance().evaluationDate());
-        for (Leg::const_iterator c = cashflows_.begin(); c != cashflows_.end();
-             ++c)
-            registerWith(*c);
+        for (const auto& cashflow : cashflows_)
+            registerWith(cashflow);
     }
 
     Bond::Bond(Natural settlementDays,
-               const Calendar& calendar,
+               Calendar calendar,
                Real faceAmount,
                const Date& maturityDate,
                const Date& issueDate,
                const Leg& cashflows)
-    : settlementDays_(settlementDays), calendar_(calendar),
-      cashflows_(cashflows), maturityDate_(maturityDate),
-      issueDate_(issueDate) {
+    : settlementDays_(settlementDays), calendar_(std::move(calendar)), cashflows_(cashflows),
+      maturityDate_(maturityDate), issueDate_(issueDate) {
 
         if (!cashflows.empty()) {
 
@@ -99,17 +97,16 @@ namespace QuantLib {
         }
 
         registerWith(Settings::instance().evaluationDate());
-        for (Leg::const_iterator c = cashflows_.begin(); c != cashflows_.end();
-             ++c)
-            registerWith(*c);
+        for (const auto& cashflow : cashflows_)
+            registerWith(cashflow);
     }
 
     bool Bond::isExpired() const {
         // this is the Instrument interface, so it doesn't use
-        // BondFunctions, and includeSettlementDateFlows is true
-        // (unless QL_TODAY_PAYMENTS will set it to false later on)
+        // BondFunctions.  We pass nullopt as includeSettlementDateFlows
+        // so that CashFlows::isExpired uses the default setting.
         return CashFlows::isExpired(cashflows_,
-                                    true,
+                                    std::nullopt,
                                     Settings::instance().evaluationDate());
     }
 
@@ -127,9 +124,7 @@ namespace QuantLib {
         // date, since the first is null.  After the call to
         // lower_bound, *i is the earliest date which is greater or
         // equal than d.  Its index is greater or equal to 1.
-        std::vector<Date>::const_iterator i =
-            std::lower_bound(notionalSchedule_.begin()+1,
-                             notionalSchedule_.end(), d);
+        auto i = std::lower_bound(notionalSchedule_.begin() + 1, notionalSchedule_.end(), d);
         Size index = std::distance(notionalSchedule_.begin(), i);
 
         if (d < notionalSchedule_[index]) {
@@ -154,7 +149,7 @@ namespace QuantLib {
     }
 
     Date Bond::maturityDate() const {
-        if (maturityDate_!=Null<Date>())
+        if (maturityDate_ != Date())
             return maturityDate_;
         else
             return BondFunctions::maturityDate(*this);
@@ -205,14 +200,19 @@ namespace QuantLib {
                      Compounding comp,
                      Frequency freq,
                      Real accuracy,
-                     Size maxEvaluations) const {
+                     Size maxEvaluations,
+                     Real guess,
+                     Bond::Price::Type priceType) const {
         Real currentNotional = notional(settlementDate());
         if (currentNotional == 0.0)
             return 0.0;
 
-        return BondFunctions::yield(*this, cleanPrice(), dc, comp, freq,
+        Bond::Price price(priceType == Bond::Price::Clean ? cleanPrice() : dirtyPrice(), priceType);
+
+        return BondFunctions::yield(*this, price, dc, comp, freq,
                                     settlementDate(),
-                                    accuracy, maxEvaluations);
+                                    accuracy, maxEvaluations,
+                                    guess);
     }
 
     Real Bond::cleanPrice(Rate y,
@@ -236,19 +236,21 @@ namespace QuantLib {
             + accruedAmount(settlement);
     }
 
-    Rate Bond::yield(Real cleanPrice,
+    Rate Bond::yield(Bond::Price price,
                      const DayCounter& dc,
                      Compounding comp,
                      Frequency freq,
                      Date settlement,
                      Real accuracy,
-                     Size maxEvaluations) const {
+                     Size maxEvaluations,
+                     Real guess) const {
         Real currentNotional = notional(settlement);
         if (currentNotional == 0.0)
             return 0.0;
 
-        return BondFunctions::yield(*this, cleanPrice, dc, comp, freq,
-                                    settlement, accuracy, maxEvaluations);
+        return BondFunctions::yield(*this, price, dc, comp, freq,
+                                    settlement, accuracy, maxEvaluations,
+                                    guess);
     }
 
     Real Bond::accruedAmount(Date settlement) const {
@@ -281,8 +283,8 @@ namespace QuantLib {
     }
 
     void Bond::setupArguments(PricingEngine::arguments* args) const {
-        Bond::arguments* arguments = dynamic_cast<Bond::arguments*>(args);
-        QL_REQUIRE(arguments != 0, "wrong argument type");
+        auto* arguments = dynamic_cast<Bond::arguments*>(args);
+        QL_REQUIRE(arguments != nullptr, "wrong argument type");
 
         arguments->settlementDate = settlementDate();
         arguments->cashflows = cashflows_;
@@ -293,9 +295,8 @@ namespace QuantLib {
 
         Instrument::fetchResults(r);
 
-        const Bond::results* results =
-            dynamic_cast<const Bond::results*>(r);
-        QL_ENSURE(results != 0, "wrong result type");
+        const auto* results = dynamic_cast<const Bond::results*>(r);
+        QL_ENSURE(results != nullptr, "wrong result type");
 
         settlementValue_ = results->settlementValue;
     }
@@ -314,10 +315,10 @@ namespace QuantLib {
             Real amount = (R/100.0)*(notionals_[i-1]-notionals_[i]);
             ext::shared_ptr<CashFlow> payment;
             if (i < notionalSchedule_.size()-1)
-                payment.reset(new AmortizingPayment(amount,
-                                                    notionalSchedule_[i]));
+                payment = ext::make_shared<AmortizingPayment>(amount,
+                                                    notionalSchedule_[i]);
             else
-                payment.reset(new Redemption(amount, notionalSchedule_[i]));
+                payment = ext::make_shared<Redemption>(amount, notionalSchedule_[i]);
             cashflows_.push_back(payment);
             redemptions_.push_back(payment);
         }
@@ -353,11 +354,8 @@ namespace QuantLib {
     }
 
     void Bond::deepUpdate() {
-        for (Size k = 0; k < cashflows_.size(); ++k) {
-            ext::shared_ptr<LazyObject> f =
-                ext::dynamic_pointer_cast<LazyObject>(cashflows_[k]);
-            if (f)
-                f->update();
+        for (auto& cashflow : cashflows_) {
+            cashflow->deepUpdate();
         }
         update();
     }
@@ -367,10 +365,9 @@ namespace QuantLib {
         notionals_.clear();
 
         Date lastPaymentDate = Date();
-        notionalSchedule_.push_back(Date());
-        for (Size i=0; i<cashflows_.size(); ++i) {
-            ext::shared_ptr<Coupon> coupon =
-                ext::dynamic_pointer_cast<Coupon>(cashflows_[i]);
+        notionalSchedule_.emplace_back();
+        for (auto& cashflow : cashflows_) {
+            ext::shared_ptr<Coupon> coupon = coupon_cast(cashflow);
             if (!coupon)
                 continue;
 
@@ -381,8 +378,6 @@ namespace QuantLib {
                 lastPaymentDate = coupon->date();
             } else if (!close(notional, notionals_.back())) {
                 // ...or if it has changed.
-                QL_REQUIRE(notional < notionals_.back(),
-                           "increasing coupon notionals");
                 notionals_.push_back(coupon->nominal());
                 // in this case, we also add the last valid date for
                 // the previous one...
@@ -404,8 +399,8 @@ namespace QuantLib {
     void Bond::arguments::validate() const {
         QL_REQUIRE(settlementDate != Date(), "no settlement date provided");
         QL_REQUIRE(!cashflows.empty(), "no cash flow provided");
-        for (Size i=0; i<cashflows.size(); ++i)
-            QL_REQUIRE(cashflows[i], "null cash flow provided");
+        for (const auto & cf: cashflows)
+            QL_REQUIRE(cf, "null cash flow provided");
     }
 
 }

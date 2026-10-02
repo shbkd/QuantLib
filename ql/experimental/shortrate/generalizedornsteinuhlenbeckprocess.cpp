@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -19,15 +19,13 @@
 */
 
 #include <ql/experimental/shortrate/generalizedornsteinuhlenbeckprocess.hpp>
+#include <utility>
 
 namespace QuantLib {
 
     GeneralizedOrnsteinUhlenbeckProcess::GeneralizedOrnsteinUhlenbeckProcess(
-        const boost::function<Real (Time)>& speed,
-        const boost::function<Real (Time)>& vol,
-        Real x0,
-        Real level)
-    : x0_(x0), level_(level), speed_(speed), volatility_(vol) {
+        std::function<Real(Time)> speed, std::function<Real(Time)> vol, Real x0, Real level)
+    : x0_(x0), level_(level), speed_(std::move(speed)), volatility_(std::move(vol)) {
 
         QL_REQUIRE(x0 >= 0.0, "negative initial data given");
         QL_REQUIRE(level >= 0.0, "negative level given");

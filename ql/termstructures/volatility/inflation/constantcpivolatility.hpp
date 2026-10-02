@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -28,34 +28,43 @@
 
 namespace QuantLib {
 
+    class Quote;
+
     //! Constant surface, no K or T dependence.
     class ConstantCPIVolatility : public CPIVolatilitySurface {
       public:
-        //! \name Constructor
+        //! \name Constructors
         //@{
-        //! calculate the reference date based on the global evaluation date
-        ConstantCPIVolatility(const Volatility v,
+        ConstantCPIVolatility(const Handle<Quote>& vol,
                               Natural settlementDays,
                               const Calendar&,
                               BusinessDayConvention bdc,
                               const DayCounter& dc,
-                              const Period &observationLag,
+                              const Period& observationLag,
+                              Frequency frequency,
+                              bool indexIsInterpolated);
+        ConstantCPIVolatility(Volatility vol,
+                              Natural settlementDays,
+                              const Calendar&,
+                              BusinessDayConvention bdc,
+                              const DayCounter& dc,
+                              const Period& observationLag,
                               Frequency frequency,
                               bool indexIsInterpolated);
         //@}
 
         //! \name Limits
         //@{
-        virtual Date maxDate() const { return Date::maxDate(); }
+        Date maxDate() const override { return Date::maxDate(); }
         //! the minimum strike for which the term structure can return vols
-        virtual Real minStrike() const { return QL_MIN_REAL; }
+        Real minStrike() const override { return QL_MIN_REAL; }
         //! the maximum strike for which the term structure can return vols
-        virtual Real maxStrike() const { return QL_MAX_REAL; }
+        Real maxStrike() const override { return QL_MAX_REAL; }
         //@}
 
       private:
-        virtual Volatility volatilityImpl(Time length, Rate strike) const;
-        Volatility volatility_;
+        Volatility volatilityImpl(Time length, Rate strike) const override;
+        Handle<Quote> volatility_;
     };
 
 }

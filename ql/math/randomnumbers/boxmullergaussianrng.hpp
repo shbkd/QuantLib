@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -50,17 +50,15 @@ namespace QuantLib {
         sample_type next() const;
       private:
         RNG uniformGenerator_;
-        mutable bool returnFirst_;
+        mutable bool returnFirst_ = true;
         mutable Real firstValue_,secondValue_;
         mutable Real firstWeight_,secondWeight_;
-        mutable Real weight_;
+        mutable Real weight_ = 0.0;
     };
 
     template <class RNG>
-    BoxMullerGaussianRng<RNG>::BoxMullerGaussianRng(
-                                                const RNG& uniformGenerator)
-    : uniformGenerator_(uniformGenerator), returnFirst_(true),
-      weight_(0.0) {}
+    BoxMullerGaussianRng<RNG>::BoxMullerGaussianRng(const RNG& uniformGenerator)
+    : uniformGenerator_(uniformGenerator) {}
 
     template <class RNG>
     inline typename BoxMullerGaussianRng<RNG>::sample_type
@@ -83,10 +81,10 @@ namespace QuantLib {
             weight_ = firstWeight_*secondWeight_;
 
             returnFirst_ = false;
-            return sample_type(firstValue_,weight_);
+            return {firstValue_, weight_};
         } else {
             returnFirst_ = true;
-            return sample_type(secondValue_,weight_);
+            return {secondValue_, weight_};
         }
     }
 

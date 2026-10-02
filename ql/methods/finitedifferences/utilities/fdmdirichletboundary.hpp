@@ -12,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -45,12 +45,12 @@ namespace QuantLib {
         FdmDirichletBoundary(const ext::shared_ptr<FdmMesher>& mesher,
                              Real valueOnBoundary, Size direction, Side side);
 
-        void applyBeforeApplying(operator_type&) const;
-        void applyBeforeSolving(operator_type&, array_type&) const;
-        void applyAfterApplying(array_type&) const;
-        void applyAfterSolving(array_type&) const;
-        void setTime(Time) {}
-        
+        void applyBeforeApplying(operator_type&) const override;
+        void applyBeforeSolving(operator_type&, array_type&) const override;
+        void applyAfterApplying(array_type&) const override;
+        void applyAfterSolving(array_type&) const override;
+        void setTime(Time) override {}
+
         Real applyAfterApplying(Real x, Real value) const;
 
       private:

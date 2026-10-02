@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -19,20 +19,21 @@
 
 #include <ql/experimental/commodities/commoditycurve.hpp>
 #include <ql/experimental/commodities/commoditypricinghelpers.hpp>
+#include <utility>
 
 namespace QuantLib {
 
-    CommodityCurve::CommodityCurve(const std::string& name,
-                                   const CommodityType& commodityType,
-                                   const Currency& currency,
-                                   const UnitOfMeasure& unitOfMeasure,
+    CommodityCurve::CommodityCurve(std::string name,
+                                   CommodityType commodityType,
+                                   Currency currency,
+                                   UnitOfMeasure unitOfMeasure,
                                    const Calendar& calendar,
                                    const std::vector<Date>& dates,
-                                   const std::vector<Real>& prices,
+                                   std::vector<Real> prices,
                                    const DayCounter& dayCounter)
-    : TermStructure(dates[0], calendar, dayCounter),
-      name_(name), commodityType_(commodityType), unitOfMeasure_(unitOfMeasure),
-      currency_(currency), dates_(dates), data_(prices),
+    : TermStructure(dates[0], calendar, dayCounter), name_(std::move(name)),
+      commodityType_(std::move(commodityType)), unitOfMeasure_(std::move(unitOfMeasure)),
+      currency_(std::move(currency)), dates_(dates), data_(std::move(prices)),
       interpolator_(ForwardFlat()), basisOfCurveUomConversionFactor_(1) {
 
         QL_REQUIRE(dates_.size()>1, "too few dates");
@@ -53,15 +54,15 @@ namespace QuantLib {
         interpolation_.update();
     }
 
-    CommodityCurve::CommodityCurve(const std::string& name,
-                                   const CommodityType& commodityType,
-                                   const Currency& currency,
-                                   const UnitOfMeasure& unitOfMeasure,
+    CommodityCurve::CommodityCurve(std::string name,
+                                   CommodityType commodityType,
+                                   Currency currency,
+                                   UnitOfMeasure unitOfMeasure,
                                    const Calendar& calendar,
                                    const DayCounter& dayCounter)
-    : TermStructure(0, calendar, dayCounter),
-      name_(name), commodityType_(commodityType), unitOfMeasure_(unitOfMeasure),
-      currency_(currency), interpolator_(ForwardFlat()),
+    : TermStructure(0, calendar, dayCounter), name_(std::move(name)),
+      commodityType_(std::move(commodityType)), unitOfMeasure_(std::move(unitOfMeasure)),
+      currency_(std::move(currency)), interpolator_(ForwardFlat()),
       basisOfCurveUomConversionFactor_(1) {}
 
     void CommodityCurve::setPrices(std::map<Date, Real>& prices) {
@@ -69,9 +70,9 @@ namespace QuantLib {
 
         dates_.clear();
         data_.clear();
-        for (std::map<Date, Real>::const_iterator i = prices.begin(); i != prices.end(); ++i) {
-            dates_.push_back(i->first);
-            data_.push_back(i->second);
+        for (auto & price : prices) {
+            dates_.push_back(price.first);
+            data_.push_back(price.second);
         }
 
         times_.resize(dates_.size());
@@ -98,7 +99,7 @@ namespace QuantLib {
     std::ostream& operator<<(std::ostream& out, const CommodityCurve& curve) {
         out << "[" << curve.name_ << "] (" << curve.currency_.code()
             << "/" << curve.unitOfMeasure_.code() << ")";
-        if (curve.basisOfCurve_ != 0)
+        if (curve.basisOfCurve_ != nullptr)
             out << "; basis to (" << (*curve.basisOfCurve_) << ")";
         return out;
     }

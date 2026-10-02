@@ -2,6 +2,7 @@
 
 /*
  Copyright (C) 2004, 2005, 2006 StatPro Italia srl
+ Copyright (C) 2016 Quaternion Risk Management Ltd
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -10,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -29,11 +30,6 @@
 
 #include <ql/currency.hpp>
 
-#if defined(QL_PATCH_MSVC)
-#pragma warning(push)
-#pragma warning(disable:4819)
-#endif
-
 namespace QuantLib {
 
     //! Bulgarian lev
@@ -45,6 +41,17 @@ namespace QuantLib {
     class BGLCurrency : public Currency {
       public:
         BGLCurrency();
+    };
+
+    //! Bulgarian lev
+    /*! The ISO three-letter code is BGN; the numeric code is 975.
+        It is divided into 100 stotinki.
+
+        \ingroup currencies
+    */
+    class BGNCurrency : public Currency {
+      public:
+        BGNCurrency();
     };
 
     //! Belarussian ruble
@@ -124,6 +131,17 @@ namespace QuantLib {
         GBPCurrency();
     };
 
+    //! Georgian lari
+    /*! The ISO three-letter code is GEL; the numeric code is 981.
+        It is divided into 100 tetri.
+
+        \ingroup currencies
+    */
+    class GELCurrency : public Currency {
+      public:
+        GELCurrency();
+    };
+
     //! Hungarian forint
     /*! The ISO three-letter code is HUF; the numeric code is 348.
         It has no subdivisions.
@@ -166,6 +184,17 @@ namespace QuantLib {
     class LVLCurrency : public Currency {
       public:
         LVLCurrency();
+    };
+
+    //! Macedonian denar
+    /*! The ISO three-letter code is MKD; the numeric code is 807.
+        It is divided in 100 deni.
+
+        \ingroup currencies
+    */
+    class MKDCurrency : public Currency {
+      public:
+        MKDCurrency();
     };
 
     //! Norwegian krone
@@ -212,6 +241,17 @@ namespace QuantLib {
     class RONCurrency : public Currency {
       public:
         RONCurrency();
+    };
+
+    //! Serbian dinar
+    /*! The ISO three-letter code is RSD; the numeric code is 941.
+        It is divided into 100 para/napa.
+
+        \ingroup currencies
+    */
+    class RSDCurrency : public Currency {
+      public:
+        RSDCurrency();
     };
 
     //! Russian ruble
@@ -269,6 +309,17 @@ namespace QuantLib {
     class TRYCurrency : public Currency {
       public:
         TRYCurrency();
+    };
+
+    //! Ukrainian hryvnia
+    /*! The ISO three-letter code is UAH; the numeric code is 980.
+        It is divided in 100 kopiykas.
+
+        \ingroup currencies
+    */
+    class UAHCurrency : public Currency {
+    public:
+        UAHCurrency();
     };
 
 
@@ -378,6 +429,19 @@ namespace QuantLib {
         GRDCurrency();
     };
 
+    //! Croatian kuna
+    /*! The ISO three-letter code was HRK; the numeric code was 191.
+        It was divided into 100 lipa.
+
+        Obsoleted by the Euro since 2023.
+
+        \ingroup currencies
+    */
+    class HRKCurrency : public Currency {
+      public:
+        HRKCurrency();
+    };
+
     //! Irish punt
     /*! The ISO three-letter code was IEP; the numeric code was 372.
         It was divided in 100 pence.
@@ -469,21 +533,6 @@ namespace QuantLib {
         SKKCurrency();
     };
 
-    //! Ukrainian hryvnia
-    /*! The ISO three-letter code is UAH; the numeric code is 980.
-        It is divided in 100 kopiykas.
-
-        \ingroup currencies    
-     */
-    class UAHCurrency : public Currency {
-    public:
-        UAHCurrency();
-    };
-
 }
-
-#if defined(QL_PATCH_MSVC)
-#pragma warning(pop)
-#endif
 
 #endif

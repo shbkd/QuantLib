@@ -12,64 +12,54 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
+#include <ql/cashflows/cashflows.hpp>
+#include <ql/indexes/swapindex.hpp>
+#include <ql/instruments/makecms.hpp>
+#include <ql/instruments/swap.hpp>
+#include <ql/quotes/simplequote.hpp>
 #include <ql/termstructures/volatility/swaption/cmsmarket.hpp>
 #include <ql/termstructures/yieldtermstructure.hpp>
-#include <ql/cashflows/cashflows.hpp>
-#include <ql/instruments/makecms.hpp>
-#include <ql/quotes/simplequote.hpp>
-#include <ql/indexes/swapindex.hpp>
-#include <ql/instruments/swap.hpp>
+#include <utility>
 
 using std::vector;
 
 namespace QuantLib {
 
-    CmsMarket::CmsMarket(
-        const vector<Period>& swapLengths,
-        const vector<ext::shared_ptr<SwapIndex> >& swapIndexes,
-        const ext::shared_ptr<IborIndex>& iborIndex,
-        const vector<vector<Handle<Quote> > >& bidAskSpreads,
-        const vector<ext::shared_ptr<CmsCouponPricer> >& pricers,
-        const Handle<YieldTermStructure>& discountingTS)
-    : swapLengths_(swapLengths),
-      swapIndexes_(swapIndexes),
-      iborIndex_(iborIndex),
-      bidAskSpreads_(bidAskSpreads),
-      pricers_(pricers),
-      discTS_(discountingTS),
+    CmsMarket::CmsMarket(vector<Period> swapLengths,
+                         vector<ext::shared_ptr<SwapIndex> > swapIndexes,
+                         ext::shared_ptr<IborIndex> iborIndex,
+                         const vector<vector<Handle<Quote> > >& bidAskSpreads,
+                         const vector<ext::shared_ptr<CmsCouponPricer> >& pricers,
+                         Handle<YieldTermStructure> discountingTS)
+    : swapLengths_(std::move(swapLengths)), swapIndexes_(std::move(swapIndexes)),
+      iborIndex_(std::move(iborIndex)), bidAskSpreads_(bidAskSpreads), pricers_(pricers),
+      discTS_(std::move(discountingTS)),
 
-      nExercise_(swapLengths_.size()),
-      nSwapIndexes_(swapIndexes_.size()),
+      nExercise_(swapLengths_.size()), nSwapIndexes_(swapIndexes_.size()),
       swapTenors_(nSwapIndexes_),
 
-      spotFloatLegNPV_(nExercise_, nSwapIndexes_),
-      spotFloatLegBPS_(nExercise_, nSwapIndexes_),
+      spotFloatLegNPV_(nExercise_, nSwapIndexes_), spotFloatLegBPS_(nExercise_, nSwapIndexes_),
 
-      mktBidSpreads_(nExercise_, nSwapIndexes_),
-      mktAskSpreads_(nExercise_, nSwapIndexes_),
+      mktBidSpreads_(nExercise_, nSwapIndexes_), mktAskSpreads_(nExercise_, nSwapIndexes_),
 
-      mktSpreads_(nExercise_, nSwapIndexes_),
-      mdlSpreads_(nExercise_, nSwapIndexes_),
+      mktSpreads_(nExercise_, nSwapIndexes_), mdlSpreads_(nExercise_, nSwapIndexes_),
       errSpreads_(nExercise_, nSwapIndexes_),
 
-      mktSpotCmsLegNPV_(nExercise_, nSwapIndexes_),
-      mdlSpotCmsLegNPV_(nExercise_, nSwapIndexes_),
+      mktSpotCmsLegNPV_(nExercise_, nSwapIndexes_), mdlSpotCmsLegNPV_(nExercise_, nSwapIndexes_),
       errSpotCmsLegNPV_(nExercise_, nSwapIndexes_),
 
-      mktFwdCmsLegNPV_(nExercise_, nSwapIndexes_),
-      mdlFwdCmsLegNPV_(nExercise_, nSwapIndexes_),
+      mktFwdCmsLegNPV_(nExercise_, nSwapIndexes_), mdlFwdCmsLegNPV_(nExercise_, nSwapIndexes_),
       errFwdCmsLegNPV_(nExercise_, nSwapIndexes_),
 
       spotSwaps_(nExercise_, vector<ext::shared_ptr<Swap> >(nSwapIndexes_)),
-      fwdSwaps_(nExercise_, vector<ext::shared_ptr<Swap> >(nSwapIndexes_))
-    {
+      fwdSwaps_(nExercise_, vector<ext::shared_ptr<Swap> >(nSwapIndexes_)) {
         QL_REQUIRE(2 * nSwapIndexes_ == bidAskSpreads[0].size(),
                    "2*nSwapIndexes_ (" << 2 * nSwapIndexes_
                                        << ") != bidAskSpreads columns() ("
@@ -99,21 +89,18 @@ namespace QuantLib {
                 // never evaluate the spot swap, only its ibor floating leg
                 spotSwaps_[i][j] = MakeCms(swapLengths_[i],
                                            swapIndexes_[j],
-                                           iborIndex_, 0.0,
-                                           Period())
-                                   .operator ext::shared_ptr<Swap>();
+                                           iborIndex_);
                 fwdSwaps_[i][j]  = MakeCms(swapLengths_[i]-start,
                                            swapIndexes_[j],
-                                           iborIndex_, 0.0,
-                                           start)
+                                           iborIndex_)
+                                   .withForwardStart(start)
                                    .withCmsCouponPricer(pricers_[j])
-                                   .withDiscountingTermStructure(discTS_)
-                                   .operator ext::shared_ptr<Swap>();
+                                   .withDiscountingTermStructure(discTS_);
             }
         }
         // probably useless
-        performCalculations();
-     }
+        CmsMarket::performCalculations();
+    }
 
     void CmsMarket::performCalculations() const {
         for (Size j=0; j<nSwapIndexes_; ++j) {
@@ -174,8 +161,7 @@ namespace QuantLib {
                 ext::shared_ptr<MeanRevertingPricer> p =
                     ext::dynamic_pointer_cast<MeanRevertingPricer>(
                         pricers_[j]);
-                QL_REQUIRE(p != NULL, "mean reverting pricer required at index "
-                                          << j);
+                QL_REQUIRE(p != nullptr, "mean reverting pricer required at index " << j);
                 p->setMeanReversion(meanReversionQuote);
             }
         }
@@ -199,23 +185,22 @@ namespace QuantLib {
 
     // array of errors to be used by Levenberg-Marquardt optimization
 
-    Disposable<Array> CmsMarket::weightedFwdNpvErrors(const Matrix& w) {
+    Array CmsMarket::weightedFwdNpvErrors(const Matrix& w) {
         performCalculations();
         return weightedMeans(errFwdCmsLegNPV_, w);
     }
 
-    Disposable<Array> CmsMarket::weightedSpotNpvErrors(const Matrix& w) {
+    Array CmsMarket::weightedSpotNpvErrors(const Matrix& w) {
         performCalculations();
         return weightedMeans(errSpotCmsLegNPV_, w);
     }
 
-    Disposable<Array> CmsMarket::weightedSpreadErrors(const Matrix& w) {
+    Array CmsMarket::weightedSpreadErrors(const Matrix& w) {
         performCalculations();
         return weightedMeans(errSpreads_, w);
     }
 
-    Real CmsMarket::weightedMean(const Matrix& var,
-                                 const Matrix& w) {
+    Real CmsMarket::weightedMean(const Matrix& var, const Matrix& w) const {
         Real mean = 0.0;
         for (Size i=0; i<nExercise_; ++i) {
             for (Size j=0; j<nSwapIndexes_; ++j) {
@@ -226,8 +211,7 @@ namespace QuantLib {
         return mean;
     }
 
-    Disposable<Array> CmsMarket::weightedMeans(const Matrix& var,
-                                               const Matrix& w) {
+    Array CmsMarket::weightedMeans(const Matrix& var, const Matrix& w) const {
         Array weightedVars(nExercise_*nSwapIndexes_);
         for (Size i=0; i<nExercise_; ++i) {
             for (Size j=0; j<nSwapIndexes_; ++j) {

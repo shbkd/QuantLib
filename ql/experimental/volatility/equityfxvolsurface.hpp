@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -51,13 +51,13 @@ namespace QuantLib {
                      constructor must manage their own reference date
                      by overriding the referenceDate() method.
         */
-        EquityFXVolSurface(BusinessDayConvention bdc = Following,
-                           const DayCounter& dc = DayCounter());
+        explicit EquityFXVolSurface(BusinessDayConvention bdc = Following,
+                                    const DayCounter& dc = DayCounter());
         //! initialize with a fixed reference date
-        EquityFXVolSurface(const Date& referenceDate,
-                           const Calendar& cal = Calendar(),
-                           BusinessDayConvention bdc = Following,
-                           const DayCounter& dc = DayCounter());
+        explicit EquityFXVolSurface(const Date& referenceDate,
+                                    const Calendar& cal = Calendar(),
+                                    BusinessDayConvention bdc = Following,
+                                    const DayCounter& dc = DayCounter());
         //! calculate the reference date based on the global evaluation date
         EquityFXVolSurface(Natural settlementDays,
                            const Calendar&,
@@ -85,7 +85,7 @@ namespace QuantLib {
         //@}
         //! \name Visitability
         //@{
-        virtual void accept(AcyclicVisitor&);
+        void accept(AcyclicVisitor&) override;
         //@}
     };
 

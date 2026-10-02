@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -32,6 +32,7 @@
 
 namespace QuantLib {
 
+    class FdmQuantoHelper;
     class YieldTermStructure;
     class GeneralizedBlackScholesProcess;
 
@@ -45,9 +46,10 @@ namespace QuantLib {
             Real xMaxConstraint = Null<Real>(),
             Real eps = 0.0001,
             Real scaleFactor = 1.5,
-            const std::pair<Real, Real>& cPoint
-                        = (std::pair<Real, Real>(Null<Real>(), Null<Real>())),
-            const DividendSchedule& dividendSchedule = DividendSchedule());
+            const std::pair<Real, Real>& cPoint = { Null<Real>(), Null<Real>() },
+            const DividendSchedule& dividendSchedule = {},
+            const ext::shared_ptr<FdmQuantoHelper>& fdmQuantoHelper = {},
+            Real spotAdjustment = 0.0);
 
         static ext::shared_ptr<GeneralizedBlackScholesProcess> processHelper(
              const Handle<Quote>& s0,

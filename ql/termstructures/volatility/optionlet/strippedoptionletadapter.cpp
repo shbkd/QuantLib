@@ -12,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -47,9 +47,9 @@ namespace QuantLib {
             optionletStripper_->optionletStrikes(
                 0); // strikes are the same for all times ?!
         std::vector< Real > stddevs;
-        for (Size i = 0; i < optionletStrikes.size(); i++) {
-            stddevs.push_back(volatilityImpl(t, optionletStrikes[i]) *
-                              std::sqrt(t));
+        stddevs.reserve(optionletStrikes.size());
+        for (Real optionletStrike : optionletStrikes) {
+            stddevs.push_back(volatilityImpl(t, optionletStrike) * std::sqrt(t));
         }
         // Extrapolation may be a problem with splines, but since minStrike()
         // and maxStrike() are set, we assume that no one will use stddevs for
@@ -73,9 +73,9 @@ namespace QuantLib {
 
         const std::vector<Time>& optionletTimes =
                                     optionletStripper_->optionletFixingTimes();
-        ext::shared_ptr<LinearInterpolation> timeInterpolator(new
-            LinearInterpolation(optionletTimes.begin(), optionletTimes.end(),
-                                vol.begin()));
+        auto timeInterpolator =
+            ext::make_shared<LinearInterpolation>(
+                optionletTimes.begin(), optionletTimes.end(), vol.begin());
         return (*timeInterpolator)(length, true);
     }
 
@@ -89,8 +89,8 @@ namespace QuantLib {
                 optionletStripper_->optionletStrikes(i);
             const std::vector<Volatility>& optionletVolatilities =
                 optionletStripper_->optionletVolatilities(i);
-            //strikeInterpolations_[i] = ext::shared_ptr<SABRInterpolation>(new
-            //            SABRInterpolation(optionletStrikes.begin(), optionletStrikes.end(),
+            //strikeInterpolations_[i] = ext::make_shared<SABRInterpolation>(
+            //            optionletStrikes.begin(), optionletStrikes.end(),
             //                              optionletVolatilities.begin(),
             //                              optionletTimes[i], atmForward[i],
             //                              0.02,0.5,0.2,0.,

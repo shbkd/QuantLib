@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -51,28 +51,20 @@ namespace QuantLib {
         BlackVarianceSurface(const Date& referenceDate,
                              const Calendar& cal,
                              const std::vector<Date>& dates,
-                             const std::vector<Real>& strikes,
+                             std::vector<Real> strikes,
                              const Matrix& blackVolMatrix,
-                             const DayCounter& dayCounter,
-                             Extrapolation lowerExtrapolation =
-                                InterpolatorDefaultExtrapolation,
-                             Extrapolation upperExtrapolation =
-                                InterpolatorDefaultExtrapolation);
+                             DayCounter dayCounter,
+                             Extrapolation lowerExtrapolation = InterpolatorDefaultExtrapolation,
+                             Extrapolation upperExtrapolation = InterpolatorDefaultExtrapolation);
         //! \name TermStructure interface
         //@{
-        DayCounter dayCounter() const { return dayCounter_; }
-        Date maxDate() const {
-            return maxDate_;
-        }
+        DayCounter dayCounter() const override { return dayCounter_; }
+        Date maxDate() const override { return maxDate_; }
         //@}
         //! \name VolatilityTermStructure interface
         //@{
-        Real minStrike() const {
-            return strikes_.front();
-        }
-        Real maxStrike() const {
-            return strikes_.back();
-        }
+        Real minStrike() const override { return strikes_.front(); }
+        Real maxStrike() const override { return strikes_.back(); }
         //@}
         //! \name Modifiers
         //@{
@@ -87,10 +79,11 @@ namespace QuantLib {
         //@}
         //! \name Visitability
         //@{
-        virtual void accept(AcyclicVisitor&);
+        void accept(AcyclicVisitor&) override;
         //@}
       protected:
-        virtual Real blackVarianceImpl(Time t, Real strike) const;
+        Real blackVarianceImpl(Time t, Real strike) const override;
+
       private:
         DayCounter dayCounter_;
         Date maxDate_;
@@ -105,9 +98,8 @@ namespace QuantLib {
     // inline definitions
 
     inline void BlackVarianceSurface::accept(AcyclicVisitor& v) {
-        Visitor<BlackVarianceSurface>* v1 =
-            dynamic_cast<Visitor<BlackVarianceSurface>*>(&v);
-        if (v1 != 0)
+        auto* v1 = dynamic_cast<Visitor<BlackVarianceSurface>*>(&v);
+        if (v1 != nullptr)
             v1->visit(*this);
         else
             BlackVarianceTermStructure::accept(v);

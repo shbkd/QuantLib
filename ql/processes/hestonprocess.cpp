@@ -10,49 +10,43 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
+#include <ql/math/distributions/chisquaredistribution.hpp>
+#include <ql/math/distributions/normaldistribution.hpp>
 #include <ql/math/functional.hpp>
-#include <ql/math/modifiedbessel.hpp>
-#include <ql/math/solvers1d/brent.hpp>
-#include <ql/math/integrals/segmentintegral.hpp>
 #include <ql/math/integrals/gaussianquadratures.hpp>
 #include <ql/math/integrals/gausslobattointegral.hpp>
-#include <ql/math/distributions/normaldistribution.hpp>
-#include <ql/math/distributions/chisquaredistribution.hpp>
-#include <ql/quotes/simplequote.hpp>
-#include <ql/processes/hestonprocess.hpp>
+#include <ql/math/integrals/segmentintegral.hpp>
+#include <ql/math/modifiedbessel.hpp>
+#include <ql/math/solvers1d/brent.hpp>
+#include <ql/math/integrals/exponentialintegrals.hpp>
 #include <ql/processes/eulerdiscretization.hpp>
-#if defined(__GNUC__) && (((__GNUC__ == 4) && (__GNUC_MINOR__ >= 8)) || (__GNUC__ > 4))
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-local-typedefs"
-#endif
-#include <boost/bind.hpp>
-#if defined(__GNUC__) && (((__GNUC__ == 4) && (__GNUC_MINOR__ >= 8)) || (__GNUC__ > 4))
-#pragma GCC diagnostic pop
-#endif
+#include <ql/processes/hestonprocess.hpp>
+#include <ql/quotes/simplequote.hpp>
 #include <boost/math/distributions/non_central_chi_squared.hpp>
-
 #include <complex>
+#include <utility>
 
 namespace QuantLib {
 
-    HestonProcess::HestonProcess(
-                              const Handle<YieldTermStructure>& riskFreeRate,
-                              const Handle<YieldTermStructure>& dividendYield,
-                              const Handle<Quote>& s0,
-                              Real v0, Real kappa,
-                              Real theta, Real sigma, Real rho,
-                              Discretization d)
-    : StochasticProcess(ext::shared_ptr<discretization>(
-                                                    new EulerDiscretization)),
-      riskFreeRate_(riskFreeRate), dividendYield_(dividendYield), s0_(s0),
-      v0_(v0), kappa_(kappa), theta_(theta), sigma_(sigma), rho_(rho),
+    HestonProcess::HestonProcess(Handle<YieldTermStructure> riskFreeRate,
+                                 Handle<YieldTermStructure> dividendYield,
+                                 Handle<Quote> s0,
+                                 Real v0,
+                                 Real kappa,
+                                 Real theta,
+                                 Real sigma,
+                                 Real rho,
+                                 Discretization d)
+    : StochasticProcess(ext::shared_ptr<discretization>(new EulerDiscretization)),
+      riskFreeRate_(std::move(riskFreeRate)), dividendYield_(std::move(dividendYield)),
+      s0_(std::move(s0)), v0_(v0), kappa_(kappa), theta_(theta), sigma_(sigma), rho_(rho),
       discretization_(d) {
 
         registerWith(riskFreeRate_);
@@ -70,29 +64,24 @@ namespace QuantLib {
                 || discretization_ == BroadieKayaExactSchemeLaguerre) ? 3 : 2;
     }
 
-    Disposable<Array> HestonProcess::initialValues() const {
-        Array tmp(2);
-        tmp[0] = s0_->value();
-        tmp[1] = v0_;
-        return tmp;
+    Array HestonProcess::initialValues() const {
+        return { s0_->value(), v0_ };
     }
 
-    Disposable<Array> HestonProcess::drift(Time t, const Array& x) const {
-        Array tmp(2);
+    Array HestonProcess::drift(Time t, const Array& x) const {
         const Real vol = (x[1] > 0.0) ? std::sqrt(x[1])
-                         : (discretization_ == Reflection) ? - std::sqrt(-x[1])
+                         : (discretization_ == Reflection) ? Real(- std::sqrt(-x[1]))
                          : 0.0;
 
-        tmp[0] = riskFreeRate_->forwardRate(t, t, Continuous)
-               - dividendYield_->forwardRate(t, t, Continuous)
-               - 0.5 * vol * vol;
-
-        tmp[1] = kappa_*
-           (theta_-((discretization_==PartialTruncation) ? x[1] : vol*vol));
-        return tmp;
+        return {
+            riskFreeRate_->forwardRate(t, t, Continuous).rate()
+               - dividendYield_->forwardRate(t, t, Continuous).rate()
+               - 0.5 * vol * vol,
+            kappa_* (theta_-((discretization_==PartialTruncation) ? x[1] : vol*vol))
+        };
     }
 
-    Disposable<Matrix> HestonProcess::diffusion(Time, const Array& x) const {
+    Matrix HestonProcess::diffusion(Time, const Array& x) const {
         /* the correlation matrix is
            |  1   rho |
            | rho   1  |
@@ -102,7 +91,7 @@ namespace QuantLib {
         */
         Matrix tmp(2,2);
         const Real vol = (x[1] > 0.0) ? std::sqrt(x[1])
-                         : (discretization_ == Reflection) ? -std::sqrt(-x[1])
+                         : (discretization_ == Reflection) ? Real(-std::sqrt(-x[1]))
                          : 1e-8; // set vol to (almost) zero but still
                                  // expose some correlation information
         const Real sigma2 = sigma_ * vol;
@@ -113,12 +102,12 @@ namespace QuantLib {
         return tmp;
     }
 
-    Disposable<Array> HestonProcess::apply(const Array& x0,
-                                           const Array& dx) const {
-        Array tmp(2);
-        tmp[0] = x0[0] * std::exp(dx[0]);
-        tmp[1] = x0[1] + dx[1];
-        return tmp;
+    Array HestonProcess::apply(const Array& x0,
+                               const Array& dx) const {
+        return {
+            x0[0] * std::exp(dx[0]),
+            x0[1] + dx[1]
+        };
     }
 
     namespace {
@@ -191,73 +180,10 @@ namespace QuantLib {
             const Real x0    = std::log(process.s0()->value());
 
             return gaussLaguerreIntegration(
-                boost::bind(&ph, process, y,
-                            _1, nu_0, nu_t, t))
+                [&](Real u){ return ph(process, y, u, nu_0, nu_t, t); })
                 / std::sqrt(2*M_PI*(1-rho*rho)*y)
-                * std::exp(-0.5*square<Real>()(  x - x0 - a
-                                               + y*(0.5-rho*kappa/sigma))
+                * std::exp(-0.5*squared(x - x0 - a + y*(0.5-rho*kappa/sigma))
                            /(y*(1-rho*rho)));
-        }
-
-
-        Real pade(Real x, const Real* nominator, const Real* denominator, Size m) {
-            Real n=0.0, d=0.0;
-            for (Integer i=m-1; i >= 0; --i) {
-                n = (n+nominator[i])*x;
-                d = (d+denominator[i])*x;
-            }
-            return (1+n)/(1+d);
-        }
-
-        // For the definition of the Pade approximation please see e.g.
-        // http://wikipedia.org/wiki/Sine_integral#Sine_integral
-        Real Si(Real x) {
-            if (x <=4.0) {
-                const Real n[] =
-                    { -4.54393409816329991e-2,1.15457225751016682e-3,
-                      -1.41018536821330254e-5,9.43280809438713025e-8,
-                      -3.53201978997168357e-10,7.08240282274875911e-13,
-                      -6.05338212010422477e-16 };
-                const Real d[] =
-                    {  1.01162145739225565e-2,4.99175116169755106e-5,
-                       1.55654986308745614e-7,3.28067571055789734e-10,
-                       4.5049097575386581e-13,3.21107051193712168e-16,
-                       0.0 };
-
-                return x*pade(x*x, n, d, sizeof(n)/sizeof(Real));
-            }
-            else {
-                const Real y = 1/(x*x);
-                const Real fn[] =
-                    { 7.44437068161936700618e2,1.96396372895146869801e5,
-                      2.37750310125431834034e7,1.43073403821274636888e9,
-                      4.33736238870432522765e10,6.40533830574022022911e11,
-                      4.20968180571076940208e12,1.00795182980368574617e13,
-                      4.94816688199951963482e12,-4.94701168645415959931e11 };
-                const Real fd[] =
-                    { 7.46437068161927678031e2,1.97865247031583951450e5,
-                      2.41535670165126845144e7,1.47478952192985464958e9,
-                      4.58595115847765779830e10,7.08501308149515401563e11,
-                      5.06084464593475076774e12,1.43468549171581016479e13,
-                      1.11535493509914254097e13, 0.0 };
-                const Real f = pade(y, fn, fd, 10)/x;
-
-                const Real gn[] =
-                    { 8.1359520115168615e2,2.35239181626478200e5,
-                      3.12557570795778731e7,2.06297595146763354e9,
-                      6.83052205423625007e10,1.09049528450362786e12,
-                      7.57664583257834349e12,1.81004487464664575e13,
-                      6.43291613143049485e12,-1.36517137670871689e12 };
-                const Real gd[] =
-                    { 8.19595201151451564e2,2.40036752835578777e5,
-                      3.26026661647090822e7,2.23355543278099360e9,
-                      7.87465017341829930e10,1.39866710696414565e12,
-                      1.17164723371736605e13,4.01839087307656620e13,
-                      3.99653257887490811e13, 0.0};
-                const Real g = y*pade(y, gn, gd, 10);
-
-                return M_PI_2 - f*std::cos(x)-g*std::sin(x);
-            }
         }
 
         Real cornishFisherEps(const HestonProcess& process,
@@ -320,9 +246,8 @@ namespace QuantLib {
                 return (x < upper)
                     ? std::max(0.0, std::min(1.0,
                         gaussLaguerreIntegration(
-                            boost::bind(&ch, process, x,
-                                        _1, nu_0, nu_t, dt))))
-                    : 1.0;
+                            [&](Real u){ return ch(process, x, u, nu_0, nu_t, dt); })))
+                    : Real(1.0);
               }
               case HestonProcess::BroadieKayaExactSchemeLobatto:
               {
@@ -334,23 +259,22 @@ namespace QuantLib {
                 return (x < upper)
                     ? std::max(0.0, std::min(1.0,
                         GaussLobattoIntegral(Null<Size>(), eps)(
-                            boost::bind(&ch, process, x,
-                                        _1, nu_0, nu_t, dt),
+                            [&](Real xi){ return ch(process, x, xi, nu_0, nu_t, dt); },
                             QL_EPSILON, upper)))
-                    : 1.0;
+                    : Real(1.0);
               }
               case HestonProcess::BroadieKayaExactSchemeTrapezoidal:
               {
                 const Real h = 0.05;
 
-                Real si = Si(0.5*h*x);
+                Real si = ExponentialIntegral::Si(0.5*h*x);
                 Real s = M_2_PI*si;
                 std::complex<Real> f;
                 Size j = 0;
                 do {
                     ++j;
                     const Real u = h*j;
-                    const Real si_n = Si(x*(u+0.5*h));
+                    const Real si_n = ExponentialIntegral::Si(x*(u+0.5*h));
 
                     f = Phi(process, u, nu_0, nu_t, dt);
                     s+= M_2_PI*f.real()*(si_n-si);
@@ -399,8 +323,7 @@ namespace QuantLib {
          upper = 2.0*cornishFisherEps(*this, v0_, v, t,1e-3);
 
          return SegmentIntegral(100)(
-             boost::bind(&int_ph, *this, a, x,
-                         _1, v0_, v, t),
+               [&](Real xi){ return int_ph(*this, a, x, xi, v0_, v, t); },
                QL_EPSILON, upper)
                * boost::math::pdf(
                      boost::math::non_central_chi_squared_distribution<Real>(
@@ -410,8 +333,8 @@ namespace QuantLib {
                      v/k) / k;
      }
 
-    Disposable<Array> HestonProcess::evolve(Time t0, const Array& x0,
-                                            Time dt, const Array& dw) const {
+    Array HestonProcess::evolve(Time t0, const Array& x0,
+                                Time dt, const Array& dw) const {
         Array retVal(2);
         Real vol, vol2, mu, nu, dy;
 
@@ -425,10 +348,10 @@ namespace QuantLib {
           //  stochastic volatility models",
           // Working Paper, Tinbergen Institute
           case PartialTruncation:
-            vol = (x0[1] > 0.0) ? std::sqrt(x0[1]) : 0.0;
+            vol = (x0[1] > 0.0) ? std::sqrt(x0[1]) : Real(0.0);
             vol2 = sigma_ * vol;
-            mu =    riskFreeRate_->forwardRate(t0, t0+dt, Continuous)
-                  - dividendYield_->forwardRate(t0, t0+dt, Continuous)
+            mu =    riskFreeRate_->forwardRate(t0, t0+dt, Continuous).rate()
+                  - dividendYield_->forwardRate(t0, t0+dt, Continuous).rate()
                     - 0.5 * vol * vol;
             nu = kappa_*(theta_ - x0[1]);
 
@@ -436,10 +359,10 @@ namespace QuantLib {
             retVal[1] = x0[1] + nu*dt + vol2*sdt*(rho_*dw[0] + sqrhov*dw[1]);
             break;
           case FullTruncation:
-            vol = (x0[1] > 0.0) ? std::sqrt(x0[1]) : 0.0;
+            vol = (x0[1] > 0.0) ? std::sqrt(x0[1]) : Real(0.0);
             vol2 = sigma_ * vol;
-            mu =    riskFreeRate_->forwardRate(t0, t0+dt, Continuous)
-                  - dividendYield_->forwardRate(t0, t0+dt, Continuous)
+            mu =    riskFreeRate_->forwardRate(t0, t0+dt, Continuous).rate()
+                  - dividendYield_->forwardRate(t0, t0+dt, Continuous).rate()
                     - 0.5 * vol * vol;
             nu = kappa_*(theta_ - vol*vol);
 
@@ -449,8 +372,8 @@ namespace QuantLib {
           case Reflection:
             vol = std::sqrt(std::fabs(x0[1]));
             vol2 = sigma_ * vol;
-            mu =    riskFreeRate_->forwardRate(t0, t0+dt, Continuous)
-                  - dividendYield_->forwardRate(t0, t0+dt, Continuous)
+            mu =    riskFreeRate_->forwardRate(t0, t0+dt, Continuous).rate()
+                  - dividendYield_->forwardRate(t0, t0+dt, Continuous).rate()
                     - 0.5 * vol*vol;
             nu = kappa_*(theta_ - vol*vol);
 
@@ -464,9 +387,9 @@ namespace QuantLib {
             // and Ito's Lemma. Then use exact sampling for the variance
             // process. For further details please read the Wilmott thread
             // "QuantLib code is very high quality"
-            vol = (x0[1] > 0.0) ? std::sqrt(x0[1]) : 0.0;
-            mu =   riskFreeRate_->forwardRate(t0, t0+dt, Continuous)
-                 - dividendYield_->forwardRate(t0, t0+dt, Continuous)
+            vol = (x0[1] > 0.0) ? std::sqrt(x0[1]) : Real(0.0);
+            mu =   riskFreeRate_->forwardRate(t0, t0+dt, Continuous).rate()
+                 - dividendYield_->forwardRate(t0, t0+dt, Continuous).rate()
                    - 0.5 * vol*vol;
 
             retVal[1] = varianceDistribution(x0[1], dw[1], dt);
@@ -521,11 +444,11 @@ namespace QuantLib {
                     QL_REQUIRE(A < beta, "illegal value");
                     k0 = -std::log(p+beta*(1-p)/(beta-A))-(k1+0.5*k3)*x0[1];
                 }
-                retVal[1] = ((u <= p) ? 0.0 : std::log((1-p)/(1-u))/beta);
+                retVal[1] = ((u <= p) ? Real(0.0) : std::log((1-p)/(1-u))/beta);
             }
 
-            mu =   riskFreeRate_->forwardRate(t0, t0+dt, Continuous)
-                 - dividendYield_->forwardRate(t0, t0+dt, Continuous);
+            mu =   riskFreeRate_->forwardRate(t0, t0+dt, Continuous).rate()
+                 - dividendYield_->forwardRate(t0, t0+dt, Continuous).rate();
 
             retVal[0] = x0[0]*std::exp(mu*dt + k0 + k1*x0[1] + k2*retVal[1]
                                        +std::sqrt(k3*x0[1]+k4*retVal[1])*dw[0]);
@@ -542,15 +465,14 @@ namespace QuantLib {
                 std::max(0.0, CumulativeNormalDistribution()(dw[2])));
 
             const Real vds = Brent().solve(
-                boost::bind(&cdf_nu_ds_minus_x, *this, _1,
-                            nu_0, nu_t, dt, discretization_, x),
+                [&](Real xi){ return cdf_nu_ds_minus_x(*this, xi, nu_0, nu_t, dt, discretization_, x); },
                 1e-5, theta_*dt, 0.1*theta_*dt);
 
             const Real vdw
                 = (nu_t - nu_0 - kappa_*theta_*dt + kappa_*vds)/sigma_;
 
-            mu = ( riskFreeRate_->forwardRate(t0, t0+dt, Continuous)
-                  -dividendYield_->forwardRate(t0, t0+dt, Continuous))*dt
+            mu = ( riskFreeRate_->forwardRate(t0, t0+dt, Continuous).rate()
+                  -dividendYield_->forwardRate(t0, t0+dt, Continuous).rate())*dt
                 - 0.5*vds + rho_*vdw;
 
             const Volatility sig = std::sqrt((1-rho_*rho_)*vds);

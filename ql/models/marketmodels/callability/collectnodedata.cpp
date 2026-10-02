@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -70,29 +70,23 @@ namespace QuantLib {
         std::vector<MarketModelDiscounter> productDiscounters;
         productDiscounters.reserve(n);
         for (i=0; i<n; ++i)
-            productDiscounters.push_back(
-                                     MarketModelDiscounter(cashFlowTimes[i],
-                                                           rateTimes));
+            productDiscounters.emplace_back(cashFlowTimes[i], rateTimes);
 
         n = rebateTimes.size();
         std::vector<MarketModelDiscounter> rebateDiscounters;
         rebateDiscounters.reserve(n);
         for (i=0; i<n; ++i)
-            rebateDiscounters.push_back(
-                                     MarketModelDiscounter(rebateTimes[i],
-                                                           rateTimes));
+            rebateDiscounters.emplace_back(rebateTimes[i], rateTimes);
         n = controlTimes.size();
         std::vector<MarketModelDiscounter> controlDiscounters;
         controlDiscounters.reserve(n);
         for (i=0; i<n; ++i)
-            controlDiscounters.push_back(
-                                     MarketModelDiscounter(controlTimes[i],
-                                                           rateTimes));
+            controlDiscounters.emplace_back(controlTimes[i], rateTimes);
 
         EvolutionDescription evolution = product.evolution();
         const std::vector<Size>& numeraires = evolver.numeraires();
 
-        std::vector<Time> evolutionTimes = evolution.evolutionTimes();
+        const std::vector<Time>& evolutionTimes = evolution.evolutionTimes();
 
         std::valarray<bool> isProductTime =
             isInSubset(evolutionTimes,

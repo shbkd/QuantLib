@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -24,30 +24,36 @@
 #ifndef quantlib_interpolated_curve_hpp
 #define quantlib_interpolated_curve_hpp
 
+#include <ql/math/comparison.hpp>
 #include <ql/math/interpolation.hpp>
 #include <ql/time/date.hpp>
+#include <ql/time/daycounter.hpp>
+#include <utility>
 #include <vector>
 
 namespace QuantLib {
 
     //! Helper class to build interpolated term structures
-    /*! Interpolated term structures can use proected or private
+    /*! Interpolated term structures can use protected or private
         inheritance from this class to obtain the relevant data
         members and implement correct copy behavior.
     */
     template <class Interpolator>
     class InterpolatedCurve {
+      public:
+        ~InterpolatedCurve() = default;
+
       protected:
         //! \name Building
         //@{
-        InterpolatedCurve(const std::vector<Time>& times,
-                          const std::vector<Real>& data,
+        InterpolatedCurve(std::vector<Time> times,
+                          std::vector<Real> data,
                           const Interpolator& i = Interpolator())
-        : times_(times), data_(data), interpolator_(i) {}
+        : times_(std::move(times)), data_(std::move(data)), interpolator_(i) {}
 
-        InterpolatedCurve(const std::vector<Time>& times,
+        InterpolatedCurve(std::vector<Time> times,
                           const Interpolator& i = Interpolator())
-        : times_(times), data_(times.size()), interpolator_(i) {}
+        : times_(std::move(times)), data_(times_.size()), interpolator_(i) {}
 
         InterpolatedCurve(Size n,
                           const Interpolator& i = Interpolator())
@@ -73,11 +79,47 @@ namespace QuantLib {
         }
         //@}
 
+        //! \name Moving
+        //@{
+        InterpolatedCurve(InterpolatedCurve&& c) noexcept
+        : times_(std::move(c.times_)), data_(std::move(c.data_)), interpolator_(std::move(c.interpolator_)) {
+            setupInterpolation();
+        }
+
+        InterpolatedCurve& operator=(InterpolatedCurve&& c) noexcept {
+            times_ = std::move(c.times_);
+            data_ = std::move(c.data_);
+            interpolator_ = std::move(c.interpolator_);
+            setupInterpolation();
+            return *this;
+        }
+        //@}
+
+        //! \name Utilities
+        //@{
+        void setupTimes(const std::vector<Date>& dates,
+                        Date referenceDate,
+                        const DayCounter& dayCounter) {
+            times_.resize(dates.size());
+            times_[0] = dayCounter.yearFraction(referenceDate, dates[0]);
+            for (Size i = 1; i < dates.size(); i++) {
+                QL_REQUIRE(dates[i] > dates[i-1],
+                           "dates not sorted: " << dates[i] << " passed after " << dates[i-1]);
+
+                times_[i] = dayCounter.yearFraction(referenceDate, dates[i]);
+                QL_REQUIRE(!close(this->times_[i], this->times_[i-1]),
+                           "two passed dates (" << dates[i-1] << " and " << dates[i]
+                           << ") correspond to the same time "
+                           << "under this curve's day count convention (" << dayCounter << ")");
+            }
+        }
+
         void setupInterpolation() {
             interpolation_ = interpolator_.interpolate(times_.begin(),
                                                        times_.end(),
                                                        data_.begin());
         }
+        //@}
 
         mutable std::vector<Time> times_;
         mutable std::vector<Real> data_;

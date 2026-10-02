@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -18,7 +18,7 @@
 */
 
 #include <ql/qldefines.hpp>
-#ifdef BOOST_MSVC
+#if !defined(BOOST_ALL_NO_LIB) && defined(BOOST_MSVC)
 #  include <ql/auto_link.hpp>
 #endif
 #include <ql/instruments/floatfloatswap.hpp>
@@ -43,24 +43,15 @@
 #include <ql/time/daycounters/actual360.hpp>
 #include <ql/time/daycounters/thirty360.hpp>
 
-#include <boost/timer.hpp>
-
 #include <iostream>
 #include <iomanip>
 
 using namespace QuantLib;
 
-#if defined(QL_ENABLE_SESSIONS)
-namespace QuantLib {
-
-Integer sessionId() { return 0; }
-}
-#endif
-
 // helper function that prints a basket of calibrating swaptions to std::cout
 
 void printBasket(
-    const std::vector<ext::shared_ptr<CalibrationHelper> > &basket) {
+    const std::vector<ext::shared_ptr<BlackCalibrationHelper>> &basket) {
     std::cout << "\n" << std::left << std::setw(20) << "Expiry" << std::setw(20)
               << "Maturity" << std::setw(20) << "Nominal" << std::setw(14)
               << "Rate" << std::setw(12) << "Pay/Rec" << std::setw(14)
@@ -71,30 +62,29 @@ void printBasket(
                  "===================="
                  "===================="
                  "==================" << std::endl;
-    for (Size j = 0; j < basket.size(); ++j) {
-        ext::shared_ptr<SwaptionHelper> helper =
-            ext::dynamic_pointer_cast<SwaptionHelper>(basket[j]);
-        Date endDate = helper->underlyingSwap()->fixedSchedule().dates().back();
-        Real nominal = helper->underlyingSwap()->nominal();
+    for (const auto& j : basket) {
+        auto helper = ext::dynamic_pointer_cast<SwaptionHelper>(j);
+        Date endDate = helper->underlying()->fixedSchedule().dates().back();
+        Real nominal = helper->underlying()->nominal();
         Real vol = helper->volatility()->value();
-        Real rate = helper->underlyingSwap()->fixedRate();
+        Real rate = helper->underlying()->fixedRate();
         Date expiry = helper->swaption()->exercise()->date(0);
-        VanillaSwap::Type type = helper->swaption()->type();
+        Swap::Type type = helper->swaption()->type();
         std::ostringstream expiryString, endDateString;
         expiryString << expiry;
         endDateString << endDate;
         std::cout << std::setw(20) << expiryString.str() << std::setw(20)
                   << endDateString.str() << std::setw(20) << nominal
                   << std::setw(14) << rate << std::setw(12)
-                  << (type == VanillaSwap::Payer ? "Payer" : "Receiver")
+                  << (type == Swap::Payer ? "Payer" : "Receiver")
                   << std::setw(14) << vol << std::endl;
     }
 }
 
-// helper function that prints the result of a model calibraiton to std::cout
+// helper function that prints the result of a model calibration to std::cout
 
 void printModelCalibration(
-    const std::vector<ext::shared_ptr<CalibrationHelper> > &basket,
+    const std::vector<ext::shared_ptr<BlackCalibrationHelper>> &basket,
     const Array &volatility) {
 
     std::cout << "\n" << std::left << std::setw(20) << "Expiry" << std::setw(14)
@@ -109,8 +99,7 @@ void printModelCalibration(
                  "====================" << std::endl;
 
     for (Size j = 0; j < basket.size(); ++j) {
-        ext::shared_ptr<SwaptionHelper> helper =
-            ext::dynamic_pointer_cast<SwaptionHelper>(basket[j]);
+        auto helper = ext::dynamic_pointer_cast<SwaptionHelper>(basket[j]);
         Date expiry = helper->swaption()->exercise()->date(0);
         std::ostringstream expiryString;
         expiryString << expiry;
@@ -126,27 +115,10 @@ void printModelCalibration(
         std::cout << std::setw(20) << " " << volatility.back() << std::endl;
 }
 
-// helper function that prints timing information to std::cout
-
-class Timer {
-    boost::timer timer_;
-    double elapsed_;
-
-  public:
-    void start() { timer_ = boost::timer(); }
-    void stop() { elapsed_ = timer_.elapsed(); }
-    double elapsed() const { return elapsed_; }
-};
-
-void printTiming(const Timer &timer) {
-    double seconds = timer.elapsed();
-    std::cout << std::fixed << std::setprecision(1) << "\n(this step took "
-              << seconds << "s)" << std::endl;
-}
 
 // here the main part of the code starts
 
-int main(int argc, char *argv[]) {
+int main(int, char *[]) {
 
     try {
 
@@ -155,8 +127,6 @@ int main(int argc, char *argv[]) {
         std::cout << "\nThis is some example code showing how to use the GSR "
                      "\n(Gaussian short rate) and Markov Functional model."
                   << std::endl;
-
-        Timer timer;
 
         Date refDate(30, April, 2014);
         Settings::instance().evaluationDate() = refDate;
@@ -167,27 +137,25 @@ int main(int argc, char *argv[]) {
         Real forward6mLevel = 0.025;
         Real oisLevel = 0.02;
 
-        Handle<Quote> forward6mQuote(
-            ext::make_shared<SimpleQuote>(forward6mLevel));
-        Handle<Quote> oisQuote(ext::make_shared<SimpleQuote>(oisLevel));
+        auto forward6mQuote = makeQuoteHandle(forward6mLevel);
+        auto oisQuote = makeQuoteHandle(oisLevel);
 
         Handle<YieldTermStructure> yts6m(ext::make_shared<FlatForward>(
             0, TARGET(), forward6mQuote, Actual365Fixed()));
         Handle<YieldTermStructure> ytsOis(ext::make_shared<FlatForward>(
             0, TARGET(), oisQuote, Actual365Fixed()));
 
-        ext::shared_ptr<IborIndex> euribor6m =
-            ext::make_shared<Euribor>(6 * Months, yts6m);
+        auto euribor6m = ext::make_shared<Euribor>(6 * Months, yts6m);
 
         std::cout
             << "\nWe assume a multicurve setup, for simplicity with flat yield "
                "\nterm structures. The discounting curve is an Eonia curve at"
                "\na level of " << oisLevel
-            << " and the forwarding curve is an Euribior 6m curve"
+            << " and the forwarding curve is an Euribor 6m curve"
             << "\nat a level of " << forward6mLevel << std::endl;
 
         Real volLevel = 0.20;
-        Handle<Quote> volQuote(ext::make_shared<SimpleQuote>(volLevel));
+        auto volQuote = makeQuoteHandle(volLevel);
         Handle<SwaptionVolatilityStructure> swaptionVol(
             ext::make_shared<ConstantSwaptionVolatility>(
                 0, TARGET(), ModifiedFollowing, volQuote, Actual365Fixed()));
@@ -212,9 +180,8 @@ int main(int argc, char *argv[]) {
                                   ModifiedFollowing, DateGeneration::Forward,
                                   false);
 
-        ext::shared_ptr<NonstandardSwap> underlying =
-            ext::make_shared<NonstandardSwap>(VanillaSwap(
-                VanillaSwap::Payer, 1.0, fixedSchedule, strike, Thirty360(),
+        auto underlying = ext::make_shared<NonstandardSwap>(VanillaSwap(
+                Swap::Payer, 1.0, fixedSchedule, strike, Thirty360(Thirty360::BondBasis),
                 floatingSchedule, euribor6m, 0.00, Actual360()));
 
         std::vector<Date> exerciseDates;
@@ -222,10 +189,8 @@ int main(int argc, char *argv[]) {
             exerciseDates.push_back(
                 TARGET().advance(fixedSchedule[i], -2 * Days));
 
-        ext::shared_ptr<Exercise> exercise =
-            ext::make_shared<BermudanExercise>(exerciseDates, false);
-        ext::shared_ptr<NonstandardSwaption> swaption =
-            ext::make_shared<NonstandardSwaption>(underlying, exercise);
+        auto exercise = ext::make_shared<BermudanExercise>(exerciseDates, false);
+        auto swaption = ext::make_shared<NonstandardSwaption>(underlying, exercise);
 
         std::cout
             << "\nThe model is a one factor Hull White model with piecewise "
@@ -247,13 +212,12 @@ int main(int argc, char *argv[]) {
                "\nwhere explicitly specified (e.g. in a swaption pricing "
                "engine)." << std::endl;
 
-        ext::shared_ptr<Gsr> gsr = ext::make_shared<Gsr>(
-            yts6m, stepDates, sigmas, reversion);
+        auto gsr = ext::make_shared<Gsr>(yts6m, stepDates, sigmas, reversion);
 
-        ext::shared_ptr<PricingEngine> swaptionEngine =
+        auto swaptionEngine =
             ext::make_shared<Gaussian1dSwaptionEngine>(gsr, 64, 7.0, true,
                                                          false, ytsOis);
-        ext::shared_ptr<PricingEngine> nonstandardSwaptionEngine =
+        auto nonstandardSwaptionEngine =
             ext::make_shared<Gaussian1dNonstandardSwaptionEngine>(
                 gsr, 64, 7.0, true, false, Handle<Quote>(), ytsOis);
 
@@ -268,17 +232,15 @@ int main(int argc, char *argv[]) {
 
         std::cout << "\nThe resulting basket looks as follows:" << std::endl;
 
-        ext::shared_ptr<SwapIndex> swapBase =
+        auto swapBase =
             ext::make_shared<EuriborSwapIsdaFixA>(10 * Years, yts6m, ytsOis);
 
-        timer.start();
-        std::vector<ext::shared_ptr<CalibrationHelper> > basket =
+        
+        std::vector<ext::shared_ptr<BlackCalibrationHelper>> basket =
             swaption->calibrationBasket(swapBase, *swaptionVol,
                                         BasketGeneratingEngine::Naive);
-        timer.stop();
-
         printBasket(basket);
-        printTiming(timer);
+        
 
         std::cout
             << "\nLet's calibrate our model to this basket. We use a "
@@ -288,48 +250,48 @@ int main(int argc, char *argv[]) {
                "\nthe calibrating vanilla swaptions. The result of this is as "
                "follows:" << std::endl;
 
-        for (Size i = 0; i < basket.size(); ++i)
-            basket[i]->setPricingEngine(swaptionEngine);
+        for (auto& i : basket)
+            i->setPricingEngine(swaptionEngine);
 
         LevenbergMarquardt method;
         EndCriteria ec(1000, 10, 1E-8, 1E-8,
                        1E-8); // only max iterations use actually used by LM
 
-        timer.start();
+        
         gsr->calibrateVolatilitiesIterative(basket, method, ec);
-        timer.stop();
+        
 
         printModelCalibration(basket, gsr->volatility());
-        printTiming(timer);
+        
 
         std::cout << "\nFinally we price our bermudan swaption in the "
                      "calibrated model:" << std::endl;
 
-        timer.start();
+        
         Real npv = swaption->NPV();
-        timer.stop();
+        
 
         std::cout << "\nBermudan swaption NPV (ATM calibrated GSR) = "
                   << std::fixed << std::setprecision(6) << npv << std::endl;
-        printTiming(timer);
+        
 
-        std::cout
-            << "\nThere is another mode to generate a calibration basket called"
-               "\nMaturityStrikeByDeltaGamma. This means that the maturity, "
-               "\nthe strike and the nominal of the calibrating swaption are "
-               "\ncomputed such that the npv and its first and second "
-               "\nderivative with respect to the model's state variable) of"
-               "\nthe exotics underlying match with the calibrating swaption's"
-               "\nunderlying. Let's try this in our case." << std::endl;
+        std::cout << "\nThere is another mode to generate a calibration basket called"
+                     "\nMaturityStrikeByDeltaGamma. This means that the maturity,"
+                     "\nthe strike and the nominal of the calibrating swaptions are"
+                     "\nobtained matching the NPV, first derivative and second derivative"
+                     "\nof the swap you will exercise into at at each bermudan call date."
+                     "\nThe derivatives are taken with respect to the model's state variable."
+                     "\nLet's try this in our case."
+                  << std::endl;
 
-        timer.start();
+        
         basket = swaption->calibrationBasket(
             swapBase, *swaptionVol,
             BasketGeneratingEngine::MaturityStrikeByDeltaGamma);
-        timer.stop();
+        
 
         printBasket(basket);
-        printTiming(timer);
+        
 
         std::cout
             << "\nThe calibrated nominal is close to the exotics nominal."
@@ -340,26 +302,26 @@ int main(int argc, char *argv[]) {
         std::cout << "\nLet's see how this affects the exotics npv. The "
                      "\nrecalibrated model is:" << std::endl;
 
-        for (Size i = 0; i < basket.size(); ++i)
-            basket[i]->setPricingEngine(swaptionEngine);
+        for (auto& i : basket)
+            i->setPricingEngine(swaptionEngine);
 
-        timer.start();
+
         gsr->calibrateVolatilitiesIterative(basket, method, ec);
-        timer.stop();
+        
 
         printModelCalibration(basket, gsr->volatility());
-        printTiming(timer);
+        
 
         std::cout << "\nAnd the bermudan's price becomes:" << std::endl;
 
-        timer.start();
+        
         npv = swaption->NPV();
-        timer.stop();
+        
 
         std::cout << "\nBermudan swaption NPV (deal strike calibrated GSR) = "
                   << std::setprecision(6) << npv << std::endl;
 
-        printTiming(timer);
+        
 
         std::cout
             << "\nWe can do more complicated things, let's e.g. modify the"
@@ -377,23 +339,22 @@ int main(int argc, char *argv[]) {
         }
         std::vector<Real> strikes(nominalFixed.size(), strike);
 
-        ext::shared_ptr<NonstandardSwap> underlying2(new NonstandardSwap(
-            VanillaSwap::Payer, nominalFixed, nominalFloating, fixedSchedule,
-            strikes, Thirty360(), floatingSchedule, euribor6m, 1.0, 0.0,
-            Actual360()));
-        ext::shared_ptr<NonstandardSwaption> swaption2 =
-            ext::make_shared<NonstandardSwaption>(underlying2, exercise);
+        auto underlying2 = ext::make_shared<NonstandardSwap>(
+            Swap::Payer, nominalFixed, nominalFloating, fixedSchedule,
+            strikes, Thirty360(Thirty360::BondBasis), floatingSchedule, euribor6m, 1.0, 0.0,
+            Actual360());
+        auto swaption2 = ext::make_shared<NonstandardSwaption>(underlying2, exercise);
 
         swaption2->setPricingEngine(nonstandardSwaptionEngine);
 
-        timer.start();
+        
         basket = swaption2->calibrationBasket(
             swapBase, *swaptionVol,
             BasketGeneratingEngine::MaturityStrikeByDeltaGamma);
-        timer.stop();
+        
 
         printBasket(basket);
-        printTiming(timer);
+        
 
         std::cout << "\nThe notional is weighted over the underlying exercised "
                      "\ninto and the maturity is adjusted downwards. The rate"
@@ -413,39 +374,35 @@ int main(int argc, char *argv[]) {
         std::vector<Real> nominalFloating2(nominalFloating.size(),
                                            0.0); // null the second leg
 
-        ext::shared_ptr<NonstandardSwap> underlying3(new NonstandardSwap(
-            VanillaSwap::Receiver, nominalFixed2, nominalFloating2,
-            fixedSchedule, strikes, Thirty360(), floatingSchedule, euribor6m,
+        auto underlying3 = ext::make_shared<NonstandardSwap>(
+            Swap::Receiver, nominalFixed2, nominalFloating2,
+            fixedSchedule, strikes, Thirty360(Thirty360::BondBasis), floatingSchedule, euribor6m,
             1.0, 0.0, Actual360(), false,
-            true)); // final capital exchange
+            true); // final capital exchange
 
-        ext::shared_ptr<RebatedExercise> exercise2 =
-            ext::make_shared<RebatedExercise>(*exercise, -1.0, 2, TARGET());
+        auto exercise2 = ext::make_shared<RebatedExercise>(*exercise, -1.0, 2, TARGET());
 
-        ext::shared_ptr<NonstandardSwaption> swaption3 =
-            ext::make_shared<NonstandardSwaption>(underlying3, exercise2);
+        auto swaption3 = ext::make_shared<NonstandardSwaption>(underlying3, exercise2);
 
-        ext::shared_ptr<SimpleQuote> oas0 =
-            ext::make_shared<SimpleQuote>(0.0);
-        ext::shared_ptr<SimpleQuote> oas100 =
-            ext::make_shared<SimpleQuote>(0.01);
+        auto oas0 = ext::make_shared<SimpleQuote>(0.0);
+        auto oas100 = ext::make_shared<SimpleQuote>(0.01);
         RelinkableHandle<Quote> oas(oas0);
 
-        ext::shared_ptr<PricingEngine> nonstandardSwaptionEngine2 =
+        auto nonstandardSwaptionEngine2 =
             ext::make_shared<Gaussian1dNonstandardSwaptionEngine>(
                 gsr, 64, 7.0, true, false, oas); // change discounting to 6m
 
         swaption3->setPricingEngine(nonstandardSwaptionEngine2);
 
-        timer.start();
+        
 
         basket = swaption3->calibrationBasket(
             swapBase, *swaptionVol,
             BasketGeneratingEngine::MaturityStrikeByDeltaGamma);
-        timer.stop();
+        
 
         printBasket(basket);
-        printTiming(timer);
+        
 
         std::cout
             << "\nNote that nominals are not exactly 1.0 here. This is"
@@ -456,17 +413,17 @@ int main(int argc, char *argv[]) {
             << "\nThe npv of the call right is (after recalibrating the model)"
             << std::endl;
 
-        for (Size i = 0; i < basket.size(); i++)
-            basket[i]->setPricingEngine(swaptionEngine);
+        for (auto& i : basket)
+            i->setPricingEngine(swaptionEngine);
 
-        timer.start();
+
         gsr->calibrateVolatilitiesIterative(basket, method, ec);
         Real npv3 = swaption3->NPV();
-        timer.stop();
+        
 
         std::cout << "\nBond's bermudan call right npv = "
                   << std::setprecision(6) << npv3 << std::endl;
-        printTiming(timer);
+        
 
         std::cout
             << "\nUp to now, no credit spread is included in the pricing."
@@ -476,13 +433,13 @@ int main(int argc, char *argv[]) {
 
         oas.linkTo(oas100);
 
-        timer.start();
+        
         basket = swaption3->calibrationBasket(
             swapBase, *swaptionVol,
             BasketGeneratingEngine::MaturityStrikeByDeltaGamma);
-        timer.stop();
+        
         printBasket(basket);
-        printTiming(timer);
+        
 
         std::cout
             << "\nThe adjusted basket takes the credit spread into account."
@@ -491,34 +448,32 @@ int main(int argc, char *argv[]) {
 
         std::cout << "\nThe npv becomes:" << std::endl;
 
-        for (Size i = 0; i < basket.size(); i++)
-            basket[i]->setPricingEngine(swaptionEngine);
+        for (auto& i : basket)
+            i->setPricingEngine(swaptionEngine);
 
-        timer.start();
+
         gsr->calibrateVolatilitiesIterative(basket, method, ec);
         Real npv4 = swaption3->NPV();
-        timer.stop();
+        
 
         std::cout << "\nBond's bermudan call right npv (oas = 100bp) = "
                   << std::setprecision(6) << npv4 << std::endl;
-        printTiming(timer);
+        
 
         std::cout
             << "\nThe next instrument we look at is a CMS 10Y vs Euribor "
                "\n6M swaption. The maturity is again 10 years and the option"
                "\nis exercisable on a yearly basis" << std::endl;
 
-        ext::shared_ptr<FloatFloatSwap> underlying4(new FloatFloatSwap(
-                VanillaSwap::Payer, 1.0, 1.0, fixedSchedule, swapBase,
-                Thirty360(), floatingSchedule, euribor6m, Actual360(), false,
-                false, 1.0, 0.0, Null<Real>(), Null<Real>(), 1.0, 0.0010));
+        auto underlying4 = ext::make_shared<FloatFloatSwap>(
+                Swap::Payer, 1.0, 1.0, fixedSchedule, swapBase,
+                Thirty360(Thirty360::BondBasis), floatingSchedule, euribor6m, Actual360(), false,
+                false, 1.0, 0.0, Null<Real>(), Null<Real>(), 1.0, 0.0010);
 
-        ext::shared_ptr<FloatFloatSwaption> swaption4 =
-            ext::make_shared<FloatFloatSwaption>(underlying4, exercise);
+        auto swaption4 = ext::make_shared<FloatFloatSwaption>(underlying4, exercise);
 
-        ext::shared_ptr<Gaussian1dFloatFloatSwaptionEngine>
-            floatSwaptionEngine(new Gaussian1dFloatFloatSwaptionEngine(
-                    gsr, 64, 7.0, true, false, Handle<Quote>(), ytsOis, true));
+        auto floatSwaptionEngine = ext::make_shared<Gaussian1dFloatFloatSwaptionEngine>(
+                    gsr, 64, 7.0, true, false, Handle<Quote>(), ytsOis, true);
 
         swaption4->setPricingEngine(floatSwaptionEngine);
 
@@ -527,26 +482,23 @@ int main(int argc, char *argv[]) {
                "\npricing this using the LinearTsrPricer for CMS coupon "
                "estimation" << std::endl;
 
-        Handle<Quote> reversionQuote(
-            ext::make_shared<SimpleQuote>(reversion));
+        auto reversionQuote = makeQuoteHandle(reversion);
 
         const Leg &leg0 = underlying4->leg(0);
         const Leg &leg1 = underlying4->leg(1);
-        ext::shared_ptr<CmsCouponPricer> cmsPricer =
-            ext::make_shared<LinearTsrPricer>(swaptionVol, reversionQuote);
-        ext::shared_ptr<IborCouponPricer> iborPricer(new BlackIborCouponPricer);
+        auto cmsPricer = ext::make_shared<LinearTsrPricer>(swaptionVol, reversionQuote);
+        auto iborPricer = ext::make_shared<BlackIborCouponPricer>();
 
         setCouponPricer(leg0, cmsPricer);
         setCouponPricer(leg1, iborPricer);
 
-        ext::shared_ptr<PricingEngine> swapPricer =
-            ext::make_shared<DiscountingSwapEngine>(ytsOis);
+        auto swapPricer = ext::make_shared<DiscountingSwapEngine>(ytsOis);
 
         underlying4->setPricingEngine(swapPricer);
 
-        timer.start();
+        
         Real npv5 = underlying4->NPV();
-        timer.stop();
+        
 
         std::cout << "Underlying CMS Swap NPV = " << std::setprecision(6)
                   << npv5 << std::endl;
@@ -555,32 +507,32 @@ int main(int argc, char *argv[]) {
         std::cout << "       Euribor Leg  NPV = " << underlying4->legNPV(1)
                   << std::endl;
 
-        printTiming(timer);
+        
 
         std::cout << "\nWe generate a naive calibration basket and calibrate "
                      "\nthe GSR model to it:" << std::endl;
 
-        timer.start();
+        
         basket = swaption4->calibrationBasket(swapBase, *swaptionVol,
                                               BasketGeneratingEngine::Naive);
-        for (Size i = 0; i < basket.size(); ++i)
-            basket[i]->setPricingEngine(swaptionEngine);
+        for (auto& i : basket)
+            i->setPricingEngine(swaptionEngine);
         gsr->calibrateVolatilitiesIterative(basket, method, ec);
-        timer.stop();
+        
 
         printBasket(basket);
         printModelCalibration(basket, gsr->volatility());
-        printTiming(timer);
+        
 
         std::cout << "\nThe npv of the bermudan swaption is" << std::endl;
 
-        timer.start();
+        
         Real npv6 = swaption4->NPV();
-        timer.stop();
+        
 
         std::cout << "\nFloat swaption NPV (GSR) = " << std::setprecision(6)
                   << npv6 << std::endl;
-        printTiming(timer);
+        
 
         std::cout << "\nIn this case it is also interesting to look at the "
                      "\nunderlying swap npv in the GSR model." << std::endl;
@@ -602,35 +554,33 @@ int main(int argc, char *argv[]) {
 
         std::vector<Date> markovStepDates(exerciseDates.begin(),
                                           exerciseDates.end());
-        std::vector<Date> cmsFixingDates(markovStepDates);
+        const std::vector<Date>& cmsFixingDates(markovStepDates);
         std::vector<Real> markovSigmas(markovStepDates.size() + 1, 0.01);
         std::vector<Period> tenors(cmsFixingDates.size(), 10 * Years);
-        ext::shared_ptr<MarkovFunctional> markov =
-            ext::make_shared<MarkovFunctional>(
+        auto markov = ext::make_shared<MarkovFunctional>(
                 yts6m, reversion, markovStepDates, markovSigmas, swaptionVol,
                 cmsFixingDates, tenors, swapBase,
                 MarkovFunctional::ModelSettings().withYGridPoints(16));
 
-        ext::shared_ptr<Gaussian1dSwaptionEngine> swaptionEngineMarkov =
+        auto swaptionEngineMarkov =
             ext::make_shared<Gaussian1dSwaptionEngine>(markov, 8, 5.0, true,
                                                          false, ytsOis);
-        ext::shared_ptr<Gaussian1dFloatFloatSwaptionEngine>
-            floatEngineMarkov =
+        auto floatEngineMarkov =
                 ext::make_shared<Gaussian1dFloatFloatSwaptionEngine>(
                     markov, 16, 7.0, true, false, Handle<Quote>(), ytsOis,
                     true);
 
         swaption4->setPricingEngine(floatEngineMarkov);
 
-        timer.start();
+        
         Real npv7 = swaption4->NPV();
-        timer.stop();
+        
 
         std::cout << "\nThe option npv is the markov model is:" << std::endl;
 
         std::cout << "\nFloat swaption NPV (Markov) = " << std::setprecision(6)
                   << npv7 << std::endl;
-        printTiming(timer);
+        
 
         std::cout << "\nThis is not too far from the GSR price." << std::endl;
 
@@ -659,26 +609,26 @@ int main(int argc, char *argv[]) {
                      "\ndepending on your machine, this may take a"
                      "\nwhile now..." << std::endl;
 
-        for (Size i = 0; i < basket.size(); ++i)
-            basket[i]->setPricingEngine(swaptionEngineMarkov);
+        for (auto& i : basket)
+            i->setPricingEngine(swaptionEngineMarkov);
 
-        timer.start();
+
         markov->calibrate(basket, method, ec);
-        timer.stop();
+        
 
         printModelCalibration(basket, markov->volatility());
-        printTiming(timer);
+        
 
         std::cout << "\nNow let's have a look again at the underlying pricing."
                      "\nIt shouldn't have changed much, because the underlying"
                      "\nsmile is still matched." << std::endl;
 
-        timer.start();
+        
         Real npv8 = swaption4->result<Real>("underlyingValue");
-        timer.stop();
+        
         std::cout << "\nFloat swap NPV (Markov) = " << std::setprecision(6)
                   << npv8 << std::endl;
-        printTiming(timer);
+        
 
         std::cout << "\nThis is close to the previous value as expected."
                   << std::endl;

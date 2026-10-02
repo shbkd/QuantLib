@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -29,8 +29,7 @@
 #include <ql/math/interpolations/lagrangeinterpolation.hpp>
 #include <ql/math/matrix.hpp>
 #include <ql/time/date.hpp>
-
-#include <boost/function.hpp>
+#include <functional>
 
 namespace QuantLib {
     /*! References:
@@ -48,13 +47,12 @@ namespace QuantLib {
 
     class NormalCLVModel : public LazyObject {
       public:
-        NormalCLVModel(
-            const ext::shared_ptr<GeneralizedBlackScholesProcess>& bsProcess,
-            const ext::shared_ptr<OrnsteinUhlenbeckProcess>& ouProcess,
-            const std::vector<Date>& maturityDates,
-            Size lagrangeOrder,
-            Real pMax = Null<Real>(),
-            Real pMin = Null<Real>());
+        NormalCLVModel(const ext::shared_ptr<GeneralizedBlackScholesProcess>& bsProcess,
+                       ext::shared_ptr<OrnsteinUhlenbeckProcess> ouProcess,
+                       const std::vector<Date>& maturityDates,
+                       Size lagrangeOrder,
+                       Real pMax = Null<Real>(),
+                       Real pMin = Null<Real>());
 
         // cumulative distribution function of the BS process
         Real cdf(const Date& d, Real x) const;
@@ -63,19 +61,19 @@ namespace QuantLib {
         Real invCDF(const Date& d, Real q) const;
 
         // collocation points of the Ornstein-Uhlenbeck process
-        Disposable<Array> collocationPointsX(const Date& d) const;
+        Array collocationPointsX(const Date& d) const;
 
         // collocation points for the underlying Y
-        Disposable<Array> collocationPointsY(const Date& d) const;
+        Array collocationPointsY(const Date& d) const;
 
         // CLV mapping function
-        boost::function<Real(Time, Real)> g() const;
+        std::function<Real(Time, Real)> g() const;
 
       protected:
-        void performCalculations() const;
+        void performCalculations() const override;
 
       private:
-        class MappingFunction : public std::binary_function<Time, Real, Real> {
+        class MappingFunction {
           public:
             explicit MappingFunction(const NormalCLVModel& model);
 
@@ -113,7 +111,7 @@ namespace QuantLib {
         const ext::shared_ptr<GBSMRNDCalculator> rndCalculator_;
 
         std::vector<Time> maturityTimes_;
-        mutable boost::function<Real(Time, Real)> g_;
+        mutable std::function<Real(Time, Real)> g_;
     };
 }
 

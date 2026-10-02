@@ -12,15 +12,16 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include <ql/cashflows/digitalcmscoupon.hpp>
 #include <ql/cashflows/cashflowvectors.hpp>
+#include <ql/cashflows/digitalcmscoupon.hpp>
+#include <utility>
 
 namespace QuantLib {
 
@@ -34,29 +35,24 @@ namespace QuantLib {
                       Position::Type putPosition,
                       bool isPutATMIncluded,
                       Rate putDigitalPayoff,
-                      const ext::shared_ptr<DigitalReplication>& replication)
+                      const ext::shared_ptr<DigitalReplication>& replication,
+                      bool nakedOption)
     : DigitalCoupon(underlying, callStrike, callPosition, isCallATMIncluded,
                     callDigitalPayoff, putStrike, putPosition,
-                    isPutATMIncluded, putDigitalPayoff, replication) {}
+                    isPutATMIncluded, putDigitalPayoff, replication, nakedOption) {}
 
     void DigitalCmsCoupon::accept(AcyclicVisitor& v) {
         typedef DigitalCoupon super;
-        Visitor<DigitalCmsCoupon>* v1 =
-            dynamic_cast<Visitor<DigitalCmsCoupon>*>(&v);
-        if (v1 != 0)
+        auto* v1 = dynamic_cast<Visitor<DigitalCmsCoupon>*>(&v);
+        if (v1 != nullptr)
             v1->visit(*this);
         else
             super::accept(v);
     }
 
 
-
-    DigitalCmsLeg::DigitalCmsLeg(const Schedule& schedule,
-                                 const ext::shared_ptr<SwapIndex>& index)
-    : schedule_(schedule), index_(index),
-      paymentAdjustment_(Following), inArrears_(false),
-      longCallOption_(Position::Long), callATM_(false),
-      longPutOption_(Position::Long), putATM_(false) {}
+    DigitalCmsLeg::DigitalCmsLeg(Schedule schedule, ext::shared_ptr<SwapIndex> index)
+    : schedule_(std::move(schedule)), index_(std::move(index)) {}
 
     DigitalCmsLeg& DigitalCmsLeg::withNotionals(Real notional) {
         notionals_ = std::vector<Real>(1,notional);
@@ -189,6 +185,11 @@ namespace QuantLib {
         return *this;
     }
 
+    DigitalCmsLeg& DigitalCmsLeg::withNakedOption(bool nakedOption) {
+        nakedOption_ = nakedOption;
+        return *this;
+    }
+
     DigitalCmsLeg::operator Leg() const {
         return FloatingDigitalLeg<SwapIndex, CmsCoupon, DigitalCmsCoupon>(
                             schedule_, notionals_, index_, paymentDayCounter_,
@@ -198,7 +199,7 @@ namespace QuantLib {
                             callATM_, callPayoffs_,
                             putStrikes_, longPutOption_,
                             putATM_, putPayoffs_,
-                            replication_);
+                            replication_, nakedOption_);
     }
 
 }

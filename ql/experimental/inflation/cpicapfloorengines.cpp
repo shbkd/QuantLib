@@ -11,33 +11,26 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
- */
+*/
 
-/*!
- \file cpicapfloorengines.cpp
- \brief Engines for CPI options
- \ingroup PricingEngines
- */
-
-
-#include <ql/time/daycounters/actualactual.hpp>
 
 #include <ql/experimental/inflation/cpicapfloorengines.hpp>
 #include <ql/experimental/inflation/cpicapfloortermpricesurface.hpp>
+#include <ql/time/daycounters/actualactual.hpp>
+#include <utility>
 
 
 namespace QuantLib {
 
 
-    InterpolatingCPICapFloorEngine::InterpolatingCPICapFloorEngine
-    (const Handle<CPICapFloorTermPriceSurface> &priceSurf)
-    : priceSurf_(priceSurf)
-    {
+    InterpolatingCPICapFloorEngine::InterpolatingCPICapFloorEngine(
+        Handle<CPICapFloorTermPriceSurface> priceSurf)
+    : priceSurf_(std::move(priceSurf)) {
         registerWith(priceSurf_);
     }
 
@@ -61,7 +54,9 @@ namespace QuantLib {
 
 
         // what interpolation do we use? Index / flat / linear
+        QL_DEPRECATED_DISABLE_WARNING
         if (arguments_.observationInterpolation == CPI::AsIndex) {
+        QL_DEPRECATED_ENABLE_WARNING
             // same as index means we can just use the price surface
             // since this uses the index
             if (arguments_.type == Option::Call) {
@@ -72,7 +67,7 @@ namespace QuantLib {
 
 
         } else {
-            std::pair<Date,Date> dd = inflationPeriod(effectiveMaturity, arguments_.infIndex->frequency());
+            std::pair<Date,Date> dd = inflationPeriod(effectiveMaturity, arguments_.index->frequency());
             Real priceStart = 0.0;
 
             if (arguments_.type == Option::Call) {
@@ -103,8 +98,4 @@ namespace QuantLib {
         results_.value = npv;
     }
 
-
-
-
-
-} // namespace QuantLib
+}

@@ -12,7 +12,7 @@ QuantLib is free software: you can redistribute it and/or modify it
 under the terms of the QuantLib license.  You should have received a
 copy of the license along with this program; if not, please email
 <quantlib-dev@lists.sf.net>. The license is also available online at
-<http://quantlib.org/license.shtml>.
+<https://www.quantlib.org/license.shtml>.
 
 This program is distributed in the hope that it will be useful, but WITHOUT
 ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -32,13 +32,10 @@ namespace QuantLib {
 
 
     //Multiplicative Seasonality on price = on CPI/RPI/HICP/etc
-    //
-    MultiplicativePriceSeasonality::MultiplicativePriceSeasonality() {
-    }
-
 
     void MultiplicativePriceSeasonality::validate() const
     {
+        // NOLINTBEGIN(clang-analyzer-optin.cplusplus.VirtualCall)
         switch (this->frequency()) {
             case Semiannual:        //2
             case EveryFourthMonth:  //3
@@ -60,6 +57,7 @@ namespace QuantLib {
                         << ", only semi-annual through daily permitted.");
             break;
         }
+        // NOLINTEND(clang-analyzer-optin.cplusplus.VirtualCall)
     }
 
 
@@ -93,7 +91,7 @@ namespace QuantLib {
     MultiplicativePriceSeasonality::MultiplicativePriceSeasonality(const Date& seasonalityBaseDate, const Frequency frequency,
                                                                    const std::vector<Rate>& seasonalityFactors)
     {
-        set(seasonalityBaseDate, frequency, seasonalityFactors);
+        MultiplicativePriceSeasonality::set(seasonalityBaseDate, frequency, seasonalityFactors);
     }
 
     void MultiplicativePriceSeasonality::set(const Date& seasonalityBaseDate, const Frequency frequency,
@@ -105,6 +103,7 @@ namespace QuantLib {
             seasonalityFactors_[i] = seasonalityFactors[i];
         }
         seasonalityBaseDate_ = seasonalityBaseDate;
+        // NOLINTNEXTLINE(clang-analyzer-optin.cplusplus.VirtualCall)
         validate();
     }
 
@@ -128,8 +127,7 @@ namespace QuantLib {
         // curveBaseDate and effective fixing date. This means that we should retrieve
         // the input seasonality adjustments when we look at I_{SA}(t) / I_{NSA}(t).
         Date curveBaseDate = iTS.baseDate();
-        Date effectiveFixingDate = iTS.indexIsInterpolated() ? d : 
-            inflationPeriod(d, iTS.frequency()).first;
+        Date effectiveFixingDate = inflationPeriod(d, iTS.frequency()).first;
         
         return seasonalityCorrection(r, effectiveFixingDate, iTS.dayCounter(), curveBaseDate, true);
     }
@@ -206,7 +204,8 @@ namespace QuantLib {
         if (isZeroRate) {
             Rate factorBase = this->seasonalityFactor(curveBaseDate);
             Real seasonalityAt = factorAt / factorBase;
-            Time timeFromCurveBase = dc.yearFraction(curveBaseDate, atDate);
+            std::pair<Date,Date> p = inflationPeriod(atDate,frequency());
+            Time timeFromCurveBase = dc.yearFraction(curveBaseDate, p.first);
             f = std::pow(seasonalityAt, 1/timeFromCurveBase);
         }
         else {
@@ -247,7 +246,7 @@ namespace QuantLib {
 
         }
 
-        if (!dir) // invers Factor required
+        if (dir == 0) // invers Factor required
         {
             seasonalCorrection = 1/seasonalCorrection;
         }

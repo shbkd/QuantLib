@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -18,6 +18,7 @@
 */
 
 #include <ql/experimental/coupons/proxyibor.hpp>
+#include <utility>
 
 namespace QuantLib {
 
@@ -29,13 +30,18 @@ namespace QuantLib {
                          BusinessDayConvention convention,
                          bool endOfMonth,
                          const DayCounter& dayCounter,
-                         const Handle<Quote>& gearing,
-                         const ext::shared_ptr<IborIndex>& iborIndex,
-                         const Handle<Quote>& spread)
-    : IborIndex(familyName, tenor, settlementDays, currency,
-                fixingCalendar, convention, endOfMonth, dayCounter),
-      gearing_(gearing), iborIndex_(iborIndex), spread_(spread) {
+                         Handle<Quote> gearing,
+                         ext::shared_ptr<IborIndex> iborIndex,
+                         Handle<Quote> spread)
+    : IborIndex(familyName,
+                tenor,
+                settlementDays,
+                currency,
+                fixingCalendar,
+                convention,
+                endOfMonth,
+                dayCounter),
+      gearing_(std::move(gearing)), iborIndex_(std::move(iborIndex)), spread_(std::move(spread)) {
         registerWith(iborIndex_);
-      }
-
+    }
 }

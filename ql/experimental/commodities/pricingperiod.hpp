@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -26,6 +26,7 @@
 
 #include <ql/experimental/commodities/dateinterval.hpp>
 #include <ql/experimental/commodities/quantity.hpp>
+#include <utility>
 #include <vector>
 
 namespace QuantLib {
@@ -34,11 +35,12 @@ namespace QuantLib {
     /*! \ingroup datetime */
     class PricingPeriod : public DateInterval {
       public:
-        PricingPeriod(const Date& startDate, const Date& endDate,
-                      const Date& paymentDate, const Quantity& quantity)
+        PricingPeriod(const Date& startDate,
+                      const Date& endDate,
+                      const Date& paymentDate,
+                      Quantity quantity)
         : DateInterval(startDate, endDate), paymentDate_(paymentDate),
-          quantity_(quantity) {
-        }
+          quantity_(std::move(quantity)) {}
         const Date& paymentDate() const { return paymentDate_; }
         const Quantity& quantity() const { return quantity_; }
       private:

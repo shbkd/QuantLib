@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -18,13 +18,14 @@
 */
 
 #include <ql/pricingengines/cliquet/mcperformanceengine.hpp>
+#include <utility>
 
 namespace QuantLib {
 
-    PerformanceOptionPathPricer::PerformanceOptionPathPricer(
-                                 Option::Type type, Real strike,
-                                 const std::vector<DiscountFactor>& discounts)
-    : strike_(strike), type_(type), discounts_(discounts) {}
+    PerformanceOptionPathPricer::PerformanceOptionPathPricer(Option::Type type,
+                                                             Real strike,
+                                                             std::vector<DiscountFactor> discounts)
+    : strike_(strike), type_(type), discounts_(std::move(discounts)) {}
 
     Real PerformanceOptionPathPricer::operator()(const Path& path) const {
 

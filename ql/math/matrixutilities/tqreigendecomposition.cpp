@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -30,10 +30,11 @@ namespace QuantLib {
                                                  const Array& sub,
                                                  EigenVectorCalculation calc,
                                                  ShiftStrategy strategy)
-    : iter_(0), d_(diag),
-      ev_((calc == WithEigenVector)? d_.size() :
-          (calc == WithoutEigenVector)? 0 : 1, d_.size(), 0)
-    {
+    : d_(diag), ev_((calc == WithEigenVector)    ? d_.size() :
+                    (calc == WithoutEigenVector) ? 0 :
+                                                   1,
+                    d_.size(),
+                    0) {
         Size n = diag.size();
 
         QL_REQUIRE(n == sub.size()+1, "Wrong dimensions");
@@ -47,7 +48,7 @@ namespace QuantLib {
         for (Size k=n-1; k >=1; --k) {
             while (!offDiagIsZero(k, e)) {
                 Size l = k;
-                while (--l > 0 && !offDiagIsZero(l,e));
+                while (--l > 0 && !offDiagIsZero(l,e)); // NOLINT(bugprone-inc-dec-in-conditions)
                 iter_++;
 
                 Real q = d_[l];
@@ -56,7 +57,6 @@ namespace QuantLib {
                     // [ d_[k-1] e_[k] ]
                     // [  e_[k]  d_[k] ]
                     // which is closer to d_[k+1].
-                    // FLOATING_POINT_EXCEPTION
                     const Real t1 = std::sqrt(
                                           0.25*(d_[k]*d_[k] + d_[k-1]*d_[k-1])
                                           - 0.5*d_[k-1]*d_[k] + e[k]*e[k]);
@@ -64,7 +64,7 @@ namespace QuantLib {
 
                     const Real lambda =
                         (std::fabs(t2+t1 - d_[k]) < std::fabs(t2-t1 - d_[k]))?
-                        t2+t1 : t2-t1;
+                        Real(t2+t1) : Real(t2-t1);
 
                     if (strategy == CloseEigenValue) {
                         q-=lambda;
@@ -126,8 +126,7 @@ namespace QuantLib {
                           ev_.column_end(i), eigenVector.begin());
             temp[i] = std::make_pair(d_[i], eigenVector);
         }
-        std::sort(temp.begin(), temp.end(),
-                  std::greater<std::pair<Real, std::vector<Real> > >());
+        std::sort(temp.begin(), temp.end(), std::greater<>());
         // first element is positive
         for (Size i=0; i<n; i++) {
             d_[i] = temp[i].first;

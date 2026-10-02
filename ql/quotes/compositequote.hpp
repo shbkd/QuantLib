@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -24,10 +24,12 @@
 #ifndef quantlib_composite_quote_hpp
 #define quantlib_composite_quote_hpp
 
+#include <ql/errors.hpp>
+#include <ql/handle.hpp>
 #include <ql/quote.hpp>
 #include <ql/types.hpp>
-#include <ql/handle.hpp>
-#include <ql/errors.hpp>
+#include <ql/utilities/null.hpp>
+#include <utility>
 
 namespace QuantLib {
 
@@ -38,10 +40,7 @@ namespace QuantLib {
     template <class BinaryFunction>
     class CompositeQuote : public Quote, public Observer {
       public:
-        CompositeQuote(
-            const Handle<Quote>& element1,
-            const Handle<Quote>& element2,
-            const BinaryFunction& f);
+        CompositeQuote(Handle<Quote> element1, Handle<Quote> element2, BinaryFunction f);
         //! \name inspectors
         //@{
         Real value1() const { return element1_->value(); }
@@ -49,35 +48,46 @@ namespace QuantLib {
         //@}
         //! \name Quote interface
         //@{
-        Real value() const;
-        bool isValid() const;
+        Real value() const override;
+        bool isValid() const override;
         //@}
         //! \name Observer interface
         //@{
-        void update();
+        void update() override;
         //@}
       private:
         Handle<Quote> element1_, element2_;
+        mutable Real value_ = Null<Real>();
         BinaryFunction f_;
     };
 
+    //! creator method
+    template <class BinaryFunction>
+    CompositeQuote<BinaryFunction> makeCompositeQuote(Handle<Quote> element1,
+                                                      Handle<Quote> element2,
+                                                      BinaryFunction f) {
+        return CompositeQuote<BinaryFunction>(std::move(element1), std::move(element2),
+                                              std::move(f));
+    }
 
     // inline definitions
 
     template <class BinaryFunction>
-    inline CompositeQuote<BinaryFunction>::CompositeQuote(
-                                                const Handle<Quote>& element1,
-                                                const Handle<Quote>& element2,
-                                                const BinaryFunction& f)
-    : element1_(element1), element2_(element2), f_(f) {
+    inline CompositeQuote<BinaryFunction>::CompositeQuote(Handle<Quote> element1,
+                                                          Handle<Quote> element2,
+                                                          BinaryFunction f)
+    : element1_(std::move(element1)), element2_(std::move(element2)), f_(std::move(f)) {
         registerWith(element1_);
         registerWith(element2_);
     }
 
     template <class BinaryFunction>
     inline Real CompositeQuote<BinaryFunction>::value() const {
-        QL_ENSURE(isValid(), "invalid CompositeQuote");
-        return f_(element1_->value(),element2_->value());
+        if (value_ == Null<Real>()) {
+            QL_ENSURE(isValid(), "invalid CompositeQuote");
+            value_ = f_(element1_->value(), element2_->value());
+        }
+        return value_;
     }
 
     template <class BinaryFunction>
@@ -88,6 +98,7 @@ namespace QuantLib {
 
     template <class BinaryFunction>
     inline void CompositeQuote<BinaryFunction>::update() {
+        value_ = Null<Real>();
         notifyObservers();
     }
 

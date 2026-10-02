@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -31,29 +31,24 @@ namespace QuantLib {
     class MultiStepPeriodCapletSwaptions : public MultiProductMultiStep 
     {
       public:
-    
-          MultiStepPeriodCapletSwaptions(const std::vector<Time>& rateTimes,
-                                     const std::vector<Time>& forwardOptionPaymentTimes,
-                                     const std::vector<Time>& swaptionPaymentTimes,
-                                     const std::vector<ext::shared_ptr<StrikedTypePayoff> >& forwardPayOffs,
-                                     const std::vector<ext::shared_ptr<StrikedTypePayoff> >& swapPayOffs,
-                                     Size period,
-                                     Size offset);
+        MultiStepPeriodCapletSwaptions(
+            const std::vector<Time>& rateTimes,
+            const std::vector<Time>& forwardOptionPaymentTimes,
+            const std::vector<Time>& swaptionPaymentTimes,
+            std::vector<ext::shared_ptr<StrikedTypePayoff> > forwardPayOffs,
+            std::vector<ext::shared_ptr<StrikedTypePayoff> > swapPayOffs,
+            Size period,
+            Size offset);
         //! \name MarketModelMultiProduct interface
         //@{
-        std::vector<Time> possibleCashFlowTimes() const;
-        Size numberOfProducts() const;
-        Size maxNumberOfCashFlowsPerProductPerStep() const;
-        void reset();
-        bool nextTimeStep(
-                     const CurveState& currentState,
-                     std::vector<Size>& numberCashFlowsThisStep,
-                     std::vector<std::vector<CashFlow> >& cashFlowsGenerated);
-        #if defined(QL_USE_STD_UNIQUE_PTR)
-        std::unique_ptr<MarketModelMultiProduct> clone() const;
-        #else
-        std::auto_ptr<MarketModelMultiProduct> clone() const;
-        #endif
+          std::vector<Time> possibleCashFlowTimes() const override;
+          Size numberOfProducts() const override;
+          Size maxNumberOfCashFlowsPerProductPerStep() const override;
+          void reset() override;
+          bool nextTimeStep(const CurveState& currentState,
+                            std::vector<Size>& numberCashFlowsThisStep,
+                            std::vector<std::vector<CashFlow> >& cashFlowsGenerated) override;
+          std::unique_ptr<MarketModelMultiProduct> clone() const override;
          //@}
 
       private:

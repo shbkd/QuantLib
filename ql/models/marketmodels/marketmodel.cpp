@@ -2,7 +2,7 @@
 
 /*
  Copyright (C) 2007 Ferdinando Ametrano
- Copyright (C) 2007 François du Vignaud
+ Copyright (C) 2007 FranÃ§ois du Vignaud
  Copyright (C) 2007 Mark Joshi
 
  This file is part of QuantLib, a free-software/open-source library
@@ -12,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -33,7 +33,7 @@ namespace QuantLib {
         }
         QL_REQUIRE(i<covariance_.size(),
                    "i (" << i <<
-                   ") must be less than covariance_.size() (" << covariance_.size() << ")")
+                   ") must be less than covariance_.size() (" << covariance_.size() << ")");
         return covariance_[i];
     }
 
@@ -48,7 +48,7 @@ namespace QuantLib {
         }
         QL_REQUIRE(endIndex<covariance_.size(),
                    "endIndex (" << endIndex <<
-                   ") must be less than covariance_.size() (" << covariance_.size() << ")")
+                   ") must be less than covariance_.size() (" << covariance_.size() << ")");
         return totalCovariance_[endIndex];
     }
 

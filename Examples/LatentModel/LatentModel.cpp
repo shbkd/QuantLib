@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -18,7 +18,7 @@
 */
 
 #include <ql/qldefines.hpp>
-#ifdef BOOST_MSVC
+#if !defined(BOOST_ALL_NO_LIB) && defined(BOOST_MSVC)
 #  include <ql/auto_link.hpp>
 #endif
 #include <ql/experimental/credit/randomdefaultlatentmodel.hpp>
@@ -26,24 +26,12 @@
 #include <ql/currencies/europe.hpp>
 #include <ql/time/calendars/target.hpp>
 #include <ql/time/daycounters/actual365fixed.hpp>
-
-#include <boost/timer.hpp>
-#include <boost/function.hpp>
-
+#include <string>
 #include <iostream>
 #include <iomanip>
 
 using namespace std;
 using namespace QuantLib;
-
-#if defined(QL_ENABLE_SESSIONS)
-namespace QuantLib {
-
-    Integer sessionId() { return 0; }
-
-}
-#endif
-
 
 /* This sample code shows basic usage of a Latent variable model.
    The data and correlation problem presented is the same as in:
@@ -54,7 +42,6 @@ int main(int, char* []) {
 
     try {
 
-        boost::timer timer;
         std::cout << std::endl;
 
         Calendar calendar = TARGET();
@@ -71,14 +58,14 @@ int main(int, char* []) {
         // build curves and issuers into a basket of three names
         std::vector<Real> hazardRates(3, -std::log(1.-0.01));
         std::vector<std::string> names;
+        names.reserve(hazardRates.size());
         for(Size i=0; i<hazardRates.size(); i++)
-            names.push_back(std::string("Acme") + 
-                boost::lexical_cast<std::string>(i));
-        std::vector<Handle<DefaultProbabilityTermStructure> > defTS;
-        for(Size i=0; i<hazardRates.size(); i++)
-            defTS.push_back(Handle<DefaultProbabilityTermStructure>(
-                ext::make_shared<FlatHazardRate>(0, TARGET(), hazardRates[i], 
-                    Actual365Fixed())));
+            names.push_back(std::string("Acme") + std::to_string(i));
+        std::vector<Handle<DefaultProbabilityTermStructure>> defTS;
+        defTS.reserve(hazardRates.size());
+        for (Real& hazardRate : hazardRates)
+            defTS.emplace_back(
+                ext::make_shared<FlatHazardRate>(0, TARGET(), hazardRate, Actual365Fixed()));
         std::vector<Issuer> issuers;
         for(Size i=0; i<hazardRates.size(); i++) {
             std::vector<QuantLib::Issuer::key_curve_pair> curves(1, 
@@ -86,10 +73,10 @@ int main(int, char* []) {
                     EURCurrency(), QuantLib::SeniorSec,
                     Period(), 1. // amount threshold
                     ), defTS[i]));
-            issuers.push_back(Issuer(curves));
+            issuers.emplace_back(curves);
         }
 
-        ext::shared_ptr<Pool> thePool = ext::make_shared<Pool>();
+        auto thePool = ext::make_shared<Pool>();
         for(Size i=0; i<hazardRates.size(); i++)
             thePool->add(names[i], issuers[i], NorthAmericaCorpDefaultKey(
                     EURCurrency(), QuantLib::SeniorSec, Period(), 1.));
@@ -98,10 +85,10 @@ int main(int, char* []) {
             NorthAmericaCorpDefaultKey(EURCurrency(), SeniorSec, Period(), 1.));
         // Recoveries are irrelevant in this example but must be given as the 
         //   lib stands.
-        std::vector<ext::shared_ptr<RecoveryRateModel> > rrModels(
+        std::vector<ext::shared_ptr<RecoveryRateModel>> rrModels(
             hazardRates.size(), ext::make_shared<ConstantRecoveryModel>(
             ConstantRecoveryModel(0.5, SeniorSec)));
-        ext::shared_ptr<Basket> theBskt = ext::make_shared<Basket>(
+        auto theBskt = ext::make_shared<Basket>(
             todaysDate, names, std::vector<Real>(hazardRates.size(), 100.), 
             thePool);
         /* --------------------------------------------------------------
@@ -109,16 +96,15 @@ int main(int, char* []) {
         -------------------------------------------------------------- */
         // Latent model factors, corresponds to the first entry in Table1 of the
         //   publication mentioned. It is a single factor model
-        std::vector<std::vector<Real> > fctrsWeights(hazardRates.size(), 
+        std::vector<std::vector<Real>> fctrsWeights(hazardRates.size(),
             std::vector<Real>(1, std::sqrt(0.1)));
         // --- Default Latent models -------------------------------------
         #ifndef QL_PATCH_SOLARIS
         // Gaussian integrable joint default model:
-        ext::shared_ptr<GaussianDefProbLM> lmG(new 
-            GaussianDefProbLM(fctrsWeights, 
+        auto lmG = ext::make_shared<GaussianDefProbLM>(fctrsWeights,
             LatentModelIntegrationType::GaussianQuadrature,
 			GaussianCopulaPolicy::initTraits() // otherwise gcc screams
-			));
+			);
         #endif
         // Define StudentT copula
         // this is as far as we can be from the Gaussian, 2 T_3 factors:
@@ -126,10 +112,9 @@ int main(int, char* []) {
         TCopulaPolicy::initTraits iniT;
         iniT.tOrders = ordersT;
         // StudentT integrable joint default model:
-        ext::shared_ptr<TDefProbLM> lmT(new TDefProbLM(fctrsWeights, 
+        auto lmT = ext::make_shared<TDefProbLM>(fctrsWeights,
             // LatentModelIntegrationType::GaussianQuadrature,
-            LatentModelIntegrationType::Trapezoid,
-            iniT));
+            LatentModelIntegrationType::Trapezoid, iniT);
 
         // --- Default Loss models ----------------------------------------
         // Gaussian random joint default model:
@@ -137,14 +122,12 @@ int main(int, char* []) {
         // Size numCoresUsed = 4;
         #ifndef QL_PATCH_SOLARIS
         // Sobol, many cores
-        ext::shared_ptr<DefaultLossModel> rdlmG(
-            ext::make_shared<RandomDefaultLM<GaussianCopulaPolicy> >(lmG, 
-                std::vector<Real>(), numSimulations, 1.e-6, 2863311530UL));
+        auto rdlmG = ext::make_shared<RandomDefaultLM<GaussianCopulaPolicy>>(lmG,
+            std::vector<Real>(), numSimulations, 1.e-6, 2863311530UL);
         #endif
         // StudentT random joint default model:
-        ext::shared_ptr<DefaultLossModel> rdlmT(
-            ext::make_shared<RandomDefaultLM<TCopulaPolicy> >(lmT, 
-            std::vector<Real>(), numSimulations, 1.e-6, 2863311530UL));
+        auto rdlmT = ext::make_shared<RandomDefaultLM<TCopulaPolicy>>(lmT,
+            std::vector<Real>(), numSimulations, 1.e-6, 2863311530UL);
 
         /* --------------------------------------------------------------
                         DUMP SOME RESULTS
@@ -193,12 +176,13 @@ int main(int, char* []) {
 
         Date correlDate = TARGET().advance(
             Settings::instance().evaluationDate(), Period(12, Months));
-        std::vector<std::vector<Real> > correlsGlm, correlsTlm, correlsGrand, 
+        std::vector<std::vector<Real>> correlsGlm, correlsTlm, correlsGrand,
             correlsTrand;
         //
         lmT->resetBasket(theBskt);
         for(Size iName1=0; iName1 <theBskt->size(); iName1++) {
             std::vector<Real> tmp;
+            tmp.reserve(theBskt->size());
             for(Size iName2=0; iName2 <theBskt->size(); iName2++)
                 tmp.push_back(lmT->defaultCorrelation(correlDate, 
                     iName1, iName2));
@@ -208,6 +192,7 @@ int main(int, char* []) {
         theBskt->setLossModel(rdlmT);
         for(Size iName1=0; iName1 <theBskt->size(); iName1++) {
             std::vector<Real> tmp;
+            tmp.reserve(theBskt->size());
             for(Size iName2=0; iName2 <theBskt->size(); iName2++)
                 tmp.push_back(theBskt->defaultCorrelation(correlDate, 
                     iName1, iName2));
@@ -218,6 +203,7 @@ int main(int, char* []) {
         lmG->resetBasket(theBskt);
         for(Size iName1=0; iName1 <theBskt->size(); iName1++) {
             std::vector<Real> tmp;
+            tmp.reserve(theBskt->size());
             for(Size iName2=0; iName2 <theBskt->size(); iName2++)
                 tmp.push_back(lmG->defaultCorrelation(correlDate, 
                     iName1, iName2));
@@ -227,6 +213,7 @@ int main(int, char* []) {
         theBskt->setLossModel(rdlmG);
         for(Size iName1=0; iName1 <theBskt->size(); iName1++) {
             std::vector<Real> tmp;
+            tmp.reserve(theBskt->size());
             for(Size iName2=0; iName2 <theBskt->size(); iName2++)
                 tmp.push_back(theBskt->defaultCorrelation(correlDate, 
                     iName1, iName2));
@@ -271,10 +258,8 @@ int main(int, char* []) {
         cout << endl;
         for(Size iName1=0; iName1 <theBskt->size(); iName1++) {
             for(Size iName2=0; iName2 <theBskt->size(); iName2++)
-                cout << 
-                    correlsTlm[iName1][iName2] << " , ";
-            ;
-                cout << endl;
+                cout << correlsTlm[iName1][iName2] << " , ";
+            cout << endl;
         }
         cout << endl;
         for(Size iName1=0; iName1 <theBskt->size(); iName1++) {
@@ -290,26 +275,9 @@ int main(int, char* []) {
         cout << endl;
         for(Size iName1=0; iName1 <theBskt->size(); iName1++) {
             for(Size iName2=0; iName2 <theBskt->size(); iName2++)
-                cout << 
-                    correlsTrand[iName1][iName2] << " , ";
-            ;
-                cout << endl;
+                cout << correlsTrand[iName1][iName2] << " , ";
+            cout << endl;
         }
-
-
-
-        Real seconds  = timer.elapsed();
-        Integer hours = Integer(seconds/3600);
-        seconds -= hours * 3600;
-        Integer minutes = Integer(seconds/60);
-        seconds -= minutes * 60;
-        cout << "Run completed in ";
-        if (hours > 0)
-            cout << hours << " h ";
-        if (hours > 0 || minutes > 0)
-            cout << minutes << " m ";
-        cout << fixed << setprecision(0)
-             << seconds << " s" << endl;
 
         return 0;
     } catch (exception& e) {

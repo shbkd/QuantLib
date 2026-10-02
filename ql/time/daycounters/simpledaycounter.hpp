@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -45,20 +45,16 @@ namespace QuantLib {
     */
     class SimpleDayCounter : public DayCounter {
       private:
-        class Impl : public DayCounter::Impl {
+        class Impl final : public DayCounter::Impl {
           public:
-            std::string name() const { return "Simple"; }
-            Date::serial_type dayCount(const Date& d1,
-                                       const Date& d2) const;
-            Time yearFraction(const Date& d1,
-                              const Date& d2,
-                              const Date&,
-                              const Date&) const;
+            std::string name() const override { return "Simple"; }
+            Date::serial_type dayCount(const Date& d1, const Date& d2) const override;
+            Time
+            yearFraction(const Date& d1, const Date& d2, const Date&, const Date&) const override;
         };
       public:
         SimpleDayCounter()
-        : DayCounter(ext::shared_ptr<DayCounter::Impl>(
-                                             new SimpleDayCounter::Impl())) {}
+        : DayCounter(ext::make_shared<SimpleDayCounter::Impl>()) {}
     };
 
 }

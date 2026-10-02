@@ -10,14 +10,14 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "binaryoption.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
 #include <ql/time/calendars/nullcalendar.hpp>
 #include <ql/time/calendars/target.hpp>
@@ -36,6 +36,11 @@
 using namespace QuantLib;
 using namespace boost::unit_test_framework;
 
+BOOST_FIXTURE_TEST_SUITE(QuantLibTests, TopLevelFixture)
+
+BOOST_AUTO_TEST_SUITE(BinaryOptionTests)
+
+#undef REPORT_FAILURE
 #define REPORT_FAILURE(greekName, payoff, exercise, barrierType, barrier, s, q,\
                         r, today, v, expected, calculated, error, tolerance) \
     BOOST_FAIL(payoff->optionType() << " option with " \
@@ -54,41 +59,23 @@ using namespace boost::unit_test_framework;
                << "    error:            " << error << "\n" \
                << "    tolerance:        " << tolerance << "\n");
 
-namespace {
-
-    std::string barrierTypeToString(Barrier::Type type) {
-        switch(type){
-          case Barrier::DownIn:
-            return std::string("Down-and-in");
-          case Barrier::UpIn:
-            return std::string("Up-and-in");
-          case Barrier::DownOut:
-            return std::string("Down-and-out");
-          case Barrier::UpOut:
-            return std::string("Up-and-out");
-          default:
-            QL_FAIL("unknown exercise type");
-        }
-    }
-
-    struct BinaryOptionData {
-        Barrier::Type barrierType;
-        Real barrier;
-        Real cash;     // cash payoff for cash-or-nothing
-        Option::Type type;
-        Real strike;
-        Real s;        // spot
-        Rate q;        // dividend
-        Rate r;        // risk-free rate
-        Time t;        // time to maturity
-        Volatility v;  // volatility
-        Real result;   // expected result
-        Real tol;      // tolerance
-    };
-}
+struct BinaryOptionData {
+    Barrier::Type barrierType;
+    Real barrier;
+    Real cash;     // cash payoff for cash-or-nothing
+    Option::Type type;
+    Real strike;
+    Real s;        // spot
+    Rate q;        // dividend
+    Rate r;        // risk-free rate
+    Time t;        // time to maturity
+    Volatility v;  // volatility
+    Real result;   // expected result
+    Real tol;      // tolerance
+};
 
 
-void BinaryOptionTest::testCashOrNothingHaugValues() {
+BOOST_AUTO_TEST_CASE(testCashOrNothingHaugValues) {
 
     BOOST_TEST_MESSAGE("Testing cash-or-nothing barrier options against Haug's values...");
 
@@ -148,20 +135,20 @@ void BinaryOptionTest::testCashOrNothingHaugValues() {
     ext::shared_ptr<SimpleQuote> vol(new SimpleQuote(0.25));
     ext::shared_ptr<BlackVolTermStructure> volTS = flatVol(today, vol, dc);
 
-    for (Size i=0; i<LENGTH(values); i++) {
+    for (auto& value : values) {
 
-        ext::shared_ptr<StrikedTypePayoff> payoff(new CashOrNothingPayoff(
-            values[i].type, values[i].strike, values[i].cash));
+        ext::shared_ptr<StrikedTypePayoff> payoff(
+            new CashOrNothingPayoff(value.type, value.strike, value.cash));
 
-        Date exDate = today + Integer(values[i].t*360+0.5);
+        Date exDate = today + timeToDays(value.t);
         ext::shared_ptr<Exercise> amExercise(new AmericanExercise(today,
                                                                     exDate,
                                                                     true));
 
-        spot ->setValue(values[i].s);
-        qRate->setValue(values[i].q);
-        rRate->setValue(values[i].r);
-        vol  ->setValue(values[i].v);
+        spot->setValue(value.s);
+        qRate->setValue(value.q);
+        rRate->setValue(value.r);
+        vol->setValue(value.v);
 
         ext::shared_ptr<BlackScholesMertonProcess> stochProcess(new
             BlackScholesMertonProcess(Handle<Quote>(spot),
@@ -171,26 +158,21 @@ void BinaryOptionTest::testCashOrNothingHaugValues() {
         ext::shared_ptr<PricingEngine> engine(
                              new AnalyticBinaryBarrierEngine(stochProcess));
 
-        BarrierOption opt(values[i].barrierType, 
-                          values[i].barrier, 
-                          0,
-                          payoff,
-                          amExercise);
+        BarrierOption opt(value.barrierType, value.barrier, 0, payoff, amExercise);
 
         opt.setPricingEngine(engine);
 
         Real calculated = opt.NPV();
-        Real error = std::fabs(calculated-values[i].result);
-        if (error > values[i].tol) {
-            REPORT_FAILURE("value", payoff, amExercise, values[i].barrierType, 
-                           values[i].barrier, values[i].s,
-                           values[i].q, values[i].r, today, values[i].v,
-                           values[i].result, calculated, error, values[i].tol);
+        Real error = std::fabs(calculated - value.result);
+        if (error > value.tol) {
+            REPORT_FAILURE("value", payoff, amExercise, value.barrierType, value.barrier, value.s,
+                           value.q, value.r, today, value.v, value.result, calculated, error,
+                           value.tol);
         }
     }
 }
 
-void BinaryOptionTest::testAssetOrNothingHaugValues() {
+BOOST_AUTO_TEST_CASE(testAssetOrNothingHaugValues) {
 
     BOOST_TEST_MESSAGE("Testing asset-or-nothing barrier options against Haug's values...");
 
@@ -234,20 +216,18 @@ void BinaryOptionTest::testAssetOrNothingHaugValues() {
     ext::shared_ptr<SimpleQuote> vol(new SimpleQuote(0.25));
     ext::shared_ptr<BlackVolTermStructure> volTS = flatVol(today, vol, dc);
 
-    for (Size i=0; i<LENGTH(values); i++) {
+    for (auto& value : values) {
 
-        ext::shared_ptr<StrikedTypePayoff> payoff(new AssetOrNothingPayoff(
-            values[i].type, values[i].strike));
+        ext::shared_ptr<StrikedTypePayoff> payoff(
+            new AssetOrNothingPayoff(value.type, value.strike));
 
-        Date exDate = today + Integer(values[i].t*360+0.5);
-        ext::shared_ptr<Exercise> amExercise(new AmericanExercise(today,
-                                                                    exDate,
-                                                                    true));
+        Date exDate = today + timeToDays(value.t);
+        ext::shared_ptr<Exercise> amExercise(new AmericanExercise(today, exDate, true));
 
-        spot ->setValue(values[i].s);
-        qRate->setValue(values[i].q);
-        rRate->setValue(values[i].r);
-        vol  ->setValue(values[i].v);
+        spot->setValue(value.s);
+        qRate->setValue(value.q);
+        rRate->setValue(value.r);
+        vol->setValue(value.v);
 
         ext::shared_ptr<BlackScholesMertonProcess> stochProcess(new
             BlackScholesMertonProcess(Handle<Quote>(spot),
@@ -257,28 +237,78 @@ void BinaryOptionTest::testAssetOrNothingHaugValues() {
         ext::shared_ptr<PricingEngine> engine(
                              new AnalyticBinaryBarrierEngine(stochProcess));
 
-        BarrierOption opt(values[i].barrierType, 
-                          values[i].barrier, 
-                          0,
-                          payoff,
-                          amExercise);
+        BarrierOption opt(value.barrierType, value.barrier, 0, payoff, amExercise);
 
         opt.setPricingEngine(engine);
 
         Real calculated = opt.NPV();
-        Real error = std::fabs(calculated-values[i].result);
-        if (error > values[i].tol) {
-            REPORT_FAILURE("value", payoff, amExercise, values[i].barrierType, 
-                           values[i].barrier, values[i].s,
-                           values[i].q, values[i].r, today, values[i].v,
-                           values[i].result, calculated, error, values[i].tol);
+        Real error = std::fabs(calculated - value.result);
+        if (error > value.tol) {
+            REPORT_FAILURE("value", payoff, amExercise, value.barrierType, value.barrier, value.s,
+                           value.q, value.r, today, value.v, value.result, calculated, error,
+                           value.tol);
         }
     }
 }
 
-test_suite* BinaryOptionTest::suite() {
-    test_suite* suite = BOOST_TEST_SUITE("Binary");
-    suite->add(QUANTLIB_TEST_CASE(&BinaryOptionTest::testCashOrNothingHaugValues));
-    suite->add(QUANTLIB_TEST_CASE(&BinaryOptionTest::testAssetOrNothingHaugValues));
-    return suite;
+BOOST_AUTO_TEST_CASE(testCashOrNothingLowVolatility) {
+
+    BOOST_TEST_MESSAGE("Testing cash-or-nothing barrier options at low volatility...");
+
+    BinaryOptionData values[] = {
+        //    barrierType, barrier,  cash,         type, strike,   spot,    q,     r,   t,   vol,              value, tol
+        { Barrier::DownOut,  90.00, 10.00, Option::Call,  95.00, 100.00, 0.03, -0.02, 1.0, 0.003, 6.797152649161316, 1e-8 },
+        { Barrier::UpOut,   110.00, 10.00, Option::Put,  105.00, 100.00, 0.00,  0.03, 1.0, 0.001, 9.704455335485082, 1e-8 },
+        { Barrier::DownOut,  90.00, 10.00, Option::Call, 100.00, 100.00, 0.00, -0.02, 1.0, 0.001, 0.0,               1e-8 }
+    };
+
+    DayCounter dc = Actual360();
+    Date today = Date::todaysDate();
+
+    ext::shared_ptr<SimpleQuote> spot(new SimpleQuote(100.0));
+    ext::shared_ptr<SimpleQuote> qRate(new SimpleQuote(0.0));
+    ext::shared_ptr<YieldTermStructure> qTS = flatRate(today, qRate, dc);
+    ext::shared_ptr<SimpleQuote> rRate(new SimpleQuote(0.0));
+    ext::shared_ptr<YieldTermStructure> rTS = flatRate(today, rRate, dc);
+    ext::shared_ptr<SimpleQuote> vol(new SimpleQuote(0.0));
+    ext::shared_ptr<BlackVolTermStructure> volTS = flatVol(today, vol, dc);
+
+    ext::shared_ptr<BlackScholesMertonProcess> stochProcess(new
+        BlackScholesMertonProcess(Handle<Quote>(spot),
+                                  Handle<YieldTermStructure>(qTS),
+                                  Handle<YieldTermStructure>(rTS),
+                                  Handle<BlackVolTermStructure>(volTS)));
+    ext::shared_ptr<PricingEngine> engine(
+                             new AnalyticBinaryBarrierEngine(stochProcess));
+
+    for (auto& value : values) {
+
+        ext::shared_ptr<StrikedTypePayoff> payoff(
+            new CashOrNothingPayoff(value.type, value.strike, value.cash));
+
+        Date exDate = today + timeToDays(value.t);
+        ext::shared_ptr<Exercise> amExercise(new AmericanExercise(today,
+                                                                    exDate,
+                                                                    true));
+
+        spot->setValue(value.s);
+        qRate->setValue(value.q);
+        rRate->setValue(value.r);
+        vol->setValue(value.v);
+
+        BarrierOption opt(value.barrierType, value.barrier, 0, payoff, amExercise);
+        opt.setPricingEngine(engine);
+
+        Real calculated = opt.NPV();
+        Real error = std::fabs(calculated - value.result);
+        if (!(error <= value.tol)) {
+            REPORT_FAILURE("value", payoff, amExercise, value.barrierType, value.barrier, value.s,
+                           value.q, value.r, today, value.v, value.result, calculated, error,
+                           value.tol);
+        }
+    }
 }
+
+BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_AUTO_TEST_SUITE_END()

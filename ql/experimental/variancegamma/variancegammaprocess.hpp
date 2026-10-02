@@ -10,7 +10,7 @@ QuantLib is free software: you can redistribute it and/or modify it
 under the terms of the QuantLib license.  You should have received a
 copy of the license along with this program; if not, please email
 <quantlib-dev@lists.sf.net>. The license is also available online at
-<http://quantlib.org/license.shtml>.
+<https://www.quantlib.org/license.shtml>.
 
 This program is distributed in the hope that it will be useful, but WITHOUT
 ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -49,23 +49,24 @@ namespace QuantLib {
     */
     class VarianceGammaProcess : public StochasticProcess1D {
     public:
+      VarianceGammaProcess(Handle<Quote> s0,
+                           Handle<YieldTermStructure> dividendYield,
+                           Handle<YieldTermStructure> riskFreeRate,
+                           Real sigma,
+                           Real nu,
+                           Real theta);
 
-        VarianceGammaProcess(const Handle<Quote>& s0,
-            const Handle<YieldTermStructure>& dividendYield,
-            const Handle<YieldTermStructure>& riskFreeRate,
-            Real sigma, Real nu, Real theta);
+      Real x0() const override;
+      Real drift(Time t, Real x) const override;
+      Real diffusion(Time t, Real x) const override;
 
-        Real x0() const;
-        Real drift(Time t, Real x) const;
-        Real diffusion(Time t, Real x) const;
+      Real sigma() const { return sigma_; }
+      Real nu() const { return nu_; }
+      Real theta() const { return theta_; }
 
-        Real sigma()     const { return sigma_; }
-        Real nu() const { return nu_; }
-        Real theta()  const { return theta_; }
-
-        const Handle<Quote>& s0() const;
-        const Handle<YieldTermStructure>& dividendYield() const;
-        const Handle<YieldTermStructure>& riskFreeRate() const;
+      const Handle<Quote>& s0() const;
+      const Handle<YieldTermStructure>& dividendYield() const;
+      const Handle<YieldTermStructure>& riskFreeRate() const;
 
     private:
         Handle<Quote> s0_;

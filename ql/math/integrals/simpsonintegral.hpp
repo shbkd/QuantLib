@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -39,18 +39,19 @@ namespace QuantLib {
                         Size maxIterations)
         : TrapezoidIntegral<Default>(accuracy, maxIterations) {}
       protected:
-        Real integrate(const boost::function<Real (Real)>& f,
-                       Real a, 
-                       Real b) const {
+        Real integrate(const std::function<Real(Real)>& f, Real a, Real b) const override {
 
             // start from the coarsest trapezoid...
             Size N = 1;
             Real I = (f(a)+f(b))*(b-a)/2.0, newI;
+            increaseNumberOfEvaluations(2);
+
             Real adjI = I, newAdjI;
             // ...and refine it
             Size i = 1;
             do {
                 newI = Default::integrate(f,a,b,I,N);
+                increaseNumberOfEvaluations(N);
                 N *= 2;
                 newAdjI = (4.0*newI-I)/3.0;
                 // good enough? Also, don't run away immediately

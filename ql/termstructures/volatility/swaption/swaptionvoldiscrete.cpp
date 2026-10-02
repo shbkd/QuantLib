@@ -2,7 +2,7 @@
 
 /*
  Copyright (C) 2006 Ferdinando Ametrano
- Copyright (C) 2006 François du Vignaud
+ Copyright (C) 2006 FranÃ§ois du Vignaud
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -37,6 +37,8 @@ namespace QuantLib {
       optionDates_(nOptionTenors_),
       optionTimes_(nOptionTenors_),
       optionDatesAsReal_(nOptionTenors_),
+      optionInterpolatorTimes_(nOptionTenors_  + 1),
+      optionInterpolatorDatesAsReal_(nOptionTenors_ + 1),
       nSwapTenors_(swapTenors.size()),
       swapTenors_(swapTenors),
       swapLengths_(nSwapTenors_) {
@@ -47,14 +49,12 @@ namespace QuantLib {
         checkSwapTenors();
         initializeSwapLengths();
 
-        optionInterpolator_= LinearInterpolation(optionTimes_.begin(),
-                                                 optionTimes_.end(),
-                                                 optionDatesAsReal_.begin());
+        optionInterpolator_= LinearInterpolation(optionInterpolatorTimes_.begin(),
+                                                 optionInterpolatorTimes_.end(),
+                                                 optionInterpolatorDatesAsReal_.begin());
         optionInterpolator_.update();
         optionInterpolator_.enableExtrapolation();
-
-        registerWith(Settings::instance().evaluationDate());
-        evaluationDate_ = Settings::instance().evaluationDate();
+        cachedReferenceDate_ = referenceDate();
     }
 
     SwaptionVolatilityDiscrete::SwaptionVolatilityDiscrete(
@@ -70,6 +70,8 @@ namespace QuantLib {
       optionDates_(nOptionTenors_),
       optionTimes_(nOptionTenors_),
       optionDatesAsReal_(nOptionTenors_),
+      optionInterpolatorTimes_(nOptionTenors_  + 1),
+      optionInterpolatorDatesAsReal_(nOptionTenors_ + 1),
       nSwapTenors_(swapTenors.size()),
       swapTenors_(swapTenors),
       swapLengths_(nSwapTenors_) {
@@ -80,9 +82,9 @@ namespace QuantLib {
         checkSwapTenors();
         initializeSwapLengths();
 
-        optionInterpolator_= LinearInterpolation(optionTimes_.begin(),
-                                                 optionTimes_.end(),
-                                                 optionDatesAsReal_.begin());
+        optionInterpolator_= LinearInterpolation(optionInterpolatorTimes_.begin(),
+                                                 optionInterpolatorTimes_.end(),
+                                                 optionInterpolatorDatesAsReal_.begin());
         optionInterpolator_.update();
         optionInterpolator_.enableExtrapolation();
     }
@@ -100,28 +102,29 @@ namespace QuantLib {
       optionDates_(optionDates),
       optionTimes_(nOptionTenors_),
       optionDatesAsReal_(nOptionTenors_),
+      optionInterpolatorTimes_(nOptionTenors_  + 1),
+      optionInterpolatorDatesAsReal_(nOptionTenors_ + 1),
       nSwapTenors_(swapTenors.size()),
       swapTenors_(swapTenors),
       swapLengths_(nSwapTenors_) {
 
-        checkOptionDates();
+        checkOptionDates(referenceDate);
         initializeOptionTimes();
 
         checkSwapTenors();
         initializeSwapLengths();
 
-        optionInterpolator_= LinearInterpolation(optionTimes_.begin(),
-                                                 optionTimes_.end(),
-                                                 optionDatesAsReal_.begin());
+        optionInterpolator_= LinearInterpolation(optionInterpolatorTimes_.begin(),
+                                                 optionInterpolatorTimes_.end(),
+                                                 optionInterpolatorDatesAsReal_.begin());
         optionInterpolator_.update();
         optionInterpolator_.enableExtrapolation();
     }
 
-    void SwaptionVolatilityDiscrete::checkOptionDates() const {
-        QL_REQUIRE(optionDates_[0]>referenceDate(),
+    void SwaptionVolatilityDiscrete::checkOptionDates(const Date& reference) const {
+        QL_REQUIRE(optionDates_[0] > reference,
                    "first option date (" << optionDates_[0] <<
-                   ") must be greater than reference date (" <<
-                   referenceDate() << ")");
+                   ") must be greater than reference date (" << reference << ")");
         for (Size i=1; i<nOptionTenors_; ++i) {
             QL_REQUIRE(optionDates_[i]>optionDates_[i-1],
                        "non increasing option dates: " << io::ordinal(i) <<
@@ -153,17 +156,20 @@ namespace QuantLib {
     }
 
     void SwaptionVolatilityDiscrete::initializeOptionDatesAndTimes() const {
+        optionInterpolatorDatesAsReal_[0] = static_cast<Real>(referenceDate().serialNumber());
         for (Size i=0; i<nOptionTenors_; ++i) {
             optionDates_[i] = optionDateFromTenor(optionTenors_[i]);
-            optionDatesAsReal_[i] =
+            optionDatesAsReal_[i] = optionInterpolatorDatesAsReal_[i + 1] =
                 static_cast<Real>(optionDates_[i].serialNumber());
         }
         initializeOptionTimes();
     }
 
     void SwaptionVolatilityDiscrete::initializeOptionTimes() const {
-        for (Size i=0; i<nOptionTenors_; ++i)
-            optionTimes_[i] = timeFromReference(optionDates_[i]);
+        optionInterpolatorTimes_[0] = 0.0;
+        for (Size i = 0; i < nOptionTenors_; ++i) {
+            optionTimes_[i] = optionInterpolatorTimes_[i + 1] = timeFromReference(optionDates_[i]);
+        }
     }
 
     void SwaptionVolatilityDiscrete::initializeSwapLengths() const {
@@ -174,9 +180,8 @@ namespace QuantLib {
     void SwaptionVolatilityDiscrete::performCalculations() const {
         // recalculate dates if necessary...
         if (moving_) {
-            Date d = Settings::instance().evaluationDate();
-            if (evaluationDate_ != d) {
-                evaluationDate_ = d;
+            if (cachedReferenceDate_ != referenceDate()) {
+                cachedReferenceDate_ = referenceDate();
                 initializeOptionDatesAndTimes();
                 initializeSwapLengths();
                 optionInterpolator_.update();

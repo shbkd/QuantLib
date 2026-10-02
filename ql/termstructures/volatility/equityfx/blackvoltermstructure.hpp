@@ -3,6 +3,7 @@
 /*
  Copyright (C) 2002, 2003 Ferdinando Ametrano
  Copyright (C) 2003, 2004, 2005, 2006 StatPro Italia srl
+ Copyright (C) 2026 Yassine Idyiahia
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -11,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -30,14 +31,24 @@
 
 namespace QuantLib {
 
+    class SmileSection;
+
     //! Black-volatility term structure
     /*! This abstract class defines the interface of concrete
         Black-volatility term structures which will be derived from
         this one.
 
         Volatilities are assumed to be expressed on an annual basis.
+
+        Instances are expected to be held by \c shared_ptr; the default
+        \c smileSectionImpl() adapter uses \c shared_from_this() to keep
+        the surface alive for as long as the returned SmileSection.
     */
-    class BlackVolTermStructure : public VolatilityTermStructure {
+    class BlackVolTermStructure : public VolatilityTermStructure
+#ifndef QL_ENABLE_THREAD_SAFE_OBSERVER_PATTERN
+                                  , public ext::enable_shared_from_this<BlackVolTermStructure>
+#endif
+    {
       public:
         /*! \name Constructors
             See the TermStructure documentation for issues regarding
@@ -49,20 +60,20 @@ namespace QuantLib {
                      constructor must manage their own reference date
                      by overriding the referenceDate() method.
         */
-        BlackVolTermStructure(BusinessDayConvention bdc = Following,
-                              const DayCounter& dc = DayCounter());
+        explicit BlackVolTermStructure(BusinessDayConvention bdc = Following,
+                                       const DayCounter& dc = DayCounter());
         //! initialize with a fixed reference date
-        BlackVolTermStructure(const Date& referenceDate,
-                              const Calendar& cal = Calendar(),
-                              BusinessDayConvention bdc = Following,
-                              const DayCounter& dc = DayCounter());
+        explicit BlackVolTermStructure(const Date& referenceDate,
+                                       const Calendar& cal = Calendar(),
+                                       BusinessDayConvention bdc = Following,
+                                       const DayCounter& dc = DayCounter());
         //! calculate the reference date based on the global evaluation date
         BlackVolTermStructure(Natural settlementDays,
                               const Calendar&,
                               BusinessDayConvention bdc = Following,
                               const DayCounter& dc = DayCounter());
         //@}
-        virtual ~BlackVolTermStructure() {}
+        ~BlackVolTermStructure() override = default;
         //! \name Black Volatility
         //@{
         //! spot volatility
@@ -102,6 +113,17 @@ namespace QuantLib {
                                   Real strike,
                                   bool extrapolate = false) const;
         //@}
+        //! \name Smile
+        //@{
+        //! at-the-money level at time t, or \c Null<Real>() if not known
+        virtual Real atmLevel(Time t) const { return Null<Real>(); }
+        //! returns the smile for a given option date
+        ext::shared_ptr<SmileSection> smileSection(const Date& maturity,
+                                                   bool extrapolate = false) const;
+        //! returns the smile for a given option time
+        ext::shared_ptr<SmileSection> smileSection(Time maturity,
+                                                   bool extrapolate = false) const;
+        //@}
         //! \name Visitability
         //@{
         virtual void accept(AcyclicVisitor&);
@@ -119,6 +141,14 @@ namespace QuantLib {
         virtual Real blackVarianceImpl(Time t, Real strike) const = 0;
         //! Black volatility calculation
         virtual Volatility blackVolImpl(Time t, Real strike) const = 0;
+        /*! Smile section calculation.  The default implementation wraps
+            the vol surface into a SmileSection adapter that holds a
+            \c shared_ptr to \c *this (via \c shared_from_this()), so the
+            surface stays alive for the lifetime of the returned section.
+            Derived classes with a native smile representation can override
+            to return self-contained objects.
+        */
+        virtual ext::shared_ptr<SmileSection> smileSectionImpl(Time t) const;
         //@}
     };
 
@@ -141,13 +171,13 @@ namespace QuantLib {
                      constructor must manage their own reference date
                      by overriding the referenceDate() method.
         */
-        BlackVolatilityTermStructure(BusinessDayConvention bdc = Following,
-                                     const DayCounter& dc = DayCounter());
+        explicit BlackVolatilityTermStructure(BusinessDayConvention bdc = Following,
+                                              const DayCounter& dc = DayCounter());
         //! initialize with a fixed reference date
-        BlackVolatilityTermStructure(const Date& referenceDate,
-                                     const Calendar& cal = Calendar(),
-                                     BusinessDayConvention bdc = Following,
-                                     const DayCounter& dc = DayCounter());
+        explicit BlackVolatilityTermStructure(const Date& referenceDate,
+                                              const Calendar& cal = Calendar(),
+                                              BusinessDayConvention bdc = Following,
+                                              const DayCounter& dc = DayCounter());
         //! calculate the reference date based on the global evaluation date
         BlackVolatilityTermStructure(Natural settlementDays,
                                      const Calendar& cal,
@@ -156,13 +186,13 @@ namespace QuantLib {
         //@}
         //! \name Visitability
         //@{
-        virtual void accept(AcyclicVisitor&);
+        void accept(AcyclicVisitor&) override;
         //@}
       protected:
         /*! Returns the variance for the given strike and date calculating it
             from the volatility.
         */
-        Real blackVarianceImpl(Time maturity, Real strike) const;
+        Real blackVarianceImpl(Time maturity, Real strike) const override;
     };
 
 
@@ -186,13 +216,13 @@ namespace QuantLib {
                      constructor must manage their own reference date
                      by overriding the referenceDate() method.
         */
-        BlackVarianceTermStructure(BusinessDayConvention bdc = Following,
-                                   const DayCounter& dc = DayCounter());
+        explicit BlackVarianceTermStructure(BusinessDayConvention bdc = Following,
+                                            const DayCounter& dc = DayCounter());
         //! initialize with a fixed reference date
-        BlackVarianceTermStructure(const Date& referenceDate,
-                                   const Calendar& cal = Calendar(),
-                                   BusinessDayConvention bdc = Following,
-                                   const DayCounter& dc = DayCounter());
+        explicit BlackVarianceTermStructure(const Date& referenceDate,
+                                            const Calendar& cal = Calendar(),
+                                            BusinessDayConvention bdc = Following,
+                                            const DayCounter& dc = DayCounter());
         //! calculate the reference date based on the global evaluation date
         BlackVarianceTermStructure(Natural settlementDays,
                                    const Calendar&,
@@ -201,14 +231,13 @@ namespace QuantLib {
         //@}
         //! \name Visitability
         //@{
-        virtual void accept(AcyclicVisitor&);
+        void accept(AcyclicVisitor&) override;
         //@}
       protected:
         /*! Returns the volatility for the given strike and date calculating it
             from the variance.
         */
-        Volatility blackVolImpl(Time t,
-                                Real strike) const;
+        Volatility blackVolImpl(Time t, Real strike) const override;
     };
 
 
@@ -249,10 +278,23 @@ namespace QuantLib {
         return blackVarianceImpl(t, strike);
     }
 
+    inline ext::shared_ptr<SmileSection>
+    BlackVolTermStructure::smileSection(const Date& d,
+                                         bool extrapolate) const {
+        checkRange(d, extrapolate);
+        return smileSectionImpl(timeFromReference(d));
+    }
+
+    inline ext::shared_ptr<SmileSection>
+    BlackVolTermStructure::smileSection(Time t,
+                                         bool extrapolate) const {
+        checkRange(t, extrapolate);
+        return smileSectionImpl(t);
+    }
+
     inline void BlackVolTermStructure::accept(AcyclicVisitor& v) {
-        Visitor<BlackVolTermStructure>* v1 =
-            dynamic_cast<Visitor<BlackVolTermStructure>*>(&v);
-        if (v1 != 0)
+        auto* v1 = dynamic_cast<Visitor<BlackVolTermStructure>*>(&v);
+        if (v1 != nullptr)
             v1->visit(*this);
         else
             QL_FAIL("not a Black-volatility term structure visitor");
@@ -266,9 +308,8 @@ namespace QuantLib {
     }
 
     inline void BlackVolatilityTermStructure::accept(AcyclicVisitor& v) {
-        Visitor<BlackVolatilityTermStructure>* v1 =
-            dynamic_cast<Visitor<BlackVolatilityTermStructure>*>(&v);
-        if (v1 != 0)
+        auto* v1 = dynamic_cast<Visitor<BlackVolatilityTermStructure>*>(&v);
+        if (v1 != nullptr)
             v1->visit(*this);
         else
             BlackVolTermStructure::accept(v);
@@ -283,9 +324,8 @@ namespace QuantLib {
     }
 
     inline void BlackVarianceTermStructure::accept(AcyclicVisitor& v) {
-        Visitor<BlackVarianceTermStructure>* v1 =
-            dynamic_cast<Visitor<BlackVarianceTermStructure>*>(&v);
-        if (v1 != 0)
+        auto* v1 = dynamic_cast<Visitor<BlackVarianceTermStructure>*>(&v);
+        if (v1 != nullptr)
             v1->visit(*this);
         else
             BlackVolTermStructure::accept(v);

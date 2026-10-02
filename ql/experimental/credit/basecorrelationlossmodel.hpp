@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -29,9 +29,10 @@
 #include <ql/experimental/credit/basecorrelationstructure.hpp>
 
 // move these to the CPP (and the template spezs)
-#include <ql/experimental/credit/gaussianlhplossmodel.hpp>
 #include <ql/experimental/credit/binomiallossmodel.hpp>
+#include <ql/experimental/credit/gaussianlhplossmodel.hpp>
 #include <ql/experimental/credit/inhomogeneouspooldef.hpp>
+#include <utility>
 
 namespace QuantLib {
 
@@ -65,7 +66,7 @@ namespace QuantLib {
     Users should select their models according to this; choosing the copula or
     a random loss given default base model (or more exotic ones). \par
     Notice this is different to a bespoke base correlation loss (bespoke here 
-    refering to basket composition, not just attachment levels) ; where 
+    referring to basket composition, not just attachment levels) ; where 
     loss interpolation is on the expected loss value to match the two baskets. 
     Therefore the correlation surface should refer to the same basket intended
     to be priced. But this is left to the user and is not implemented in the 
@@ -93,58 +94,44 @@ namespace QuantLib {
     private:
         typedef typename BaseModel_T::copulaType::initTraits initTraits;
     public:
-        BaseCorrelationLossModel(
-            const Handle<BaseCorrelationTermStructure<Corr2DInt_T> >& correlTS,
-            const std::vector<Real>& recoveries,
-            const initTraits& traits = initTraits()
-            )
-        : localCorrelationAttach_(ext::make_shared<SimpleQuote>(
-            0.)),
-          localCorrelationDetach_(ext::make_shared<SimpleQuote>(
-            0.)),
-          recoveries_(recoveries),
-          correlTS_(correlTS),
-          copulaTraits_(traits)
-        { 
-            registerWith(correlTS);
-            registerWith(Settings::instance().evaluationDate());
-        }
+      BaseCorrelationLossModel(const Handle<BaseCorrelationTermStructure<Corr2DInt_T> >& correlTS,
+                               std::vector<Real> recoveries,
+                               const initTraits& traits = initTraits())
+      : localCorrelationAttach_(ext::make_shared<SimpleQuote>(0.)),
+        localCorrelationDetach_(ext::make_shared<SimpleQuote>(0.)),
+        recoveries_(std::move(recoveries)), correlTS_(correlTS), copulaTraits_(traits) {
+          registerWith(correlTS);
+          registerWith(Settings::instance().evaluationDate());
+      }
+
     private:
         // react to base correl surface notifications (quotes or reference date)
-        void update() {
-            setupModels();
-            // tell basket to notify instruments, etc, we are invalid
-            if(!basket_.empty()) basket_->notifyObservers();
-        }
+      void update() override {
+          setupModels();
+          // tell basket to notify instruments, etc, we are invalid
+          if (!basket_.empty())
+              basket_->notifyObservers();
+      }
 
         /* Update model caches after basket assignement. */
-        void resetModel() {
-            remainingNotional_ = basket_->remainingNotional();
-            attachRatio_ = basket_->remainingAttachmentAmount()
-                /remainingNotional_;
-            detachRatio_ = basket_->remainingDetachmentAmount()
-                /remainingNotional_;
+      void resetModel() override {
+          remainingNotional_ = basket_->remainingNotional();
+          attachRatio_ = basket_->remainingAttachmentAmount() / remainingNotional_;
+          detachRatio_ = basket_->remainingDetachmentAmount() / remainingNotional_;
 
-             basketAttach_ = ext::make_shared<Basket>(basket_->refDate(),basket_->remainingNames(), 
-                         basket_->remainingNotionals(), 
-                         basket_->pool(), 
-                         0.0,
-                         attachRatio_,
-                         basket_->claim()
-                         );
-             basketDetach_ = ext::make_shared<Basket>(basket_->refDate(),basket_->remainingNames(), 
-                         basket_->remainingNotionals(), 
-                         basket_->pool(),
-                         0.0,
-                         detachRatio_,
-                         basket_->claim()
-                         );
-             setupModels();
-        }
+          basketAttach_ = ext::make_shared<Basket>(basket_->refDate(), basket_->remainingNames(),
+                                                   basket_->remainingNotionals(), basket_->pool(),
+                                                   0.0, attachRatio_, basket_->claim());
+          basketDetach_ = ext::make_shared<Basket>(basket_->refDate(), basket_->remainingNames(),
+                                                   basket_->remainingNotionals(), basket_->pool(),
+                                                   0.0, detachRatio_, basket_->claim());
+          setupModels();
+      }
         /* Most of the statistics are not implemented, not impossible but
         the model is intended for pricing rather than ptfolio risk management.
         */
-        Real expectedTrancheLoss(const Date& d) const;
+      Real expectedTrancheLoss(const Date& d) const override;
+
     protected:
         /*! Sets up attach/detach models. Gets called on basket update. 
         To be specialized on the spacific model type.

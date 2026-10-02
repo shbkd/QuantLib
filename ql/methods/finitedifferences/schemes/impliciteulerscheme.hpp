@@ -12,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -44,18 +44,20 @@ namespace QuantLib {
         typedef traits::condition_type condition_type;
 
         // constructors
-        ImplicitEulerScheme(
-            const ext::shared_ptr<FdmLinearOpComposite>& map,
-            const bc_set& bcSet = bc_set(),
-            Real relTol = 1e-8,
-            SolverType solverType = BiCGstab);
+        explicit ImplicitEulerScheme(ext::shared_ptr<FdmLinearOpComposite> map,
+                                     const bc_set& bcSet = bc_set(),
+                                     Real relTol = 1e-8,
+                                     SolverType solverType = BiCGstab);
 
         void step(array_type& a, Time t);
         void setStep(Time dt);
 
         Size numberOfIterations() const;
       protected:
-        Disposable<Array> apply(const Array& r) const;   
+        friend class CrankNicolsonScheme;
+        void step(array_type& a, Time t, Real theta);
+
+        Array apply(const Array& r, Real theta) const;
           
         Time dt_;
         ext::shared_ptr<Size> iterations_;

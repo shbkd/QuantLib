@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -26,6 +26,7 @@
 #define quantlib_gaussian_quadratures_hpp
 
 #include <ql/math/array.hpp>
+#include <ql/math/integrals/integral.hpp>
 #include <ql/math/integrals/gaussianorthogonalpolynomial.hpp>
 
 namespace QuantLib {
@@ -57,7 +58,7 @@ namespace QuantLib {
         template <class F>
         Real operator()(const F& f) const {
             Real sum = 0.0;
-            for (Integer i = order()-1; i >= 0; --i) {
+            for (Integer i = Integer(order())-1; i >= 0; --i) {
                 sum += w_[i] * f(x_[i]);
             }
             return sum;
@@ -75,6 +76,22 @@ namespace QuantLib {
         Array x_, w_;
     };
 
+    class MultiDimGaussianIntegration {
+      public:
+        MultiDimGaussianIntegration(
+            const std::vector<Size>& ns,
+            const std::function<ext::shared_ptr<GaussianQuadrature>(Size)>& genQuad);
+
+        Real operator()(const std::function<Real(Array)>& f) const;
+
+        const Array& weights() const { return weights_; }
+        const std::vector<Array>& x() const { return x_; }
+
+      private:
+        Array weights_;
+        std::vector<Array> x_;
+    };
+
 
     //! generalized Gauss-Laguerre integration
     /*! This class performs a 1-dimensional Gauss-Laguerre integration.
@@ -89,7 +106,7 @@ namespace QuantLib {
     */
     class GaussLaguerreIntegration : public GaussianQuadrature {
       public:
-        GaussLaguerreIntegration(Size n, Real s = 0.0)
+        explicit GaussLaguerreIntegration(Size n, Real s = 0.0)
         : GaussianQuadrature(n, GaussLaguerrePolynomial(s)) {}
     };
 
@@ -106,7 +123,7 @@ namespace QuantLib {
     */
     class GaussHermiteIntegration : public GaussianQuadrature {
       public:
-        GaussHermiteIntegration(Size n, Real mu = 0.0)
+        explicit GaussHermiteIntegration(Size n, Real mu = 0.0)
         : GaussianQuadrature(n, GaussHermitePolynomial(mu)) {}
     };
 
@@ -208,14 +225,40 @@ namespace QuantLib {
     };
 
 
+    namespace detail {
+        template <class Integration>
+        class GaussianQuadratureIntegrator: public Integrator {
+          public:
+            explicit GaussianQuadratureIntegrator(Size n);
+
+            ext::shared_ptr<Integration> getIntegration() const { return integration_; }
+
+          private:
+            Real integrate(const std::function<Real (Real)>& f,
+                                           Real a,
+                                           Real b) const override;
+
+            const ext::shared_ptr<Integration> integration_;
+        };
+    }
+
+    typedef detail::GaussianQuadratureIntegrator<GaussLegendreIntegration>
+        GaussLegendreIntegrator;
+
+    typedef detail::GaussianQuadratureIntegrator<GaussChebyshevIntegration>
+        GaussChebyshevIntegrator;
+
+    typedef detail::GaussianQuadratureIntegrator<GaussChebyshev2ndIntegration>
+        GaussChebyshev2ndIntegrator;
+
     //! tabulated Gauss-Legendre quadratures
     class TabulatedGaussLegendre {
       public:
         explicit TabulatedGaussLegendre(Size n = 20) { order(n); }
         template <class F>
         Real operator() (const F& f) const {
-            QL_ASSERT(w_!=0, "Null weights" );
-            QL_ASSERT(x_!=0, "Null abscissas");
+            QL_ASSERT(w_ != nullptr, "Null weights");
+            QL_ASSERT(x_ != nullptr, "Null abscissas");
             Size startIdx;
             Real val;
 

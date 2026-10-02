@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -48,7 +48,7 @@ namespace QuantLib {
         Day em = easterMonday(y);
         if (isWeekend(w)
             // New Year's Day (possibly moved to Monday)
-            || ((d == 1 || (d == 2 && w == Monday)) && m == January)
+            || ((d == 1 || ((d == 2 || d == 3) && w == Monday)) && m == January)
             // Family Day (third Monday in February, since 2008)
             || ((d >= 15 && d <= 21) && w == Monday && m == February
                 && y >= 2008)
@@ -62,6 +62,9 @@ namespace QuantLib {
             || (d <= 7 && w == Monday && m == August)
             // first Monday of September (Labor Day)
             || (d <= 7 && w == Monday && m == September)
+            // September 30th, possibly moved to Monday
+            // (National Day for Truth and Reconciliation, since 2021)
+            || (((d == 30 && m == September) || (d <= 2 && m == October && w == Monday)) && y >= 2021)
             // second Monday of October (Thanksgiving Day)
             || (d > 7 && d <= 14 && w == Monday && m == October)
             // November 11th (possibly moved to Monday)
@@ -74,7 +77,7 @@ namespace QuantLib {
             || ((d == 26 || (d == 28 && (w == Monday || w == Tuesday)))
                 && m == December)
             )
-            return false;
+            return false; // NOLINT(readability-simplify-boolean-expr)
         return true;
     }
 
@@ -86,7 +89,7 @@ namespace QuantLib {
         Day em = easterMonday(y);
         if (isWeekend(w)
             // New Year's Day (possibly moved to Monday)
-            || ((d == 1 || (d == 2 && w == Monday)) && m == January)
+            || ((d == 1 || ((d == 2 || d == 3) && w == Monday)) && m == January)
             // Family Day (third Monday in February, since 2008)
             || ((d >= 15 && d <= 21) && w == Monday && m == February
                 && y >= 2008)
@@ -109,9 +112,8 @@ namespace QuantLib {
             || ((d == 26 || (d == 28 && (w == Monday || w == Tuesday)))
                 && m == December)
             )
-            return false;
+            return false; // NOLINT(readability-simplify-boolean-expr)
         return true;
     }
 
 }
-

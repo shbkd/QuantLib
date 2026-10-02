@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -40,17 +40,14 @@ namespace QuantLib {
       public:
         LfmCovarianceParameterization(Size size, Size factors)
         : size_(size), factors_(factors) {}
-        virtual ~LfmCovarianceParameterization() {}
+        virtual ~LfmCovarianceParameterization() = default;
 
         Size size() const { return size_; }
         Size factors() const { return factors_; }
 
-        virtual Disposable<Matrix> diffusion(
-                            Time t, const Array& x = Null<Array>()) const = 0;
-        virtual Disposable<Matrix> covariance(
-                            Time t, const Array& x = Null<Array>()) const;
-        virtual Disposable<Matrix> integratedCovariance(
-                            Time t, const Array& x = Null<Array>()) const;
+        virtual Matrix diffusion(Time t, const Array& x = {}) const = 0;
+        virtual Matrix covariance(Time t, const Array& x = {}) const;
+        virtual Matrix integratedCovariance(Time t, const Array& x = {}) const;
 
       protected:
         const Size size_;

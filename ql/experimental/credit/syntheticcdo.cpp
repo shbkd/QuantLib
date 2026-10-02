@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -27,6 +27,7 @@
 #include <ql/termstructures/yieldtermstructure.hpp>
 #include <ql/experimental/credit/gaussianlhplossmodel.hpp>
 #include <ql/experimental/credit/midpointcdoengine.hpp>
+#include <ql/optional.hpp>
 
 using namespace std;
 
@@ -34,41 +35,36 @@ namespace QuantLib {
 
     SyntheticCDO::SyntheticCDO(const ext::shared_ptr<Basket>& basket,
                                Protection::Side side,
-                               const Schedule& schedule,
+                               Schedule schedule,
                                Rate upfrontRate,
                                Rate runningRate,
                                const DayCounter& dayCounter,
                                BusinessDayConvention paymentConvention,
-                               boost::optional<Real> notional)
-    : basket_(basket),
-      side_(side),
-      upfrontRate_(upfrontRate),
-      runningRate_(runningRate),
-      leverageFactor_(notional ? notional.get()/basket->trancheNotional() : 1.),
-      dayCounter_(dayCounter),
-      paymentConvention_(paymentConvention)
-    {
-        QL_REQUIRE (basket->names().size() > 0, "basket is empty");
+                               std::optional<Real> notional)
+    : basket_(basket), side_(side), upfrontRate_(upfrontRate), runningRate_(runningRate),
+      leverageFactor_(notional ? *notional / basket->trancheNotional() : Real(1.)), // NOLINT(readability-implicit-bool-conversion)
+      dayCounter_(dayCounter), paymentConvention_(paymentConvention) {
+        QL_REQUIRE(!basket->names().empty(), "basket is empty");
         // Basket inception must lie before contract protection start.
         QL_REQUIRE(basket->refDate() <= schedule.startDate(),
-        //using the start date of the schedule might be wrong, think of the 
+        //using the start date of the schedule might be wrong, think of the
         //  CDS rule
             "Basket did not exist before contract start.");
 
-        // Notice the notional is that of the basket at basket inception, some 
+        // Notice the notional is that of the basket at basket inception, some
         //   names might have defaulted in between
-        normalizedLeg_ = FixedRateLeg(schedule)
+        normalizedLeg_ = FixedRateLeg(std::move(schedule))
             .withNotionals(basket_->trancheNotional() * leverageFactor_)
             .withCouponRates(runningRate, dayCounter)
             .withPaymentAdjustment(paymentConvention);
 
         // Date today = Settings::instance().evaluationDate();
-        
+
         // register with probabilities if the corresponding issuer is, baskets
         //   are not registered with the DTS
         for (Size i = 0; i < basket->names().size(); i++) {
-            /* This turns out to be a problem: depends on today but I am not 
-            modifying the registrations, if we go back in time in the 
+            /* This turns out to be a problem: depends on today but I am not
+            modifying the registrations, if we go back in time in the
             calculations this would left me unregistered to some. Not impossible
             to de-register and register when updating but i am dropping it.
 
@@ -122,7 +118,7 @@ namespace QuantLib {
         return (protectionValue_ - premiumValue_) / remainingNotional_;
     }
 
-    Disposable<vector<Real> > SyntheticCDO::expectedTrancheLoss() const {
+    std::vector<Real> SyntheticCDO::expectedTrancheLoss() const {
         calculate();
         return expectedTrancheLoss_;
     }
@@ -145,9 +141,8 @@ namespace QuantLib {
     }
 
     void SyntheticCDO::setupArguments(PricingEngine::arguments* args) const {
-        SyntheticCDO::arguments* arguments
-            = dynamic_cast<SyntheticCDO::arguments*>(args);
-        QL_REQUIRE(arguments != 0, "wrong argument type");
+        auto* arguments = dynamic_cast<SyntheticCDO::arguments*>(args);
+        QL_REQUIRE(arguments != nullptr, "wrong argument type");
         arguments->basket = basket_;
         arguments->side = side_;
         arguments->normalizedLeg = normalizedLeg_;
@@ -162,9 +157,8 @@ namespace QuantLib {
     void SyntheticCDO::fetchResults(const PricingEngine::results* r) const {
         Instrument::fetchResults(r);
 
-        const SyntheticCDO::results* results
-            = dynamic_cast<const SyntheticCDO::results*>(r);
-        QL_REQUIRE(results != 0, "wrong result type");
+        const auto* results = dynamic_cast<const SyntheticCDO::results*>(r);
+        QL_REQUIRE(results != nullptr, "wrong result type");
 
         premiumValue_ = results->premiumValue;
         protectionValue_ = results->protectionValue;
@@ -232,14 +226,14 @@ namespace QuantLib {
 
     // untested, not sure this is not messing up, once it comes out of this
     //   the basket model is different.....
-    Real SyntheticCDO::implicitCorrelation(const std::vector<Real>& recoveries, 
-        const Handle<YieldTermStructure>& discountCurve, 
+    Real SyntheticCDO::implicitCorrelation(const std::vector<Real>& recoveries,
+        const Handle<YieldTermStructure>& discountCurve,
         Real targetNPV,
-        Real accuracy) const 
+        Real accuracy) const
     {
         ext::shared_ptr<SimpleQuote> correl(new SimpleQuote(0.0));
 
-        ext::shared_ptr<GaussianLHPLossModel> lhp(new 
+        ext::shared_ptr<GaussianLHPLossModel> lhp(new
             GaussianLHPLossModel(Handle<Quote>(correl), recoveries));
 
         // lock
@@ -247,8 +241,7 @@ namespace QuantLib {
 
         MidPointCDOEngine engineIC(discountCurve);
         setupArguments(engineIC.getArguments());
-        const SyntheticCDO::results* results = 
-            dynamic_cast<const SyntheticCDO::results*>(engineIC.getResults());
+        const auto* results = dynamic_cast<const SyntheticCDO::results*>(engineIC.getResults());
 
         // aviod recal of the basket on engine updates through the quote
         basket_->recalculate();

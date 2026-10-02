@@ -13,7 +13,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -23,16 +23,7 @@
 #include <ql/math/distributions/normaldistribution.hpp>
 #include <ql/math/comparison.hpp>
 
-#if defined(__GNUC__) && (((__GNUC__ == 4) && (__GNUC_MINOR__ >= 8)) || (__GNUC__ > 4))
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-local-typedefs"
-#endif
-
 #include <boost/math/distributions/normal.hpp>
-
-#if defined(__GNUC__) && (((__GNUC__ == 4) && (__GNUC_MINOR__ >= 8)) || (__GNUC__ > 4))
-#pragma GCC diagnostic pop
-#endif
 
 namespace QuantLib {
 
@@ -154,7 +145,10 @@ namespace QuantLib {
         Real result;
         Real temp=x-0.5;
 
-        if (std::fabs(temp) < 0.42) {
+        // Moro's central approximation is used for |x - 0.5| < 0.42;
+        // the alternative approximation is more accurate in the tails.
+        constexpr double centralRegionHalfWidth = 0.42;
+        if (std::fabs(temp) < centralRegionHalfWidth) {
             // Beasley and Springer, 1977
             result=temp*temp;
             result=temp*
@@ -179,7 +173,12 @@ namespace QuantLib {
 
     MaddockInverseCumulativeNormal::MaddockInverseCumulativeNormal(
         Real average, Real sigma)
-    : average_(average), sigma_(sigma) {}
+    : average_(average), sigma_(sigma) {
+
+        QL_REQUIRE(sigma_ > 0.0,
+                   "sigma must be greater than 0.0 ("
+                   << sigma_ << " not allowed)");
+    }
 
     Real MaddockInverseCumulativeNormal::operator()(Real x) const {
         return boost::math::quantile(
@@ -188,7 +187,12 @@ namespace QuantLib {
 
     MaddockCumulativeNormal::MaddockCumulativeNormal(
         Real average, Real sigma)
-    : average_(average), sigma_(sigma) {}
+    : average_(average), sigma_(sigma) {
+
+        QL_REQUIRE(sigma_ > 0.0,
+                   "sigma must be greater than 0.0 ("
+                   << sigma_ << " not allowed)");
+    }
 
     Real MaddockCumulativeNormal::operator()(Real x) const {
         return boost::math::cdf(
